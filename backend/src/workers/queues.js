@@ -1,0 +1,59 @@
+const { Queue, Worker } = require('bullmq');
+const config = require('../config');
+const logger = require('../utils/logger');
+const db = require('../config/database');
+
+const connection = {
+  host: config.redis.host,
+  port: config.redis.port,
+};
+
+const notificationQueue = new Queue('notifications', { connection });
+
+async function addNotificationJob(data) {
+  return notificationQueue.add('send', data, {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 2000 },
+  });
+}
+
+async function processNotification(job) {
+  const { tenantId, userId, channel, title, message, type } = job.data;
+
+  await db.query(
+    `INSERT INTO notifications (tenant_id, user_id, type, channel, title, message, status, sent_at)
+     VALUES ($1, $2, $3, $4, $5, $6, 'sent', NOW())`,
+    [tenantId, userId, type || 'general', channel || 'in_app', title, message]
+  );
+
+  if (channel === 'email') {
+    const nodemailer = require('nodemailer');
+    if (config.smtp.host) {
+      const transporter = nodemailer.createTransport({
+        host: config.smtp.host,
+        port: config.smtp.port,
+        auth: { user: config.smtp.user, pass: config.smtp.pass },
+      });
+      await transporter.sendMail({
+        from: config.smtp.from,
+        to: job.data.email,
+        subject: title,
+        html: message,
+      });
+    }
+  }
+
+  logger.info('Notification processed', { jobId: job.id, channel });
+}
+
+function startWorkers() {
+  const worker = new Worker('notifications', processNotification, { connection });
+
+  worker.on('completed', (job) => logger.debug(`Job ${job.id} completed`));
+  worker.on('failed', (job, err) => logger.error(`Job ${job?.id} failed`, { error: err.message }));
+
+  logger.info('BullMQ workers started');
+  return worker;
+}
+
+module.exports = { notificationQueue, addNotificationJob, startWorkers };
