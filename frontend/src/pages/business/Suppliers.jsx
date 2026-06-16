@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Grid, TextField, IconButton, Chip } from '@mui/material';
+import { Grid, IconButton, Chip, MenuItem } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import api from '../../services/api';
@@ -10,6 +10,7 @@ import FormDialog from '../../components/FormDialog';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
+import RHFTextField from '../../components/RHFTextField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 
 const empty = emptyPresetProps('suppliers');
@@ -19,7 +20,7 @@ export default function SuppliersPage() {
   const [editing, setEditing] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   const { data, isLoading } = useQuery({
     queryKey: ['suppliers'],
@@ -89,11 +90,46 @@ export default function SuppliersPage() {
         loading={saveMutation.isPending}
         submitLabel={editing ? 'Update' : 'Add'}
       >
-        <Grid item xs={12}><TextField fullWidth label="Company Name" {...register('name', { required: true })} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth label="Contact Person" {...register('contact_person')} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth label="Phone" {...register('phone')} /></Grid>
-        <Grid item xs={12}><TextField fullWidth label="Email" type="email" {...register('email')} /></Grid>
-        <Grid item xs={12}><TextField fullWidth label="Address" multiline rows={2} {...register('address')} /></Grid>
+        <Grid item xs={12}>
+          <RHFTextField
+            register={register}
+            name="name"
+            rules={{ required: 'Company name is required' }}
+            label="Company Name"
+            error={!!errors.name}
+            helperText={errors.name?.message}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <RHFTextField
+            register={register}
+            name="contact_person"
+            rules={{ required: 'Contact person is required' }}
+            label="Contact Person"
+            error={!!errors.contact_person}
+            helperText={errors.contact_person?.message}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <RHFTextField
+            register={register}
+            name="phone"
+            rules={{ required: 'Phone is required' }}
+            label="Phone"
+            error={!!errors.phone}
+            helperText={errors.phone?.message}
+          />
+        </Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="email" label="Email" type="email" /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="address" label="Address" multiline rows={2} /></Grid>
+        {editing && (
+          <Grid item xs={12}>
+            <RHFTextField register={register} name="status" rules={{ required: true }} select label="Status">
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+            </RHFTextField>
+          </Grid>
+        )}
       </FormDialog>
 
       <ConfirmDialog

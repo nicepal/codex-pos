@@ -5,12 +5,17 @@ const subscriptionService = require('../platform/platform.services').subscriptio
 
 class PaymentsService {
   async createCheckoutSession(tenantId, planId, billingCycle = 'monthly') {
-    const plan = await db.query('SELECT * FROM plans WHERE id = $1', [planId]);
+    const [plan, tenant] = await Promise.all([
+      db.query('SELECT * FROM plans WHERE id = $1', [planId]),
+      db.query('SELECT currency FROM tenants WHERE id = $1', [tenantId]),
+    ]);
     if (!plan.rows[0]) throw new NotFoundError('Plan not found');
 
     const amount = billingCycle === 'annual'
       ? parseFloat(plan.rows[0].annual_price || plan.rows[0].monthly_price * 12)
       : parseFloat(plan.rows[0].monthly_price);
+
+    const currency = (tenant.rows[0]?.currency || 'USD').toUpperCase();
 
     const expiresAt = new Date(Date.now() + 3600000);
     const externalSessionId = `chk_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -20,7 +25,7 @@ class PaymentsService {
          (tenant_id, plan_id, billing_cycle, amount, currency, status, external_session_id, expires_at)
        VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
        RETURNING *`,
-      [tenantId, planId, billingCycle, amount, plan.rows[0].currency || 'USD', externalSessionId, expiresAt]
+      [tenantId, planId, billingCycle, amount, currency, externalSessionId, expiresAt]
     );
 
     const session = result.rows[0];
@@ -29,6 +34,8 @@ class PaymentsService {
       external_session_id: session.external_session_id,
       amount: session.amount,
       currency: session.currency,
+      billing_cycle: session.billing_cycle,
+      plan_name: plan.rows[0].name,
       status: session.status,
       expires_at: session.expires_at,
       checkout_url: `${config.app.url}/subscription?session_id=${session.id}`,

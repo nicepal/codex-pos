@@ -7,6 +7,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
@@ -140,14 +141,14 @@ export default function ExpensesPage() {
         loading={saveMutation.isPending}
         submitLabel={editing ? 'Update' : 'Add'}
       >
-        <Grid item xs={12}><TextField fullWidth label="Title" {...register('title', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="title" rules={{ required: true }} label="Title" /></Grid>
         <Grid item xs={12} sm={6}>
           <TextField fullWidth select label="Category" defaultValue="Other" {...register('category')}>
             {CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth label="Amount" type="number" inputProps={{ step: 0.01 }} {...register('amount', { required: true })} /></Grid>
-        <Grid item xs={12}><TextField fullWidth label="Date" type="date" InputLabelProps={{ shrink: true }} {...register('expense_date', { required: true })} /></Grid>
+        <Grid item xs={12} sm={6}><RHFTextField register={register} name="amount" rules={{ required: true }} label="Amount" type="number" inputProps={{ step: 0.01 }} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="expense_date" rules={{ required: true }} label="Date" type="date" InputLabelProps={{ shrink: true }} /></Grid>
         <Grid item xs={12}><TextField fullWidth label="Notes" multiline rows={2} {...register('notes')} /></Grid>
       </FormDialog>
 

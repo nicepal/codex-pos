@@ -7,6 +7,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
@@ -70,7 +71,7 @@ export default function BrandsPage() {
       />
       <DataTable columns={columns} rows={data?.data || []} loading={isLoading} onEmptyAction={() => openForm()} {...empty} {...bulkDelete.selectionProps} />
       <FormDialog open={open} title={editing ? 'Edit Brand' : 'Add Brand'} onClose={() => setOpen(false)} onSubmit={handleSubmit((d) => saveMutation.mutate(d))} loading={saveMutation.isPending}>
-        <Grid item xs={12}><TextField fullWidth label="Name" {...register('name', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
       </FormDialog>
       <ConfirmDialog open={!!deleteId} title="Delete Brand" message="Delete this brand?" onConfirm={() => deleteMutation.mutate(deleteId)} onCancel={() => setDeleteId(null)} danger confirmLabel="Delete" />
     </>

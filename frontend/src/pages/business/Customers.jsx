@@ -8,6 +8,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 
@@ -61,7 +62,7 @@ export default function CustomersPage() {
         loading={createMutation.isPending}
         submitLabel="Add"
       >
-        <Grid item xs={12}><TextField fullWidth label="Name" {...register('name', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
         <Grid item xs={12}><TextField fullWidth label="Email" type="email" {...register('email')} /></Grid>
         <Grid item xs={12}><TextField fullWidth label="Phone" {...register('phone')} /></Grid>
         <Grid item xs={12}><TextField fullWidth label="Address" {...register('address')} /></Grid>

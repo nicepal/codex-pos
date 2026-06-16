@@ -7,6 +7,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 
 const TABS = [
   { key: 'pages', label: 'Pages', endpoint: '/cms/pages' },
@@ -46,7 +47,7 @@ export default function CmsPage() {
       </Tabs>
       <DataTable columns={columns} rows={data?.data || []} loading={isLoading} emptyTitle={`No ${current.label.toLowerCase()}`} />
       <FormDialog open={open} title={`Add ${current.label.slice(0, -1)}`} onClose={() => setOpen(false)} onSubmit={handleSubmit((d) => createMutation.mutate(d))} loading={createMutation.isPending} maxWidth="md">
-        <Grid item xs={12}><TextField fullWidth label="Title / Name" {...register(current.key === 'email-templates' ? 'name' : 'title', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name={current.key === 'email-templates' ? 'name' : 'title'} rules={{ required: true }} label="Title / Name" /></Grid>
         {current.key !== 'email-templates' && <Grid item xs={12}><TextField fullWidth label="Slug" {...register('slug')} /></Grid>}
         {current.key === 'email-templates' && (
           <>

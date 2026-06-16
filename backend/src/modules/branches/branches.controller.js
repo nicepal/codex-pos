@@ -20,4 +20,10 @@ module.exports = {
     await branchService.remove(req.tenant.id, req.params.id);
     return success(res, null, 'Branch deleted');
   }),
+  bulkRemove: asyncHandler(async (req, res) => {
+    const { parseBulkIds } = require('../../shared/bulk-delete');
+    const ids = parseBulkIds(req.body);
+    const result = await branchService.bulkRemove(req.tenant.id, ids);
+    return success(res, result, `${result.deleted} branch(es) deleted`);
+  }),
 };

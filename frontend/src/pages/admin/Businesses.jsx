@@ -8,6 +8,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 
 const statusColors = { active: 'success', trial: 'info', suspended: 'error', expired: 'warning' };
@@ -144,7 +145,7 @@ export default function BusinessesPage() {
           </Grid>
         )}
         <Grid item xs={12} sm={8}>
-          <TextField fullWidth label="Business Name" {...register('businessName', { required: true })} />
+          <RHFTextField register={register} name="businessName" rules={{ required: true }} label="Business Name" />
         </Grid>
         <Grid item xs={12} sm={4}>
           <TextField
@@ -156,23 +157,24 @@ export default function BusinessesPage() {
           />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <TextField fullWidth label="Owner First Name" {...register('firstName', { required: true })} />
+          <RHFTextField register={register} name="firstName" rules={{ required: true }} label="Owner First Name" />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <TextField fullWidth label="Owner Last Name" {...register('lastName', { required: true })} />
+          <RHFTextField register={register} name="lastName" rules={{ required: true }} label="Owner Last Name" />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <TextField fullWidth label="Owner Email" type="email" {...register('email', { required: true })} />
+          <RHFTextField register={register} name="email" rules={{ required: true }} label="Owner Email" type="email" />
         </Grid>
         <Grid item xs={12} sm={6}>
           <TextField fullWidth label="Phone" {...register('phone')} />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
+          <RHFTextField
+            register={register}
+            name="password"
+            rules={{ required: true, minLength: 8 }}
             label="Password"
             type="password"
-            {...register('password', { required: true, minLength: 8 })}
             helperText="Minimum 8 characters — owner login password"
           />
         </Grid>

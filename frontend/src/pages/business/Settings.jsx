@@ -10,6 +10,7 @@ import ImageUpload, { LogoPreview } from '../../components/ImageUpload';
 import ColorPickerField from '../../components/ColorPickerField';
 import StorefrontThemePreview from '../../components/storefront/StorefrontThemePreview';
 import LoadingState from '../../components/LoadingState';
+import RHFTextField from '../../components/RHFTextField';
 import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { fetchMe } from '../../features/auth/authSlice';
@@ -47,6 +48,44 @@ function MfaSection() {
   );
 }
 
+function FeaturesSection({ features, packs, onChange }) {
+  const entries = Object.entries(packs || {});
+  if (!entries.length) return null;
+
+  return (
+    <Card sx={{ mb: 3 }}>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>Feature Packs</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Enable optional capabilities for your business. Availability may depend on your subscription plan.
+        </Typography>
+        <Stack spacing={1}>
+          {entries.map(([key, meta]) => (
+            <FormControlLabel
+              key={key}
+              control={(
+                <Switch
+                  checked={!!features?.[key]}
+                  onChange={(e) => onChange(key, e.target.checked)}
+                />
+              )}
+              label={(
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>{meta.label || key}</Typography>
+                  {meta.description && (
+                    <Typography variant="caption" color="text.secondary">{meta.description}</Typography>
+                  )}
+                </Box>
+              )}
+              sx={{ alignItems: 'flex-start', ml: 0 }}
+            />
+          ))}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
 const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Asia/Karachi', 'Asia/Dubai'];
 const currencies = ['USD', 'EUR', 'GBP', 'PKR', 'AED', 'SAR'];
 
@@ -66,6 +105,7 @@ const DEFAULT_THEME = {
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
+  const [featureFlags, setFeatureFlags] = useState({});
 
   const { data, isLoading } = useQuery({
     queryKey: ['business-settings'],
@@ -101,6 +141,7 @@ export default function SettingsPage() {
       low_stock_alert: prefs.low_stock_alert ?? true,
       ...theme,
     });
+    setFeatureFlags(data.features || {});
   }, [data, reset]);
 
   const mutation = useMutation({
@@ -150,6 +191,7 @@ export default function SettingsPage() {
         show_stock: !!form.show_stock,
         storefront_enabled: !!form.storefront_enabled,
       },
+      features: featureFlags,
     });
   };
 
@@ -170,7 +212,7 @@ export default function SettingsPage() {
               <CardContent>
                 <Typography variant="h6" gutterBottom>Business Profile</Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}><TextField fullWidth label="Business Name" {...register('name', { required: true })} /></Grid>
+                  <Grid item xs={12} sm={6}><RHFTextField register={register} name="name" rules={{ required: true }} label="Business Name" /></Grid>
                   <Grid item xs={12} sm={6}><TextField fullWidth label="Email" type="email" {...register('email')} /></Grid>
                   <Grid item xs={12} sm={6}><TextField fullWidth label="Phone" {...register('phone')} /></Grid>
                   <Grid item xs={12} sm={6}>
@@ -216,6 +258,12 @@ export default function SettingsPage() {
                 </Grid>
               </CardContent>
             </Card>
+
+            <FeaturesSection
+              features={featureFlags}
+              packs={data?.feature_packs}
+              onChange={(key, val) => setFeatureFlags((prev) => ({ ...prev, [key]: val }))}
+            />
 
             <Card>
               <CardContent>

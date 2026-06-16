@@ -43,6 +43,13 @@ class TeamService {
       [user.id, role.rows[0].id, tenantId]
     );
 
+    const employeeName = [data.first_name, data.last_name].filter(Boolean).join(' ') || data.email;
+    await db.query(
+      `INSERT INTO employees (tenant_id, user_id, name, email, phone, position, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
+      [tenantId, user.id, employeeName, data.email.toLowerCase(), data.phone || null, roleName]
+    );
+
     return { ...user, role: roleName, temp_password: data.password ? undefined : tempPassword };
   }
 

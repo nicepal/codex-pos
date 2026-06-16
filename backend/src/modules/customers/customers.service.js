@@ -1,6 +1,9 @@
 const BaseRepository = require('../../shared/base.repository');
+const { pickAllowedFields } = require('../../shared/sanitize');
+
+const CUSTOMER_WRITABLE = ['name', 'email', 'phone', 'address', 'notes', 'status', 'loyalty_points'];
 const db = require('../../config/database');
-const { NotFoundError } = require('../../shared/errors');
+const { NotFoundError, ValidationError } = require('../../shared/errors');
 
 class CustomerRepository extends BaseRepository {
   constructor() {
@@ -48,15 +51,26 @@ class CustomerService {
   }
 
   async create(tenantId, data) {
-    return this.repo.create(data, tenantId);
+    return this.repo.create(pickAllowedFields(data, CUSTOMER_WRITABLE), tenantId);
   }
 
   async update(tenantId, id, data) {
-    return this.repo.update(id, data, tenantId);
+    return this.repo.update(id, pickAllowedFields(data, CUSTOMER_WRITABLE), tenantId);
   }
 
   async remove(tenantId, id) {
     return this.repo.delete(id, tenantId);
+  }
+
+  async merge(tenantId, primaryId, secondaryId) {
+    if (primaryId === secondaryId) throw new ValidationError('Cannot merge customer with itself');
+    const primary = await this.getById(tenantId, primaryId);
+    const secondary = await this.getById(tenantId, secondaryId);
+    await db.query('UPDATE orders SET customer_id = $1 WHERE customer_id = $2 AND tenant_id = $3', [primaryId, secondaryId, tenantId]);
+    const mergedPoints = (parseInt(primary.loyalty_points, 10) || 0) + (parseInt(secondary.loyalty_points, 10) || 0);
+    await db.query('UPDATE customers SET loyalty_points = $1 WHERE id = $2 AND tenant_id = $3', [mergedPoints, primaryId, tenantId]);
+    await this.repo.delete(secondaryId, tenantId);
+    return this.getById(tenantId, primaryId);
   }
 }
 

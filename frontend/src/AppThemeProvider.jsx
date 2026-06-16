@@ -31,6 +31,11 @@ function buildTheme(mode) {
     components: {
       MuiButton: { styleOverrides: { root: { textTransform: 'none', fontWeight: 600 } } },
       MuiCard: { styleOverrides: { root: { boxShadow: mode === 'light' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' } } },
+      MuiFormLabel: {
+        styleOverrides: {
+          asterisk: { color: '#ef4444' },
+        },
+      },
     },
   });
 }

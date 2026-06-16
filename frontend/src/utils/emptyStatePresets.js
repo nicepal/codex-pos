@@ -150,6 +150,28 @@ export const EMPTY_PRESETS = {
       { icon: 'people', title: 'Owner accounts', description: 'Business owners get login access to manage their store.' },
     ],
   },
+  branches: {
+    title: 'No branches yet',
+    message: "Add your store locations to organize sales, inventory, and POS by branch.",
+    actionLabel: 'Add Branch',
+    illustration: 'store',
+    benefits: [
+      { icon: 'tag', title: 'Multiple locations', description: 'Run POS and orders from each physical store or warehouse.' },
+      { icon: 'chart', title: 'Branch reporting', description: 'Filter orders and activity by location in reports.' },
+      { icon: 'inventory', title: 'Organized operations', description: 'Assign a primary branch and keep contact details handy.' },
+    ],
+  },
+  pos: {
+    title: 'No products to sell yet',
+    message: 'Add active products with stock to your catalog so you can scan barcodes and tap items to ring up sales.',
+    actionLabel: 'Add Product',
+    illustration: 'products',
+    benefits: [
+      { icon: 'tag', title: 'Quick checkout', description: 'Tap a product card or scan its barcode to add it to the cart.' },
+      { icon: 'inventory', title: 'Live stock', description: 'Out-of-stock items are shown but cannot be added to a sale.' },
+      { icon: 'chart', title: 'Categories & search', description: 'Filter by category or search by name, SKU, or barcode.' },
+    ],
+  },
 };
 
 export function emptyPresetProps(key) {

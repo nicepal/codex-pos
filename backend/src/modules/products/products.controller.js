@@ -23,6 +23,11 @@ module.exports = {
     return success(res, product);
   }),
 
+  duplicate: asyncHandler(async (req, res) => {
+    const product = await productService.duplicate(req.tenant.id, req.params.id);
+    return created(res, product, 'Product duplicated');
+  }),
+
   remove: asyncHandler(async (req, res) => {
     await productService.remove(req.tenant.id, req.params.id);
     return success(res, null, 'Product deleted');
@@ -66,5 +71,10 @@ module.exports = {
   deleteVariant: asyncHandler(async (req, res) => {
     await productService.deleteVariant(req.tenant.id, req.params.id, req.params.variantId);
     return success(res, null, 'Variant deleted');
+  }),
+
+  importCsv: asyncHandler(async (req, res) => {
+    const result = await productService.importCsv(req.tenant.id, req.body.rows);
+    return success(res, result, `${result.imported} products imported`);
   }),
 };

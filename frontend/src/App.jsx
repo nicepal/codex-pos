@@ -28,7 +28,7 @@ import NotificationsAdminPage from './pages/admin/Notifications';
 import ImpersonationLogsPage from './pages/admin/ImpersonationLogs';
 import SubscriptionOverviewPage from './pages/admin/SubscriptionOverview';
 
-import BusinessDashboard from './pages/business/Dashboard';
+import BusinessDashboard from './pages/business/dashboard/index.jsx';
 import ProductsPage from './pages/business/Products';
 import ProductDetailPage from './pages/business/ProductDetail';
 import CategoriesPage from './pages/business/Categories';
@@ -49,6 +49,10 @@ import SupportPage from './pages/business/Support';
 import SupportDetailPage from './pages/business/SupportDetail';
 import BrandsPage from './pages/business/Brands';
 import PurchaseOrdersPage from './pages/business/PurchaseOrders';
+import PurchaseOrderDetailPage from './pages/business/PurchaseOrderDetail';
+import TransfersPage from './pages/business/Transfers';
+import StockTakePage from './pages/business/StockTake';
+import OnboardingPage from './pages/business/Onboarding';
 import TeamPage from './pages/business/Team';
 import NotFoundPage from './pages/NotFound';
 
@@ -119,6 +123,10 @@ function AppRoutes() {
         <Route path="support/:id" element={<SupportDetailPage />} />
         <Route path="brands" element={<BrandsPage />} />
         <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+        <Route path="transfers" element={<TransfersPage />} />
+        <Route path="stock-take" element={<StockTakePage />} />
+        <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="team" element={<TeamPage />} />
         <Route path="pos" element={<POSPage />} />
       </Route>

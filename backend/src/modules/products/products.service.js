@@ -3,6 +3,13 @@ const db = require('../../config/database');
 const { NotFoundError } = require('../../shared/errors');
 const { slugify } = require('../../utils/helpers');
 const { checkLimit } = require('../../shared/plan-limits');
+const { pickAllowedFields } = require('../../shared/sanitize');
+
+const PRODUCT_WRITABLE_FIELDS = [
+  'category_id', 'brand_id', 'branch_id', 'name', 'slug', 'sku', 'barcode', 'product_type',
+  'cost_price', 'sale_price', 'stock_quantity', 'low_stock_threshold',
+  'description', 'status', 'meta_title', 'meta_description',
+];
 
 class ProductService {
   async list(tenantId, query) {
@@ -26,15 +33,17 @@ class ProductService {
 
   async create(tenantId, data) {
     await checkLimit(tenantId, 'products');
-    const slug = data.slug || slugify(data.name);
+    const { variants, images, ...rest } = data;
+    const productData = pickAllowedFields(rest, PRODUCT_WRITABLE_FIELDS);
+    const slug = productData.slug || slugify(productData.name);
     const product = await productRepo.create({
-      ...data,
+      ...productData,
       slug,
-      stock_quantity: data.stock_quantity || 0,
+      stock_quantity: productData.stock_quantity || 0,
     }, tenantId);
 
-    if (data.variants?.length) {
-      for (const v of data.variants) {
+    if (variants?.length) {
+      for (const v of variants) {
         await db.query(
           `INSERT INTO product_variants (tenant_id, product_id, name, sku, attributes, cost_price, sale_price, stock_quantity)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -47,7 +56,8 @@ class ProductService {
   }
 
   async update(tenantId, id, data) {
-    const { variants, images, ...productData } = data;
+    const { variants, images, ...rest } = data;
+    const productData = pickAllowedFields(rest, PRODUCT_WRITABLE_FIELDS);
     if (productData.name && !productData.slug) {
       productData.slug = slugify(productData.name);
     }
@@ -123,6 +133,98 @@ class ProductService {
     );
     if (!result.rows[0]) throw new NotFoundError('Variant not found');
     return true;
+  }
+
+  async _uniqueSlug(tenantId, baseSlug) {
+    let slug = baseSlug;
+    let counter = 0;
+    while (true) {
+      const result = await db.query(
+        'SELECT id FROM products WHERE tenant_id = $1 AND slug = $2 LIMIT 1',
+        [tenantId, slug]
+      );
+      if (!result.rows[0]) return slug;
+      counter += 1;
+      slug = `${baseSlug}-${counter}`;
+    }
+  }
+
+  async duplicate(tenantId, id) {
+    const source = await this.getById(tenantId, id);
+    const copyName = `${source.name} (Copy)`;
+    const slug = await this._uniqueSlug(tenantId, slugify(copyName));
+    const skuSuffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+
+    const created = await this.create(tenantId, {
+      category_id: source.category_id,
+      brand_id: source.brand_id,
+      branch_id: source.branch_id,
+      name: copyName,
+      slug,
+      sku: source.sku ? `${source.sku}-COPY-${skuSuffix}` : null,
+      barcode: null,
+      product_type: source.product_type || 'simple',
+      cost_price: source.cost_price,
+      sale_price: source.sale_price,
+      stock_quantity: source.stock_quantity,
+      low_stock_threshold: source.low_stock_threshold,
+      description: source.description,
+      status: 'draft',
+      meta_title: source.meta_title,
+      meta_description: source.meta_description,
+      variants: (source.variants || []).map((v) => ({
+        name: v.name,
+        sku: v.sku ? `${v.sku}-COPY-${skuSuffix}` : null,
+        attributes: v.attributes,
+        cost_price: v.cost_price,
+        sale_price: v.sale_price,
+        stock_quantity: v.stock_quantity,
+      })),
+    });
+
+    if (source.images?.length) {
+      const fresh = await this.getById(tenantId, created.id);
+      const variantIdMap = new Map();
+      (source.variants || []).forEach((oldV, i) => {
+        const newV = fresh.variants?.[i];
+        if (oldV.id && newV?.id) variantIdMap.set(oldV.id, newV.id);
+      });
+
+      for (const img of source.images) {
+        const newVariantId = img.variant_id ? variantIdMap.get(img.variant_id) || null : null;
+        await db.query(
+          `INSERT INTO product_images (tenant_id, product_id, variant_id, url, alt_text, sort_order, is_primary)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            tenantId, created.id, newVariantId, img.url,
+            img.alt_text || copyName, img.sort_order || 0, !!img.is_primary,
+          ]
+        );
+      }
+    }
+
+    return this.getById(tenantId, created.id);
+  }
+
+  async importCsv(tenantId, rows) {
+    const { ValidationError } = require('../../shared/errors');
+    if (!Array.isArray(rows) || !rows.length) throw new ValidationError('No rows to import');
+    const created = [];
+    for (const row of rows.slice(0, 500)) {
+      if (!row.name || row.sale_price == null) continue;
+      const product = await this.create(tenantId, {
+        name: String(row.name).trim(),
+        sku: row.sku || null,
+        barcode: row.barcode || null,
+        sale_price: parseFloat(row.sale_price) || 0,
+        cost_price: parseFloat(row.cost_price) || 0,
+        stock_quantity: parseInt(row.stock_quantity, 10) || 0,
+        product_type: row.product_type || 'simple',
+        status: row.status || 'active',
+      });
+      created.push(product);
+    }
+    return { imported: created.length, products: created };
   }
 }
 

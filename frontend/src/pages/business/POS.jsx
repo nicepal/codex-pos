@@ -1,21 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Box, Grid, Card, CardContent, CardMedia, Typography, TextField, Button, IconButton,
-  List, ListItem, ListItemText, Divider, InputAdornment, Chip, Dialog, DialogTitle, DialogContent,
-  Tab, Tabs, Drawer, Fab, Badge, Autocomplete, MenuItem, useMediaQuery, useTheme,
+  List, ListItem, ListItemText, Divider, InputAdornment, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
+  Tab, Tabs, Drawer, Fab, Badge, Autocomplete, MenuItem, useMediaQuery, useTheme, Skeleton, Alert, Snackbar, ListItemButton,
 } from '@mui/material';
 import {
   Search, Add, Remove, Delete, Payment, Pause, PlayArrow, Receipt, QrCodeScanner, ShoppingCart,
+  FilterAltOff, Inventory2,
 } from '@mui/icons-material';
 import api from '../../services/api';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import { resolveImageUrl } from '../../utils/imageUrl';
-import { addItem, removeItem, updateQuantity, clearCart, setDiscount, loadCart, selectCartTotal } from '../../features/pos/cartSlice';
+import { EMPTY_PRESETS } from '../../utils/emptyStatePresets';
+import { addItem, removeItem, updateQuantity, clearCart, setDiscount, setLineDiscount, loadCart, selectCartTotal } from '../../features/pos/cartSlice';
 import EmptyState from '../../components/EmptyState';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import DataTable from '../../components/DataTable';
+import useTenantFeatures from '../../hooks/useTenantFeatures';
 
 function ReceiptDialog({ orderId, open, onClose }) {
   const { formatMoney } = useBusinessCurrency();
@@ -61,17 +65,185 @@ function ReceiptDialog({ orderId, open, onClose }) {
   );
 }
 
+function VariantPickerDialog({ productId, open, onClose, onSelect, formatMoney }) {
+  const { data: product, isLoading } = useQuery({
+    queryKey: ['product-variants', productId],
+    queryFn: () => api.get(`/products/${productId}`).then((r) => r.data.data),
+    enabled: !!productId && open,
+  });
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>Select variant</DialogTitle>
+      <DialogContent>
+        {isLoading && <Typography>Loading...</Typography>}
+        {!isLoading && !(product?.variants?.length) && (
+          <Typography color="text.secondary">No variants configured for this product.</Typography>
+        )}
+        <List dense>
+          {(product?.variants || []).map((v) => (
+            <ListItemButton
+              key={v.id}
+              disabled={v.stock_quantity <= 0}
+              onClick={() => onSelect({
+                product_id: product.id,
+                variant_id: v.id,
+                product_name: `${product.name} - ${v.name}`,
+                sku: v.sku,
+                unit_price: parseFloat(v.sale_price),
+              })}
+            >
+              <ListItemText
+                primary={v.name}
+                secondary={`${formatMoney(v.sale_price)} · Stock: ${v.stock_quantity}`}
+              />
+            </ListItemButton>
+          ))}
+        </List>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function stockBadge(qty) {
   if (qty <= 0) return { label: 'Out', color: 'error' };
   if (qty <= 10) return { label: `Low ${qty}`, color: 'warning' };
   return { label: `${qty}`, color: 'default' };
 }
 
+function ProductCardSkeleton() {
+  return (
+    <Card sx={{ height: '100%' }}>
+      <Skeleton variant="rectangular" height={90} />
+      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+        <Skeleton width="85%" height={20} />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+          <Skeleton width="40%" height={22} />
+          <Skeleton width={48} height={24} sx={{ borderRadius: 3 }} />
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProductCatalog({
+  products, isLoading, isError, onRetry, hasFilters, search, onClearFilters, onAddProduct,
+  onAddProductCard, formatMoney,
+}) {
+  const inStockCount = (products || []).filter((p) => p.stock_quantity > 0).length;
+
+  if (isLoading) {
+    return (
+      <Grid container spacing={1}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Grid item xs={6} sm={4} md={3} key={i}>
+            <ProductCardSkeleton />
+          </Grid>
+        ))}
+      </Grid>
+    );
+  }
+
+  if (isError) {
+    return (
+      <EmptyState
+        illustration="products"
+        title="Could not load products"
+        message="Check your connection and try again."
+        actionLabel="Retry"
+        onAction={onRetry}
+      />
+    );
+  }
+
+  if (!products?.length) {
+    if (hasFilters) {
+      const filterHint = search.trim()
+        ? `Nothing matches "${search.trim()}". Try another search term or category.`
+        : 'No active products in this category. Pick another category or view all products.';
+
+      return (
+        <EmptyState
+          illustration="products"
+          title="No products found"
+          message={filterHint}
+          actionLabel="Clear filters"
+          actionIcon={<FilterAltOff />}
+          onAction={onClearFilters}
+        />
+      );
+    }
+
+    const preset = EMPTY_PRESETS.pos;
+    return (
+      <EmptyState
+        illustration={preset.illustration}
+        title={preset.title}
+        message={preset.message}
+        actionLabel={preset.actionLabel}
+        actionIcon={<Inventory2 />}
+        onAction={onAddProduct}
+        benefits={preset.benefits}
+      />
+    );
+  }
+
+  return (
+    <>
+      {inStockCount === 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          All matching products are out of stock. Restock inventory or adjust filters to sell items.
+        </Alert>
+      )}
+      <Grid container spacing={1}>
+        {products.map((p) => {
+          const stock = stockBadge(p.stock_quantity);
+          const outOfStock = p.stock_quantity <= 0;
+          return (
+            <Grid item xs={6} sm={4} md={3} key={p.id}>
+              <Card
+                sx={{
+                  cursor: outOfStock ? 'not-allowed' : 'pointer',
+                  opacity: outOfStock ? 0.55 : 1,
+                  height: '100%',
+                  transition: 'box-shadow 0.2s, transform 0.15s',
+                  ...(!outOfStock && {
+                    '&:hover': {
+                      boxShadow: 4,
+                      transform: 'translateY(-2px)',
+                    },
+                  }),
+                }}
+                onClick={() => !outOfStock && onAddProductCard(p)}
+              >
+                {p.image_url ? (
+                  <CardMedia component="img" height={90} image={resolveImageUrl(p.image_url)} alt={p.name} sx={{ objectFit: 'cover' }} />
+                ) : (
+                  <Box sx={{ height: 90, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography color="text.secondary" variant="h5">{p.name?.[0]}</Typography>
+                  </Box>
+                )}
+                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                  <Typography variant="body2" fontWeight={600} noWrap>{p.name}</Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                    <Typography color="primary" fontWeight={700}>{formatMoney(p.sale_price)}</Typography>
+                    <Chip label={stock.label} size="small" color={stock.color} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
+      </Grid>
+    </>
+  );
+}
+
 function CartPanel({
-  items, discount, taxRate, subtotal, taxAmount, grandTotal, onDiscountChange,
+  items, discount, taxRate, subtotal, taxAmount, grandTotal, onDiscountChange, onLineDiscountChange,
   onQtyChange, onRemove, onCheckout, onHold, onSplitOpen, checkoutPending, holdPending,
   customer, onCustomerChange, customers, branchId, onBranchChange, branches, compact,
-  formatMoney, currency,
+  formatMoney, currency, hasPosPro,
 }) {
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
 
@@ -95,7 +267,12 @@ function CartPanel({
       />
 
       {!items.length ? (
-        <EmptyState title="Cart is empty" message="Scan a barcode or tap a product to add items" />
+        <EmptyState
+          compact
+          illustration="cart"
+          title="Cart is empty"
+          message="Scan a barcode or tap a product to add items"
+        />
       ) : (
         <List dense sx={{ flex: 1, overflow: 'auto', maxHeight: compact ? 240 : 360 }}>
           {items.map((item, idx) => (
@@ -109,8 +286,18 @@ function CartPanel({
             )}>
               <ListItemText
                 primary={item.product_name}
-                secondary={`${formatMoney(item.unit_price)} × ${item.quantity} = ${formatMoney(item.unit_price * item.quantity)}`}
+                secondary={`${formatMoney(item.unit_price)} × ${item.quantity} = ${formatMoney(item.unit_price * item.quantity - (item.line_discount || 0))}`}
               />
+              {hasPosPro && (
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Disc"
+                  sx={{ width: 72, ml: 1 }}
+                  value={item.line_discount || ''}
+                  onChange={(e) => onLineDiscountChange(idx, parseFloat(e.target.value) || 0)}
+                />
+              )}
             </ListItem>
           ))}
         </List>
@@ -147,9 +334,12 @@ function CartPanel({
 }
 
 export default function POSPage() {
+  const navigate = useNavigate();
   const { formatMoney, currency } = useBusinessCurrency();
+  const { hasFeature } = useTenantFeatures();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('md', 'lg'));
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [tab, setTab] = useState(0);
@@ -162,6 +352,12 @@ export default function POSPage() {
   const [customer, setCustomer] = useState(null);
   const [branchId, setBranchId] = useState('');
   const [resumeId, setResumeId] = useState(null);
+  const [variantProductId, setVariantProductId] = useState(null);
+  const [barcodeMiss, setBarcodeMiss] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [pendingCheckout, setPendingCheckout] = useState(null);
+  const [managerPin, setManagerPin] = useState('');
+  const [couponCode, setCouponCode] = useState('');
   const barcodeRef = useRef(null);
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
@@ -198,12 +394,21 @@ export default function POSPage() {
     queryFn: () => api.get('/customers', { params: { limit: 100 } }).then((r) => r.data.data),
   });
 
-  const { data: products } = useQuery({
+  const { data: products, isLoading: productsLoading, isError: productsError, refetch: refetchProducts } = useQuery({
     queryKey: ['pos-search', search, categoryId],
     queryFn: () => api.get('/products/search', {
-      params: { q: search || 'a', limit: 48, category_id: categoryId || undefined },
+      params: { q: search.trim(), limit: 48, category_id: categoryId || undefined },
     }).then((r) => r.data.data),
   });
+
+  const trimmedSearch = search.trim();
+  const hasProductFilters = Boolean(trimmedSearch || categoryId);
+
+  const clearProductFilters = () => {
+    setSearch('');
+    setCategoryId('');
+    focusBarcode();
+  };
 
   const { data: heldOrders } = useQuery({
     queryKey: ['held-orders'],
@@ -215,17 +420,18 @@ export default function POSPage() {
   const cartCount = items.reduce((s, i) => s + i.quantity, 0);
 
   const buildItems = () => items.map((i) => ({
-    product_id: i.product_id, product_name: i.product_name, sku: i.sku,
-    quantity: i.quantity, unit_price: i.unit_price,
-    tax: (i.unit_price * i.quantity) * (taxRate / 100) / Math.max(items.length, 1),
+    product_id: i.product_id,
+    variant_id: i.variant_id || undefined,
+    quantity: i.quantity,
+    discount: i.line_discount || 0,
   }));
 
   const buildOrderPayload = (extra = {}) => ({
     items: buildItems(),
     discount_amount: discount,
-    tax_amount: taxAmount,
     customer_id: customer?.id || null,
     branch_id: branchId || null,
+    coupon_code: couponCode || undefined,
     ...extra,
   });
 
@@ -271,11 +477,21 @@ export default function POSPage() {
   });
 
   const addProduct = (p) => {
-    if (p.stock_quantity <= 0) return;
+    if (p.stock_quantity <= 0 && !hasFeature('allow_negative_stock')) return;
+    if (p.product_type === 'variable' && hasFeature('pos_pro')) {
+      setVariantProductId(p.id);
+      return;
+    }
     dispatch(addItem({
       product_id: p.id, product_name: p.name, sku: p.sku,
       unit_price: parseFloat(p.sale_price),
     }));
+    focusBarcode();
+  };
+
+  const addVariantToCart = (item) => {
+    dispatch(addItem({ ...item, quantity: 1 }));
+    setVariantProductId(null);
     focusBarcode();
   };
 
@@ -285,13 +501,23 @@ export default function POSPage() {
       api.get('/products/search', { params: { q: code, limit: 1 } }).then((r) => {
         const p = r.data.data?.[0];
         if (p) addProduct(p);
+        else setBarcodeMiss(true);
       });
       e.target.value = '';
     }
   };
 
+  const runCheckout = (payload) => {
+    if (discount > subtotal * 0.2 && hasFeature('pos_pro')) {
+      setPendingCheckout(payload);
+      setManagerOpen(true);
+      return;
+    }
+    checkoutMutation.mutate(payload);
+  };
+
   const handleCheckout = (method) => {
-    checkoutMutation.mutate(buildOrderPayload({ payment_method: method, status: 'paid' }));
+    runCheckout(buildOrderPayload({ payment_method: method, status: 'paid' }));
   };
 
   const handleHold = () => holdMutation.mutate(buildOrderPayload());
@@ -303,7 +529,7 @@ export default function POSPage() {
       alert(`Payment total must equal ${formatMoney(grandTotal)}`);
       return;
     }
-    checkoutMutation.mutate(buildOrderPayload({
+    runCheckout(buildOrderPayload({
       status: 'paid',
       payments: [
         { method: 'cash', amount: parseFloat(splitCash) || 0 },
@@ -313,9 +539,12 @@ export default function POSPage() {
     setSplitOpen(false);
   };
 
+  const quickKeys = settings?.preferences?.pos_quick_keys || [];
+
   const cartProps = {
     items, discount, taxRate, subtotal, taxAmount, grandTotal,
     onDiscountChange: (v) => dispatch(setDiscount(v)),
+    onLineDiscountChange: (idx, v) => dispatch(setLineDiscount({ index: idx, discount: v })),
     onQtyChange: (idx, qty) => dispatch(updateQuantity({ index: idx, quantity: qty })),
     onRemove: (idx) => dispatch(removeItem(idx)),
     onCheckout: handleCheckout,
@@ -326,6 +555,7 @@ export default function POSPage() {
     customer, onCustomerChange: setCustomer, customers,
     branchId, onBranchChange: setBranchId, branches,
     formatMoney, currency,
+    hasPosPro: hasFeature('pos_pro'),
   };
 
   const heldColumns = [
@@ -342,7 +572,7 @@ export default function POSPage() {
   ];
 
   return (
-    <Box sx={{ pb: isMobile ? 10 : 0 }}>
+    <Box sx={{ pb: isMobile ? 10 : 0, ...(isTablet && { maxWidth: 1200, mx: 'auto' }) }}>
       <Typography variant="h5" fontWeight={700} gutterBottom>Point of Sale</Typography>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="New Sale" />
@@ -387,39 +617,39 @@ export default function POSPage() {
               ))}
             </Box>
 
-            <Grid container spacing={1}>
-              {(products || []).map((p) => {
-                const stock = stockBadge(p.stock_quantity);
-                const outOfStock = p.stock_quantity <= 0;
-                return (
-                  <Grid item xs={6} sm={4} md={3} key={p.id}>
-                    <Card
-                      sx={{
-                        cursor: outOfStock ? 'not-allowed' : 'pointer',
-                        opacity: outOfStock ? 0.55 : 1,
-                        height: '100%',
-                      }}
-                      onClick={() => !outOfStock && addProduct(p)}
-                    >
-                      {p.image_url ? (
-                        <CardMedia component="img" height={90} image={resolveImageUrl(p.image_url)} alt={p.name} sx={{ objectFit: 'cover' }} />
-                      ) : (
-                        <Box sx={{ height: 90, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Typography color="text.secondary" variant="h5">{p.name?.[0]}</Typography>
-                        </Box>
-                      )}
-                      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                        <Typography variant="body2" fontWeight={600} noWrap>{p.name}</Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
-                          <Typography color="primary" fontWeight={700}>{formatMoney(p.sale_price)}</Typography>
-                          <Chip label={stock.label} size="small" color={stock.color} />
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                );
-              })}
-            </Grid>
+            {hasFeature('pos_pro') && quickKeys.length > 0 && (
+              <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1, mb: 1 }}>
+                {quickKeys.map((key) => (
+                  <Chip key={key.product_id || key.id} label={key.name || key.label} onClick={() => {
+                    const p = (products || []).find((x) => x.id === (key.product_id || key.id));
+                    if (p) addProduct(p);
+                  }} />
+                ))}
+              </Box>
+            )}
+
+            {hasFeature('catalog_pro') && (
+              <TextField
+                fullWidth size="small" placeholder="Coupon code" value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                sx={{ mb: 1 }}
+              />
+            )}
+
+            <Box sx={{ minHeight: 280 }}>
+              <ProductCatalog
+                products={products}
+                isLoading={productsLoading}
+                isError={productsError}
+                onRetry={refetchProducts}
+                hasFilters={hasProductFilters}
+                search={search}
+                onClearFilters={clearProductFilters}
+                onAddProduct={() => navigate('/products')}
+                onAddProductCard={addProduct}
+                formatMoney={formatMoney}
+              />
+            </Box>
           </Grid>
 
           {!isMobile && (
@@ -484,6 +714,36 @@ export default function POSPage() {
       />
 
       <ReceiptDialog orderId={receiptId} open={!!receiptId} onClose={() => setReceiptId(null)} />
+
+      <VariantPickerDialog
+        productId={variantProductId}
+        open={!!variantProductId}
+        onClose={() => setVariantProductId(null)}
+        onSelect={addVariantToCart}
+        formatMoney={formatMoney}
+      />
+
+      <Snackbar open={barcodeMiss} autoHideDuration={3000} onClose={() => setBarcodeMiss(false)}
+        message="No product found for scanned barcode" />
+
+      <Dialog open={managerOpen} onClose={() => setManagerOpen(false)}>
+        <DialogTitle>Manager approval</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>Discount exceeds 20%. Enter manager PIN to continue.</Typography>
+          <TextField fullWidth type="password" label="Manager PIN" value={managerPin} onChange={(e) => setManagerPin(e.target.value)} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setManagerOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={() => {
+            if (managerPin.length >= 4) {
+              checkoutMutation.mutate(pendingCheckout);
+              setManagerOpen(false);
+              setManagerPin('');
+              setPendingCheckout(null);
+            }
+          }}>Approve</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

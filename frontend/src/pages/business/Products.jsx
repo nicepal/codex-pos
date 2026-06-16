@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Box, TextField, MenuItem, IconButton, Chip, Avatar, Grid,
+  Box, TextField, MenuItem, IconButton, Chip, Avatar, Grid, Tooltip,
 } from '@mui/material';
-import { Add, Edit, Delete, Visibility, Image } from '@mui/icons-material';
+import { Add, Edit, Delete, Visibility, Image, ContentCopy } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import api from '../../services/api';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
@@ -118,6 +119,21 @@ export default function ProductsPage() {
     onSuccess: () => { queryClient.invalidateQueries(['products']); setDeleteId(null); },
   });
 
+  const copyMutation = useMutation({
+    mutationFn: (id) => api.post(`/products/${id}/duplicate`).then((r) => r.data.data),
+    onSuccess: (product) => {
+      queryClient.invalidateQueries(['products']);
+      navigate(`/products/${product.id}`);
+    },
+    onError: (err) => {
+      if (err.response?.status === 403) {
+        alert(err.response?.data?.message || 'Plan limit reached. Upgrade your subscription.');
+        return;
+      }
+      alert(err.response?.data?.message || 'Failed to duplicate product');
+    },
+  });
+
   const bulkDelete = useBulkDelete({ endpoint: '/products', queryKey: ['products'] });
 
   const rows = data?.data || [];
@@ -144,6 +160,15 @@ export default function ProductsPage() {
         <>
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/products/${r.id}`); }}><Visibility fontSize="small" /></IconButton>
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); openForm(r); }}><Edit fontSize="small" /></IconButton>
+          <Tooltip title="Duplicate product">
+            <IconButton
+              size="small"
+              onClick={(e) => { e.stopPropagation(); copyMutation.mutate(r.id); }}
+              disabled={copyMutation.isPending && copyMutation.variables === r.id}
+            >
+              <ContentCopy fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); setDeleteId(r.id); }}><Delete fontSize="small" /></IconButton>
         </>
       ),
@@ -151,7 +176,11 @@ export default function ProductsPage() {
   ];
 
   const onSubmit = (d) => saveMutation.mutate({
-    ...d,
+    name: d.name,
+    sku: d.sku,
+    barcode: d.barcode,
+    description: d.description,
+    status: d.status,
     sale_price: parseFloat(d.sale_price),
     cost_price: parseFloat(d.cost_price || 0),
     stock_quantity: parseInt(d.stock_quantity || 0, 10),
@@ -217,7 +246,7 @@ export default function ProductsPage() {
         loading={saveMutation.isPending}
         submitLabel={editing ? 'Update' : 'Create'}
       >
-        <Grid item xs={12}><TextField fullWidth label="Name" {...register('name', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
         <Grid item xs={12}>
           <TextField fullWidth select label="Category" defaultValue="" {...register('category_id')}>
             <MenuItem value="">None</MenuItem>
@@ -233,7 +262,7 @@ export default function ProductsPage() {
         <Grid item xs={6}><TextField fullWidth label="SKU" {...register('sku')} /></Grid>
         <Grid item xs={6}><TextField fullWidth label="Barcode" {...register('barcode')} /></Grid>
         <Grid item xs={4}><TextField fullWidth label="Cost Price" type="number" inputProps={{ step: '0.01' }} {...register('cost_price')} /></Grid>
-        <Grid item xs={4}><TextField fullWidth label="Sale Price" type="number" inputProps={{ step: '0.01' }} {...register('sale_price', { required: true })} /></Grid>
+        <Grid item xs={4}><RHFTextField register={register} name="sale_price" rules={{ required: true }} label="Sale Price" type="number" inputProps={{ step: '0.01' }} /></Grid>
         <Grid item xs={4}><TextField fullWidth label="Stock" type="number" {...register('stock_quantity')} /></Grid>
         <Grid item xs={12}>
           <TextField fullWidth select label="Status" defaultValue="active" {...register('status')}>

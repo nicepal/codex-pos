@@ -4,7 +4,8 @@ const { authenticate, authorize, requireTenantAccess } = require('../../middlewa
 const { requireTenant } = require('../../middleware/tenant');
 const { auditLog } = require('../../middleware/audit');
 const { validate } = require('../../middleware/validate');
-const { createOrderSchema, resumeOrderSchema } = require('./orders.validation');
+const { requireFeature } = require('../../middleware/features');
+const { createOrderSchema, resumeOrderSchema, returnOrderSchema } = require('./orders.validation');
 
 router.use(authenticate, requireTenant, requireTenantAccess);
 
@@ -16,6 +17,7 @@ router.post('/', authorize('business.pos'), validate(createOrderSchema), auditLo
 router.post('/hold', authorize('business.pos'), validate(createOrderSchema), auditLog('order.hold', 'order'), controller.hold);
 router.post('/:id/restore', authorize('business.pos'), auditLog('order.restore', 'order'), controller.restore);
 router.post('/:id/resume', authorize('business.pos'), validate(resumeOrderSchema), auditLog('order.resume', 'order'), controller.resume);
+router.post('/:id/return', authorize('business.orders', 'business.pos'), requireFeature('pos_pro'), validate(returnOrderSchema), auditLog('order.return', 'order'), controller.returnOrder);
 router.patch('/:id/status', authorize('business.orders'), controller.updateStatus);
 
 module.exports = router;

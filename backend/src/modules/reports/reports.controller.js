@@ -8,6 +8,11 @@ module.exports = {
     return success(res, stats);
   }),
 
+  dashboardOverview: asyncHandler(async (req, res) => {
+    const data = await reportService.dashboardOverview(req.tenant.id, req.query.range);
+    return success(res, data);
+  }),
+
   sales: asyncHandler(async (req, res) => {
     const data = await reportService.salesReport(req.tenant.id, req.query);
     return success(res, data);
@@ -30,6 +35,23 @@ module.exports = {
 
   advanced: asyncHandler(async (req, res) => {
     const data = await reportService.advancedAnalytics(req.tenant.id);
+    return success(res, data);
+  }),
+
+  exportSales: asyncHandler(async (req, res) => {
+    const csv = await reportService.exportSalesCsv(req.tenant.id, req.query);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=sales-report.csv');
+    return res.send(csv);
+  }),
+
+  scheduleReport: asyncHandler(async (req, res) => {
+    const row = await reportService.scheduleReport(req.tenant.id, req.body);
+    return success(res, row, 'Report scheduled');
+  }),
+
+  exportData: asyncHandler(async (req, res) => {
+    const data = await reportService.exportTenantData(req.tenant.id);
     return success(res, data);
   }),
 };

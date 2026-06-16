@@ -11,6 +11,7 @@ import api from '../../services/api';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import PageHeader from '../../components/PageHeader';
 import LoadingState from '../../components/LoadingState';
+import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteToolbar from '../../components/BulkDeleteToolbar';
 
@@ -119,7 +120,11 @@ export default function ProductDetailPage() {
   };
 
   const saveGeneral = handleSubmit((d) => updateMutation.mutate({
-    ...d,
+    name: d.name,
+    description: d.description,
+    sku: d.sku,
+    barcode: d.barcode,
+    status: d.status,
     sale_price: parseFloat(d.sale_price),
     cost_price: parseFloat(d.cost_price || 0),
     stock_quantity: parseInt(d.stock_quantity || 0, 10),
@@ -158,7 +163,7 @@ export default function ProductDetailPage() {
         <form onSubmit={saveGeneral}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={8}>
-              <TextField fullWidth label="Name" sx={{ mb: 2 }} {...register('name', { required: true })} />
+              <RHFTextField register={register} name="name" rules={{ required: true }} label="Name" sx={{ mb: 2 }} />
               <TextField fullWidth label="Description" multiline rows={4} sx={{ mb: 2 }} {...register('description')} />
               <TextField fullWidth label="Meta Title" sx={{ mb: 2 }} {...register('meta_title')} />
               <TextField fullWidth label="Meta Description" multiline rows={2} {...register('meta_description')} />

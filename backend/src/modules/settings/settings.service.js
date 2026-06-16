@@ -1,5 +1,6 @@
 const db = require('../../config/database');
 const { NotFoundError } = require('../../shared/errors');
+const { resolveTenantFeatures, isFeatureEnabled, FEATURE_PACKS, normalizeFeatures } = require('../../shared/features');
 
 class SettingsService {
   async getBusinessSettings(tenantId) {
@@ -27,6 +28,8 @@ class SettingsService {
 
     const checkoutService = require('../storefront/storefront.checkout.service');
     const themeData = await checkoutService.getTheme(tenantId);
+    const features = await resolveTenantFeatures(tenantId);
+    const { features: _feat, ...prefsWithoutFeatures } = settingsMap;
 
     return {
       profile: {
@@ -43,13 +46,15 @@ class SettingsService {
         currency: tenant.rows[0].currency,
         logo_url: tenant.rows[0].logo_url,
       },
-      preferences: settingsMap,
+      preferences: prefsWithoutFeatures,
+      features,
+      feature_packs: FEATURE_PACKS,
       storefront_theme: themeData.theme || {},
     };
   }
 
   async updateBusinessSettings(tenantId, data) {
-    const { profile = {}, preferences = {}, storefront_theme = null } = data;
+    const { profile = {}, preferences = {}, storefront_theme = null, features: featureOverrides = null } = data;
 
     if (Object.keys(profile).length) {
       const fields = ['name', 'email', 'phone', 'address', 'city', 'state', 'country', 'postal_code', 'timezone', 'currency', 'logo_url'];
@@ -68,11 +73,22 @@ class SettingsService {
     }
 
     for (const [key, value] of Object.entries(preferences)) {
+      if (key === 'features') continue;
       await db.query(
         `INSERT INTO settings (tenant_id, key, value)
          VALUES ($1, $2, $3)
          ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
         [tenantId, key, JSON.stringify(value)]
+      );
+    }
+
+    if (featureOverrides && typeof featureOverrides === 'object') {
+      const normalized = normalizeFeatures(featureOverrides);
+      await db.query(
+        `INSERT INTO settings (tenant_id, key, value)
+         VALUES ($1, 'features', $2)
+         ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [tenantId, JSON.stringify(normalized)]
       );
     }
 

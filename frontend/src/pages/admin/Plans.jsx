@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import LoadingState from '../../components/LoadingState';
 
@@ -63,8 +64,8 @@ export default function PlansPage() {
         ))}
       </Grid>
       <FormDialog open={open} title={editing ? 'Edit Plan' : 'Add Plan'} onClose={() => setOpen(false)} onSubmit={handleSubmit((d) => saveMutation.mutate({ ...d, monthly_price: parseFloat(d.monthly_price), annual_price: parseFloat(d.annual_price), product_limit: parseInt(d.product_limit, 10), user_limit: parseInt(d.user_limit, 10), branch_limit: parseInt(d.branch_limit, 10), trial_days: parseInt(d.trial_days, 10) }))} loading={saveMutation.isPending}>
-        <Grid item xs={12} sm={6}><TextField fullWidth label="Name" {...register('name', { required: true })} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth label="Slug" {...register('slug', { required: true })} /></Grid>
+        <Grid item xs={12} sm={6}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
+        <Grid item xs={12} sm={6}><RHFTextField register={register} name="slug" rules={{ required: true }} label="Slug" /></Grid>
         <Grid item xs={6}><TextField fullWidth label="Monthly Price" type="number" {...register('monthly_price')} /></Grid>
         <Grid item xs={6}><TextField fullWidth label="Annual Price" type="number" {...register('annual_price')} /></Grid>
         <Grid item xs={4}><TextField fullWidth label="Product Limit" type="number" {...register('product_limit')} helperText="-1 = unlimited" /></Grid>

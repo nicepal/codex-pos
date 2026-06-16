@@ -42,8 +42,20 @@ const resumeOrderSchema = Joi.object({
   payment_method: Joi.string().valid('cash', 'card', 'bank', 'other').required(),
 });
 
+const returnItemSchema = Joi.object({
+  order_item_id: Joi.string().uuid().required(),
+  quantity: Joi.number().integer().min(1).required(),
+});
+
+const returnOrderSchema = Joi.object({
+  items: Joi.array().items(returnItemSchema).min(1).required(),
+  reason: Joi.string().max(500).allow('', null).optional(),
+  restock: Joi.boolean().optional(),
+});
+
 module.exports = {
   createOrderSchema,
   checkoutSchema,
   resumeOrderSchema,
+  returnOrderSchema,
 };

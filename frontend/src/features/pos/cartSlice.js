@@ -37,6 +37,10 @@ const cartSlice = createSlice({
     setDiscount(state, action) {
       state.discount = action.payload;
     },
+    setLineDiscount(state, action) {
+      const { index, discount } = action.payload;
+      if (state.items[index]) state.items[index].line_discount = discount || 0;
+    },
     setNotes(state, action) {
       state.notes = action.payload;
     },
@@ -55,10 +59,13 @@ const cartSlice = createSlice({
   },
 });
 
-export const { addItem, removeItem, updateQuantity, setCustomer, setDiscount, setNotes, clearCart, loadCart } = cartSlice.actions;
+export const { addItem, removeItem, updateQuantity, setCustomer, setDiscount, setLineDiscount, setNotes, clearCart, loadCart } = cartSlice.actions;
 
 export const selectCartTotal = (state) => {
-  const subtotal = state.cart.items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
+  const subtotal = state.cart.items.reduce((sum, i) => {
+    const lineDisc = i.line_discount || 0;
+    return sum + i.unit_price * i.quantity - lineDisc;
+  }, 0);
   return { subtotal, total: subtotal - state.cart.discount };
 };
 

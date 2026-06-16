@@ -31,6 +31,10 @@ const brandRoutes = require('./modules/brands/brands.routes');
 const purchaseOrderRoutes = require('./modules/purchase-orders/purchase-orders.routes');
 const teamRoutes = require('./modules/team/team.routes');
 const cmsRoutes = require('./modules/cms/cms.routes');
+const couponRoutes = require('./modules/coupons/coupons.routes');
+const transferRoutes = require('./modules/transfers/transfers.routes');
+const webhookRoutes = require('./modules/webhooks/webhooks.routes');
+const drawerRoutes = require('./modules/drawer/drawer.routes');
 const crudModules = require('./modules/_crud');
 const platform = require('./modules/platform/platform.services');
 const { authenticate, authorize, requireTenantAccess, requirePlatformAdmin } = require('./middleware/auth');
@@ -38,6 +42,7 @@ const { requireTenant } = require('./middleware/tenant');
 const { asyncHandler } = require('./middleware/errorHandler');
 const { success, paginated } = require('./shared/response');
 
+const { attachTenantFeatures } = require('./middleware/features');
 const { auditLog } = require('./middleware/audit');
 
 function createCrudRouter(moduleName) {
@@ -74,6 +79,7 @@ function createApp() {
   app.use(tenantResolver);
 
   const api = express.Router();
+  api.use(attachTenantFeatures);
 
   api.get('/health', (req, res) => {
     res.json({ success: true, message: 'EYZ POS API is running', version: '1.0.0' });
@@ -105,6 +111,10 @@ function createApp() {
   api.use('/purchase-orders', purchaseOrderRoutes);
   api.use('/team', teamRoutes);
   api.use('/cms', cmsRoutes);
+  api.use('/tenant-coupons', couponRoutes);
+  api.use('/transfers', transferRoutes);
+  api.use('/webhooks', webhookRoutes);
+  api.use('/drawer', drawerRoutes);
 
   api.get('/plans', asyncHandler(async (req, res) => {
     const result = await platform.plans.service.list(req.query);

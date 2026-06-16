@@ -11,6 +11,8 @@ import { formatMoney } from '../../utils/currency';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
+import RHFControllerField from '../../components/RHFControllerField';
 import StatCard from '../../components/StatCard';
 
 const STATUS_COLORS = {
@@ -185,13 +187,13 @@ export default function BillingPage() {
             control={control}
             rules={{ required: true }}
             defaultValue=""
-            render={({ field }) => (
-              <TextField {...field} select fullWidth label="Tenant" required>
+            render={({ field, fieldState }) => (
+              <RHFControllerField field={field} fieldState={fieldState} rules={{ required: true }} select label="Tenant">
                 <MenuItem value="" disabled>Select tenant</MenuItem>
                 {(businesses || []).map((b) => (
                   <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
                 ))}
-              </TextField>
+              </RHFControllerField>
             )}
           />
         </Grid>
@@ -211,7 +213,7 @@ export default function BillingPage() {
           />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <TextField fullWidth label="Amount" type="number" inputProps={{ step: '0.01' }} {...register('amount', { required: true })} />
+          <RHFTextField register={register} name="amount" rules={{ required: true }} label="Amount" type="number" inputProps={{ step: '0.01' }} />
         </Grid>
         <Grid item xs={12} sm={6}>
           <Controller

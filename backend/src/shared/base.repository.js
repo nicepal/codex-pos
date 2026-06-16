@@ -98,10 +98,11 @@ class BaseRepository {
     const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
     const values = keys.map((k) => safeData[k]);
 
-    const { clause, params, nextIndex } = this._tenantFilter(tenantId, keys.length + 1);
+    const idParamIndex = keys.length + 1;
+    const { clause, params } = this._tenantFilter(tenantId, keys.length + 2);
     const where = clause
-      ? `WHERE id = $${keys.length + 1} AND ${clause}`
-      : `WHERE id = $${keys.length + 1}`;
+      ? `WHERE id = $${idParamIndex} AND ${clause}`
+      : `WHERE id = $${idParamIndex}`;
 
     const result = await db.query(
       `UPDATE ${this.tableName} SET ${setClause} ${where} RETURNING *`,

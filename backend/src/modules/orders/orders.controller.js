@@ -49,4 +49,9 @@ module.exports = {
       : await orderService.updateStatus(req.tenant.id, req.params.id, req.body.status);
     return success(res, order);
   }),
+
+  returnOrder: asyncHandler(async (req, res) => {
+    const result = await orderService.returnOrder(req.tenant.id, req.params.id, req.body, req.user.id);
+    return success(res, result, 'Return processed');
+  }),
 };

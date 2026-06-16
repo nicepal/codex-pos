@@ -45,4 +45,9 @@ module.exports = {
     const tx = await loyaltyService.redeemPoints(req.tenant.id, req.params.id, points);
     return success(res, tx, 'Points redeemed');
   }),
+
+  merge: asyncHandler(async (req, res) => {
+    const customer = await customerService.merge(req.tenant.id, req.params.id, req.body.merge_id);
+    return success(res, customer, 'Customers merged');
+  }),
 };

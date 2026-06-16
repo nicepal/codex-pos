@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Box, Typography, Grid, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { Box, Typography, Grid, Card, CardContent, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../services/api';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
@@ -35,7 +35,24 @@ export default function ReportsPage() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} gutterBottom>Reports</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" fontWeight={700}>Reports</Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="outlined" href={`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/reports/export/sales`} target="_blank">
+            Export Sales CSV
+          </Button>
+          <Button variant="outlined" onClick={() => api.get('/reports/export/data').then((r) => {
+            const blob = new Blob([JSON.stringify(r.data.data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tenant-export.json';
+            a.click();
+          })}>
+            Export Data
+          </Button>
+        </Box>
+      </Box>
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={4}>
           <Card><CardContent>

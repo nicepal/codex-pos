@@ -55,6 +55,8 @@ export default function BusinessLayout() {
       label: 'Operations',
       items: [
         { label: 'Inventory', path: '/inventory', icon: <Warehouse />, selected: isActive('/inventory'), onClick: () => navigate('/inventory') },
+        { label: 'Transfers', path: '/transfers', icon: <LocalShipping />, selected: isActive('/transfers'), onClick: () => navigate('/transfers') },
+        { label: 'Stock Take', path: '/stock-take', icon: <Warehouse />, selected: isActive('/stock-take'), onClick: () => navigate('/stock-take') },
         { label: 'Suppliers', path: '/suppliers', icon: <LocalShipping />, selected: isActive('/suppliers'), onClick: () => navigate('/suppliers') },
         { label: 'Purchase Orders', path: '/purchase-orders', icon: <ShoppingBag />, selected: isActive('/purchase-orders'), onClick: () => navigate('/purchase-orders') },
         { label: 'Expenses', path: '/expenses', icon: <Receipt />, selected: isActive('/expenses'), onClick: () => navigate('/expenses') },

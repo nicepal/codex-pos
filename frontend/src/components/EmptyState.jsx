@@ -60,29 +60,31 @@ export default function EmptyState({
   actionIcon,
   onAction,
   benefits,
+  compact = false,
 }) {
   const theme = useTheme();
+  const illusSize = compact ? 72 : 120;
 
   return (
     <Box
       sx={{
-        borderRadius: 3,
+        borderRadius: compact ? 2 : 3,
         overflow: 'hidden',
         bgcolor: 'background.paper',
         border: '1px solid',
         borderColor: 'divider',
       }}
     >
-      <Box sx={{ textAlign: 'center', py: { xs: 5, md: 7 }, px: 3 }}>
-        {icon || <EmptyStateIllustration type={illustration || 'store'} />}
-        <Typography variant="h5" fontWeight={700} gutterBottom>
+      <Box sx={{ textAlign: 'center', py: compact ? 3 : { xs: 5, md: 7 }, px: compact ? 2 : 3 }}>
+        {icon || <EmptyStateIllustration type={illustration || 'store'} size={illusSize} />}
+        <Typography variant={compact ? 'subtitle1' : 'h5'} fontWeight={700} gutterBottom>
           {title}
         </Typography>
         {message && (
           <Typography
-            variant="body1"
+            variant={compact ? 'body2' : 'body1'}
             color="text.secondary"
-            sx={{ maxWidth: 440, mx: 'auto', lineHeight: 1.6 }}
+            sx={{ maxWidth: compact ? 320 : 440, mx: 'auto', lineHeight: 1.6 }}
           >
             {message}
           </Typography>
@@ -90,17 +92,17 @@ export default function EmptyState({
         {actionLabel && onAction && (
           <Button
             variant="contained"
-            size="large"
+            size={compact ? 'medium' : 'large'}
             startIcon={actionIcon || <Add />}
             onClick={onAction}
-            sx={{ mt: 3, px: 3 }}
+            sx={{ mt: compact ? 2 : 3, px: compact ? 2 : 3 }}
           >
             {actionLabel}
           </Button>
         )}
       </Box>
 
-      {benefits?.length > 0 && (
+      {benefits?.length > 0 && !compact && (
         <Box
           sx={{
             borderTop: '1px solid',

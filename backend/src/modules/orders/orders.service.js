@@ -3,6 +3,8 @@ const BaseRepository = require('../../shared/base.repository');
 const { generateOrderNumber } = require('../../utils/helpers');
 const { NotFoundError, ValidationError } = require('../../shared/errors');
 const inventoryService = require('../inventory/inventory.service');
+const { applyTaxToResolvedItems } = require('../../services/tax.service');
+const { resolveTenantFeatures, isFeatureEnabled } = require('../../shared/features');
 
 class OrderRepository extends BaseRepository {
   constructor() {
@@ -25,7 +27,7 @@ class OrderService {
     this.repo = new OrderRepository();
   }
 
-  async _resolveLineItems(client, tenantId, items, { skipStockCheck = false } = {}) {
+  async _resolveLineItems(client, tenantId, items, { skipStockCheck = false, allowNegativeStock = false } = {}) {
     if (!items?.length) throw new ValidationError('Order must have at least one item');
 
     const resolved = [];
@@ -70,7 +72,7 @@ class OrderService {
         throw new ValidationError('Each item must have product_id or variant_id');
       }
 
-      if (!skipStockCheck && stockQty < qty) {
+      if (!skipStockCheck && !allowNegativeStock && stockQty < qty) {
         throw new ValidationError(`Insufficient stock for ${productName}`);
       }
 
@@ -167,6 +169,8 @@ class OrderService {
     const client = await db.getClient();
     const status = data.status || 'paid';
     const skipStockCheck = status === 'on_hold';
+    const features = await resolveTenantFeatures(tenantId);
+    const allowNegativeStock = isFeatureEnabled(features, 'allow_negative_stock');
 
     try {
       await client.query('BEGIN');
@@ -174,12 +178,26 @@ class OrderService {
       await this._validateCustomer(client, tenantId, data.customer_id);
       await this._validateBranch(client, tenantId, data.branch_id);
 
-      const resolvedItems = await this._resolveLineItems(client, tenantId, data.items, { skipStockCheck });
+      let resolvedItems = await this._resolveLineItems(client, tenantId, data.items, {
+        skipStockCheck,
+        allowNegativeStock,
+      });
+      const discountAmount = Math.max(0, parseFloat(data.discount_amount) || 0);
+      let couponDiscount = 0;
+      let couponId = null;
+      if (data.coupon_code) {
+        const couponService = require('../coupons/coupons.service');
+        const preSubtotal = resolvedItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
+        const applied = await couponService.validateAndApply(tenantId, data.coupon_code, preSubtotal);
+        couponDiscount = applied.discount_amount;
+        couponId = applied.coupon.id;
+      }
+      const totalDiscount = discountAmount + couponDiscount;
+      resolvedItems = await applyTaxToResolvedItems(tenantId, resolvedItems, totalDiscount);
 
       const orderNumber = generateOrderNumber();
       let subtotal = 0;
       let taxAmount = 0;
-      const discountAmount = Math.max(0, parseFloat(data.discount_amount) || 0);
 
       const orderResult = await client.query(
         `INSERT INTO orders (tenant_id, order_number, customer_id, employee_id, branch_id, order_type, status,
@@ -187,7 +205,7 @@ class OrderService {
          VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 0, $8, 0, $9, $10, $11, $12) RETURNING *`,
         [
           tenantId, orderNumber, data.customer_id || null, data.employee_id || null, data.branch_id || null,
-          data.order_type || 'pos', status, discountAmount, data.payment_method || null,
+          data.order_type || 'pos', status, totalDiscount, data.payment_method || null,
           data.payment_method && status !== 'on_hold' ? 'paid' : 'pending', data.notes || null, userId,
         ]
       );
@@ -208,14 +226,22 @@ class OrderService {
         if (item.product_id && !skipStockCheck) {
           const stockField = item.variant_id ? 'product_variants' : 'products';
           const stockId = item.variant_id || item.product_id;
-          const stockResult = await client.query(
-            `UPDATE ${stockField} SET stock_quantity = stock_quantity - $1
-             WHERE id = $2 AND tenant_id = $3 AND stock_quantity >= $1
-             RETURNING id`,
-            [item.quantity, stockId, tenantId]
-          );
-          if (!stockResult.rows[0]) {
-            throw new ValidationError(`Insufficient stock for ${item.product_name}`);
+          if (allowNegativeStock) {
+            await client.query(
+              `UPDATE ${stockField} SET stock_quantity = stock_quantity - $1
+               WHERE id = $2 AND tenant_id = $3`,
+              [item.quantity, stockId, tenantId]
+            );
+          } else {
+            const stockResult = await client.query(
+              `UPDATE ${stockField} SET stock_quantity = stock_quantity - $1
+               WHERE id = $2 AND tenant_id = $3 AND stock_quantity >= $1
+               RETURNING id`,
+              [item.quantity, stockId, tenantId]
+            );
+            if (!stockResult.rows[0]) {
+              throw new ValidationError(`Insufficient stock for ${item.product_name}`);
+            }
           }
 
           await client.query(
@@ -230,7 +256,7 @@ class OrderService {
         throw new ValidationError('Discount cannot exceed subtotal');
       }
 
-      const totalAmount = subtotal + taxAmount - discountAmount;
+      const totalAmount = subtotal + taxAmount - totalDiscount;
 
       if (data.payments?.length && status !== 'on_hold') {
         const payTotal = data.payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
@@ -261,10 +287,24 @@ class OrderService {
 
       await client.query('COMMIT');
 
+      if (couponId && status !== 'on_hold') {
+        setImmediate(() => {
+          const couponService = require('../coupons/coupons.service');
+          couponService.recordRedemption(tenantId, couponId, order.id, data.customer_id, couponDiscount).catch(() => {});
+        });
+      }
+
       if (data.customer_id && ['paid', 'completed'].includes(status)) {
         setImmediate(() => {
           const loyaltyService = require('../loyalty/loyalty.service');
           loyaltyService.earnPoints(tenantId, data.customer_id, order.id, totalAmount).catch(() => {});
+        });
+      }
+
+      if (status !== 'on_hold') {
+        setImmediate(() => {
+          const webhookService = require('../webhooks/webhooks.service');
+          webhookService.dispatch(tenantId, 'order.created', { id: order.id, order_number: orderNumber, total_amount: totalAmount }).catch(() => {});
         });
       }
 
@@ -370,6 +410,88 @@ class OrderService {
     }
 
     return this.repo.update(id, { status: 'refunded', payment_status: 'refunded' }, tenantId);
+  }
+
+  async returnOrder(tenantId, orderId, data, userId) {
+    const order = await this.getById(tenantId, orderId);
+    if (!['paid', 'completed'].includes(order.status)) {
+      throw new ValidationError('Only paid or completed orders can be returned');
+    }
+
+    const restock = data.restock !== false;
+    let totalRefund = 0;
+    const returnItems = [];
+
+    for (const line of data.items) {
+      const orderItem = order.items.find((i) => i.id === line.order_item_id);
+      if (!orderItem) throw new NotFoundError('Order item not found');
+      const qty = parseInt(line.quantity, 10);
+      if (qty < 1 || qty > orderItem.quantity) {
+        throw new ValidationError(`Invalid return quantity for ${orderItem.product_name}`);
+      }
+      const unitRefund = parseFloat(orderItem.total) / orderItem.quantity;
+      const refundAmount = Math.round(unitRefund * qty * 100) / 100;
+      totalRefund += refundAmount;
+      returnItems.push({ orderItem, qty, refundAmount });
+    }
+
+    const client = await db.getClient();
+    const returnNumber = `RET-${Date.now().toString(36).toUpperCase()}`;
+
+    try {
+      await client.query('BEGIN');
+
+      const retResult = await client.query(
+        `INSERT INTO order_returns (tenant_id, order_id, return_number, reason, total_refund, restocked, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [tenantId, orderId, returnNumber, data.reason || null, totalRefund, restock, userId]
+      );
+      const returnRecord = retResult.rows[0];
+
+      for (const { orderItem, qty, refundAmount } of returnItems) {
+        await client.query(
+          `INSERT INTO order_return_items (tenant_id, return_id, order_item_id, quantity, refund_amount, restocked)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [tenantId, returnRecord.id, orderItem.id, qty, refundAmount, restock]
+        );
+
+        if (restock && orderItem.product_id) {
+          await inventoryService.stockIn(tenantId, {
+            product_id: orderItem.product_id,
+            variant_id: orderItem.variant_id,
+            quantity: qty,
+            notes: `Return ${returnNumber} for order ${order.order_number}`,
+          }, userId);
+        }
+      }
+
+      const allReturned = order.items.every((item) => {
+        const returnedQty = returnItems
+          .filter((r) => r.orderItem.id === item.id)
+          .reduce((s, r) => s + r.qty, 0);
+        return returnedQty >= item.quantity;
+      });
+
+      if (allReturned) {
+        await client.query(
+          `UPDATE orders SET status = 'refunded', payment_status = 'refunded' WHERE id = $1 AND tenant_id = $2`,
+          [orderId, tenantId]
+        );
+      }
+
+      await client.query('COMMIT');
+      return { ...returnRecord, items: returnItems.map((r) => ({
+        order_item_id: r.orderItem.id,
+        product_name: r.orderItem.product_name,
+        quantity: r.qty,
+        refund_amount: r.refundAmount,
+      })) };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 }
 

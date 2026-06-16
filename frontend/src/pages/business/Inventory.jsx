@@ -10,6 +10,7 @@ import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import StatCard from '../../components/StatCard';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 
@@ -131,15 +132,15 @@ export default function InventoryPage() {
         submitLabel={action ? STOCK_ACTIONS[action].label : 'Save'}
       >
         <Grid item xs={12}>
-          <TextField fullWidth select label="Product" {...register('product_id', { required: true })} defaultValue="">
+          <RHFTextField register={register} name="product_id" rules={{ required: true }} select label="Product" defaultValue="">
             <MenuItem value="">Select product</MenuItem>
             {(products || []).map((p) => (
               <MenuItem key={p.id} value={p.id}>{p.name} (stock: {p.stock_quantity})</MenuItem>
             ))}
-          </TextField>
+          </RHFTextField>
         </Grid>
         <Grid item xs={12}>
-          <TextField fullWidth label="Quantity" type="number" inputProps={{ min: 1 }} {...register('quantity', { required: true })} />
+          <RHFTextField register={register} name="quantity" rules={{ required: true }} label="Quantity" type="number" inputProps={{ min: 1 }} />
         </Grid>
         <Grid item xs={12}>
           <TextField fullWidth label="Notes" multiline rows={2} {...register('notes')} />

@@ -7,6 +7,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 
 export default function CouponsPage() {
   const [open, setOpen] = useState(false);
@@ -36,14 +37,14 @@ export default function CouponsPage() {
       <PageHeader title="Coupons" actionLabel="Create Coupon" actionIcon={<Add />} onAction={() => setOpen(true)} />
       <DataTable columns={columns} rows={data?.data || []} loading={isLoading} emptyTitle="No coupons" emptyActionLabel="Create Coupon" onEmptyAction={() => setOpen(true)} />
       <FormDialog open={open} title="Create Coupon" onClose={() => setOpen(false)} onSubmit={handleSubmit((d) => createMutation.mutate({ ...d, discount_value: parseFloat(d.discount_value) }))} loading={createMutation.isPending}>
-        <Grid item xs={12}><TextField fullWidth label="Code" {...register('code', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="code" rules={{ required: true }} label="Code" /></Grid>
         <Grid item xs={12}>
           <TextField fullWidth select label="Discount Type" defaultValue="percentage" {...register('discount_type')}>
             <MenuItem value="percentage">Percentage</MenuItem>
             <MenuItem value="fixed">Fixed Amount</MenuItem>
           </TextField>
         </Grid>
-        <Grid item xs={12}><TextField fullWidth label="Discount Value" type="number" {...register('discount_value', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="discount_value" rules={{ required: true }} label="Discount Value" type="number" /></Grid>
       </FormDialog>
     </>
   );

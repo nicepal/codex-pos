@@ -5,8 +5,28 @@ const { generateInvoiceNumber } = require('../../utils/helpers');
 const planRepo = createRepository('plans', false);
 const planService = {
   ...createCrudService(planRepo),
-  async list(query) {
-    return planRepo.findAll(null, { page: query.page, limit: query.limit, filters: { status: query.status } });
+  async list(query = {}) {
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 50));
+    const status = query.status || 'active';
+    const countResult = await db.query(
+      'SELECT COUNT(*)::int AS total FROM plans WHERE status = $1',
+      [status]
+    );
+    const result = await db.query(
+      `SELECT * FROM plans WHERE status = $1 ORDER BY sort_order ASC, monthly_price ASC LIMIT $2`,
+      [status, limit]
+    );
+    const total = countResult.rows[0].total;
+    return {
+      rows: result.rows,
+      pagination: {
+        total,
+        page: 1,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+        hasNext: total > limit,
+      },
+    };
   },
 };
 

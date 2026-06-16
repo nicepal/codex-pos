@@ -7,6 +7,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
@@ -93,7 +94,7 @@ export default function EmployeesPage() {
         loading={saveMutation.isPending}
         submitLabel={editing ? 'Update' : 'Add'}
       >
-        <Grid item xs={12}><TextField fullWidth label="Name" {...register('name', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
         <Grid item xs={12} sm={6}><TextField fullWidth label="Email" type="email" {...register('email')} /></Grid>
         <Grid item xs={12} sm={6}><TextField fullWidth label="Phone" {...register('phone')} /></Grid>
         <Grid item xs={12} sm={6}>

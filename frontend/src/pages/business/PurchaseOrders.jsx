@@ -8,6 +8,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 
@@ -69,10 +70,10 @@ export default function PurchaseOrdersPage() {
 
       <FormDialog open={open} title="Create Purchase Order" onClose={() => setOpen(false)} onSubmit={handleSubmit((d) => createMutation.mutate({ ...d, items: lineItems.filter((i) => i.product_id) }))} loading={createMutation.isPending} submitLabel="Create" maxWidth="md">
         <Grid item xs={12}>
-          <TextField fullWidth select label="Supplier" {...register('supplier_id', { required: true })} defaultValue="">
+          <RHFTextField register={register} name="supplier_id" rules={{ required: true }} select label="Supplier" defaultValue="">
             <MenuItem value="">Select supplier</MenuItem>
             {(suppliers || []).map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-          </TextField>
+          </RHFTextField>
         </Grid>
         <Grid item xs={12}><Typography variant="subtitle2">Line Items</Typography></Grid>
         {lineItems.map((item, idx) => (

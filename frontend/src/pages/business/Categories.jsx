@@ -7,6 +7,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
@@ -119,7 +120,7 @@ export default function CategoriesPage() {
         loading={saveMutation.isPending}
         submitLabel={editing ? 'Update' : 'Create'}
       >
-        <Grid item xs={12}><TextField fullWidth label="Name" {...register('name', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
         <Grid item xs={12}><TextField fullWidth label="Description" multiline rows={2} {...register('description')} /></Grid>
         <Grid item xs={12}>
           <TextField fullWidth select label="Parent Category" {...register('parent_id')} defaultValue="">

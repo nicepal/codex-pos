@@ -9,6 +9,7 @@ import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
+import RHFTextField from '../../components/RHFTextField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 
 const empty = emptyPresetProps('support');
@@ -64,7 +65,7 @@ export default function SupportPage() {
         loading={createMutation.isPending}
         submitLabel="Submit"
       >
-        <Grid item xs={12}><TextField fullWidth label="Subject" {...register('subject', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="subject" rules={{ required: true }} label="Subject" /></Grid>
         <Grid item xs={12}>
           <TextField fullWidth select label="Priority" defaultValue="medium" {...register('priority')}>
             {['low', 'medium', 'high', 'critical'].map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
@@ -75,7 +76,7 @@ export default function SupportPage() {
             {['general', 'billing', 'technical', 'inventory'].map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
           </TextField>
         </Grid>
-        <Grid item xs={12}><TextField fullWidth label="Description" multiline rows={4} {...register('description', { required: true })} /></Grid>
+        <Grid item xs={12}><RHFTextField register={register} name="description" rules={{ required: true }} label="Description" multiline rows={4} /></Grid>
       </FormDialog>
     </>
   );
