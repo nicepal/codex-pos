@@ -14,6 +14,7 @@ import FormDialog from '../../components/FormDialog';
 import RHFTextField from '../../components/RHFTextField';
 import RHFControllerField from '../../components/RHFControllerField';
 import StatCard from '../../components/StatCard';
+import { formatDisplayText } from '../../utils/displayText';
 
 const STATUS_COLORS = {
   pending: 'warning',
@@ -86,7 +87,7 @@ export default function BillingPage() {
       field: 'status',
       label: 'Status',
       render: (r) => (
-        <Chip label={r.status} size="small" color={STATUS_COLORS[r.status] || 'default'} sx={{ textTransform: 'capitalize' }} />
+        <Chip label={formatDisplayText(r.status)} size="small" color={STATUS_COLORS[r.status] || 'default'} />
       ),
     },
     { field: 'due_date', label: 'Due', render: (r) => r.due_date ? new Date(r.due_date).toLocaleDateString() : '—' },
@@ -147,7 +148,7 @@ export default function BillingPage() {
         >
           <MenuItem value="">All statuses</MenuItem>
           {['pending', 'paid', 'failed', 'refunded', 'cancelled'].map((s) => (
-            <MenuItem key={s} value={s} sx={{ textTransform: 'capitalize' }}>{s}</MenuItem>
+            <MenuItem key={s} value={s}>{formatDisplayText(s)}</MenuItem>
           ))}
         </TextField>
       </Box>

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useOutletContext, Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { Box, Typography, TextField, Grid, Alert, MenuItem, Stack, Button } from '@mui/material';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Box, Typography, TextField, Grid, Alert, MenuItem, Stack, Button, FormControlLabel, Radio, RadioGroup } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import api from '../../services/api';
 import { selectStoreCartTotal, clearStoreCart } from '../../features/storefront/cartSlice';
@@ -18,8 +18,16 @@ export default function CheckoutPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { basePath } = useOutletContext();
-  const [form, setForm] = useState({ name: '', email: '', phone: '', payment_method: 'cash' });
+  const [form, setForm] = useState({
+    name: '', email: '', phone: '', payment_method: 'cash',
+    fulfillment_type: 'delivery', pickup_branch_id: '',
+  });
   const { total } = calcOrderTotals(subtotal);
+
+  const { data: branches } = useQuery({
+    queryKey: ['storefront-branches'],
+    queryFn: () => api.get('/storefront/branches').then((r) => r.data.data),
+  });
 
   const checkout = useMutation({
     mutationFn: () => api.post('/storefront/checkout', {
@@ -32,12 +40,16 @@ export default function CheckoutPage() {
       customer_email: form.email.trim() || undefined,
       customer_phone: form.phone.trim() || undefined,
       payment_method: form.payment_method,
+      fulfillment_type: form.fulfillment_type,
+      pickup_branch_id: form.fulfillment_type === 'pickup' ? (form.pickup_branch_id || undefined) : undefined,
     }),
     onSuccess: (res) => {
       dispatch(clearStoreCart());
       navigate(`${basePath}/order/confirm`, { state: { order: res.data.data } });
     },
   });
+
+  const pickupInvalid = form.fulfillment_type === 'pickup' && !form.pickup_branch_id;
 
   if (!items.length) {
     return (
@@ -67,13 +79,6 @@ export default function CheckoutPage() {
       {checkout.isError && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {checkout.error?.response?.data?.message || 'Checkout failed'}
-          {checkout.error?.response?.data?.details?.length > 0 && (
-            <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
-              {checkout.error.response.data.details.map((d) => (
-                <li key={d.field}><Typography variant="body2">{d.field}: {d.message}</Typography></li>
-              ))}
-            </Box>
-          )}
         </Alert>
       )}
 
@@ -90,14 +95,37 @@ export default function CheckoutPage() {
             <Grid item xs={12} sm={6}>
               <TextField fullWidth label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </Grid>
-            <Grid item xs={12}>
-              <TextField fullWidth select label="Payment Method" value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })}>
-                <MenuItem value="cash">Cash on Delivery</MenuItem>
-                <MenuItem value="card">Card</MenuItem>
-                <MenuItem value="bank">Bank Transfer</MenuItem>
-              </TextField>
-            </Grid>
           </Grid>
+
+          <Typography variant="h6" fontWeight={700} sx={{ mt: 3, mb: 1 }}>Fulfillment</Typography>
+          <RadioGroup
+            value={form.fulfillment_type}
+            onChange={(e) => setForm({ ...form, fulfillment_type: e.target.value, pickup_branch_id: '' })}
+          >
+            <FormControlLabel value="delivery" control={<Radio />} label="Delivery" />
+            <FormControlLabel value="pickup" control={<Radio />} label="Click & collect (pickup)" />
+          </RadioGroup>
+
+          {form.fulfillment_type === 'pickup' && (
+            <TextField fullWidth select required label="Pickup location" sx={{ mt: 2 }}
+              value={form.pickup_branch_id}
+              onChange={(e) => setForm({ ...form, pickup_branch_id: e.target.value })}
+              helperText={!branches?.length ? 'No pickup locations configured' : 'Select the branch where you will collect your order'}>
+              {(branches || []).map((b) => (
+                <MenuItem key={b.id} value={b.id}>
+                  {b.name}{b.city ? ` — ${b.city}` : ''}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+
+          <Typography variant="h6" fontWeight={700} sx={{ mt: 3, mb: 1 }}>Payment</Typography>
+          <TextField fullWidth select label="Payment Method" value={form.payment_method}
+            onChange={(e) => setForm({ ...form, payment_method: e.target.value })}>
+            <MenuItem value="cash">Cash on Delivery / Pay at pickup</MenuItem>
+            <MenuItem value="card">Card</MenuItem>
+            <MenuItem value="bank">Bank Transfer</MenuItem>
+          </TextField>
         </Grid>
 
         <Grid item xs={12} md={5}>
@@ -106,7 +134,7 @@ export default function CheckoutPage() {
             showShippingProgress={false}
             onCheckout={() => checkout.mutate()}
             checkoutLabel={`Place Order — ${formatMoney(total)}`}
-            checkoutDisabled={!form.name}
+            checkoutDisabled={!form.name || pickupInvalid}
             checkoutLoading={checkout.isPending}
           />
         </Grid>

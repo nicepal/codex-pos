@@ -7,6 +7,8 @@ const createCustomerSchema = Joi.object({
   address: Joi.string().max(500).allow('', null).optional(),
   notes: Joi.string().max(2000).allow('', null).optional(),
   status: Joi.string().valid('active', 'inactive').optional(),
+  tax_exempt: Joi.boolean().optional(),
+  tags: Joi.array().items(Joi.string().max(50)).optional(),
 });
 
 const updateCustomerSchema = createCustomerSchema.fork(['name'], (s) => s.optional());

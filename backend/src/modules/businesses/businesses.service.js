@@ -1,4 +1,5 @@
 const businessRepo = require('./businesses.repository');
+const businessDashboardService = require('./business-dashboard.service');
 const db = require('../../config/database');
 const config = require('../../config');
 const { hashPassword } = require('../../utils/password');
@@ -80,6 +81,12 @@ class BusinessService {
         `INSERT INTO tenant_domains (tenant_id, domain, domain_type, is_primary, verification_status)
          VALUES ($1, $2, 'subdomain', true, 'verified')`,
         [tenant.id, `${businessSlug}.${config.app.platformDomain}`]
+      );
+
+      await client.query(
+        `INSERT INTO branches (tenant_id, name, code, is_primary, status)
+         VALUES ($1, $2, 'MAIN', true, 'active')`,
+        [tenant.id, businessName || 'Main Store']
       );
 
       if (resolvedPlanId) {
@@ -186,6 +193,10 @@ class BusinessService {
 
   async getGrowthCharts(months = 12) {
     return businessRepo.getGrowthData(months);
+  }
+
+  async getTenantDashboard(tenantId) {
+    return businessDashboardService.getDashboard(tenantId);
   }
 
   async upgradePlan(tenantId, planId, billingCycle = 'monthly') {

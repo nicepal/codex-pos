@@ -4,11 +4,13 @@ import {
   Box, Typography, Stepper, Step, StepLabel, Button, Card, CardContent, TextField, Alert,
 } from '@mui/material';
 import api from '../../services/api';
+import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 
 const steps = ['Business profile', 'Add first product', 'Open POS'];
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const { moneyLabel } = useBusinessCurrency();
   const [activeStep, setActiveStep] = useState(0);
   const [product, setProduct] = useState({ name: '', sale_price: '' });
   const [error, setError] = useState('');
@@ -58,7 +60,7 @@ export default function OnboardingPage() {
           {activeStep === 1 && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <TextField label="Product name" value={product.name} onChange={(e) => setProduct({ ...product, name: e.target.value })} required />
-              <TextField label="Sale price" type="number" value={product.sale_price} onChange={(e) => setProduct({ ...product, sale_price: e.target.value })} required />
+              <TextField label={moneyLabel('Sale price')} type="number" value={product.sale_price} onChange={(e) => setProduct({ ...product, sale_price: e.target.value })} required />
             </Box>
           )}
           {activeStep === 2 && (

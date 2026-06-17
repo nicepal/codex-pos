@@ -7,6 +7,7 @@ const schemas = require('./auth.validation');
 
 router.post('/register', authRateLimiter, validate(schemas.registerSchema), controller.register);
 router.post('/login', authRateLimiter, validate(schemas.loginSchema), controller.login);
+router.post('/pin-login', authRateLimiter, controller.pinLogin);
 router.post('/refresh', authRateLimiter, validate(schemas.refreshSchema), controller.refresh);
 router.post('/logout', controller.logout);
 router.post('/forgot-password', authRateLimiter, validate(schemas.forgotPasswordSchema), controller.forgotPassword);

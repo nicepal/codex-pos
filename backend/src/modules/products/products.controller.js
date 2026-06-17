@@ -74,7 +74,51 @@ module.exports = {
   }),
 
   importCsv: asyncHandler(async (req, res) => {
-    const result = await productService.importCsv(req.tenant.id, req.body.rows);
-    return success(res, result, `${result.imported} products imported`);
+    const result = await productService.importCsv(req.tenant.id, req.body.rows, { mode: req.body.mode });
+    return success(res, result, `${result.imported} imported, ${result.updated || 0} updated`);
+  }),
+
+  getBundleItems: asyncHandler(async (req, res) => {
+    const bundleService = require('./catalog-bundle.service');
+    const items = await bundleService.getBundleItems(req.tenant.id, req.params.id);
+    return success(res, items);
+  }),
+
+  setBundleItems: asyncHandler(async (req, res) => {
+    const bundleService = require('./catalog-bundle.service');
+    const items = await bundleService.setBundleItems(req.tenant.id, req.params.id, req.body.items);
+    return success(res, items, 'Bundle updated');
+  }),
+
+  listSerials: asyncHandler(async (req, res) => {
+    const tracking = require('./catalog-tracking.service');
+    return success(res, await tracking.listSerials(req.tenant.id, req.params.id));
+  }),
+
+  addSerial: asyncHandler(async (req, res) => {
+    const tracking = require('./catalog-tracking.service');
+    return created(res, await tracking.addSerial(req.tenant.id, req.params.id, req.body), 'Serial added');
+  }),
+
+  removeSerial: asyncHandler(async (req, res) => {
+    const tracking = require('./catalog-tracking.service');
+    await tracking.removeSerial(req.tenant.id, req.params.id, req.params.serialId);
+    return success(res, null, 'Serial removed');
+  }),
+
+  listBatches: asyncHandler(async (req, res) => {
+    const tracking = require('./catalog-tracking.service');
+    return success(res, await tracking.listBatches(req.tenant.id, req.params.id));
+  }),
+
+  addBatch: asyncHandler(async (req, res) => {
+    const tracking = require('./catalog-tracking.service');
+    return created(res, await tracking.addBatch(req.tenant.id, req.params.id, req.body), 'Batch added');
+  }),
+
+  removeBatch: asyncHandler(async (req, res) => {
+    const tracking = require('./catalog-tracking.service');
+    await tracking.removeBatch(req.tenant.id, req.params.id, req.params.batchId);
+    return success(res, null, 'Batch removed');
   }),
 };

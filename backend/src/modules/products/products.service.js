@@ -9,6 +9,7 @@ const PRODUCT_WRITABLE_FIELDS = [
   'category_id', 'brand_id', 'branch_id', 'name', 'slug', 'sku', 'barcode', 'product_type',
   'cost_price', 'sale_price', 'stock_quantity', 'low_stock_threshold',
   'description', 'status', 'meta_title', 'meta_description',
+  'is_open_price', 'tax_rule_id', 'tracks_serials', 'tracks_batches',
 ];
 
 class ProductService {
@@ -43,6 +44,7 @@ class ProductService {
     }, tenantId);
 
     if (variants?.length) {
+      await productRepo.update(product.id, { product_type: 'variable' }, tenantId);
       for (const v of variants) {
         await db.query(
           `INSERT INTO product_variants (tenant_id, product_id, name, sku, attributes, cost_price, sale_price, stock_quantity)
@@ -64,6 +66,7 @@ class ProductService {
     await productRepo.update(id, productData, tenantId);
 
     if (variants?.length) {
+      await productRepo.update(id, { product_type: 'variable' }, tenantId);
       for (const v of variants) {
         if (v.id) {
           await db.query(
@@ -206,25 +209,56 @@ class ProductService {
     return this.getById(tenantId, created.id);
   }
 
-  async importCsv(tenantId, rows) {
+  async importCsv(tenantId, rows, { mode = 'create' } = {}) {
     const { ValidationError } = require('../../shared/errors');
     if (!Array.isArray(rows) || !rows.length) throw new ValidationError('No rows to import');
     const created = [];
-    for (const row of rows.slice(0, 500)) {
-      if (!row.name || row.sale_price == null) continue;
-      const product = await this.create(tenantId, {
-        name: String(row.name).trim(),
-        sku: row.sku || null,
-        barcode: row.barcode || null,
-        sale_price: parseFloat(row.sale_price) || 0,
-        cost_price: parseFloat(row.cost_price) || 0,
-        stock_quantity: parseInt(row.stock_quantity, 10) || 0,
-        product_type: row.product_type || 'simple',
-        status: row.status || 'active',
-      });
-      created.push(product);
+    const updated = [];
+    const errors = [];
+    for (let i = 0; i < Math.min(rows.length, 500); i += 1) {
+      const row = rows[i];
+      try {
+        if (!row.name && !row.sku) {
+          errors.push({ row: i + 1, message: 'name or sku required' });
+          continue;
+        }
+        if (mode === 'update' && row.sku) {
+          const existing = await db.query(
+            'SELECT id FROM products WHERE tenant_id = $1 AND sku = $2',
+            [tenantId, row.sku]
+          );
+          if (existing.rows[0]) {
+            const product = await this.update(tenantId, existing.rows[0].id, {
+              name: row.name || undefined,
+              sale_price: row.sale_price != null ? parseFloat(row.sale_price) : undefined,
+              cost_price: row.cost_price != null ? parseFloat(row.cost_price) : undefined,
+              stock_quantity: row.stock_quantity != null ? parseInt(row.stock_quantity, 10) : undefined,
+              status: row.status || undefined,
+            });
+            updated.push(product);
+            continue;
+          }
+        }
+        if (!row.name || row.sale_price == null) {
+          errors.push({ row: i + 1, message: 'name and sale_price required for create' });
+          continue;
+        }
+        const product = await this.create(tenantId, {
+          name: String(row.name).trim(),
+          sku: row.sku || null,
+          barcode: row.barcode || null,
+          sale_price: parseFloat(row.sale_price) || 0,
+          cost_price: parseFloat(row.cost_price) || 0,
+          stock_quantity: parseInt(row.stock_quantity, 10) || 0,
+          product_type: row.product_type || 'simple',
+          status: row.status || 'active',
+        });
+        created.push(product);
+      } catch (err) {
+        errors.push({ row: i + 1, message: err.message });
+      }
     }
-    return { imported: created.length, products: created };
+    return { imported: created.length, updated: updated.length, errors, products: created };
   }
 }
 

@@ -26,6 +26,16 @@ class CouponService {
     const payload = pickAllowedFields(data, WRITABLE);
     payload.code = (payload.code || '').toUpperCase().trim();
     if (!payload.code) throw new ValidationError('Coupon code is required');
+    if (!payload.status) payload.status = 'active';
+    if (payload.starts_at === '') payload.starts_at = null;
+    if (payload.expires_at === '') payload.expires_at = null;
+
+    const existing = await db.query(
+      'SELECT id FROM tenant_coupons WHERE tenant_id = $1 AND UPPER(code) = $2 LIMIT 1',
+      [tenantId, payload.code]
+    );
+    if (existing.rows[0]) throw new ValidationError('A coupon with this code already exists');
+
     return this.repo.create(payload, tenantId);
   }
 

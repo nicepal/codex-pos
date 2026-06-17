@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, TextField, MenuItem, IconButton, Chip, Avatar, Grid, Tooltip,
 } from '@mui/material';
-import { Add, Edit, Delete, Visibility, Image, ContentCopy } from '@mui/icons-material';
+import { Add, Edit, Delete, Visibility, Image, ContentCopy, UploadFile } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import api from '../../services/api';
 import { resolveImageUrl } from '../../utils/imageUrl';
@@ -17,6 +17,9 @@ import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
+import { formatDisplayText } from '../../utils/displayText';
+import useTenantFeatures from '../../hooks/useTenantFeatures';
+import ProductsImportWizard from '../../components/ProductsImportWizard';
 
 const empty = emptyPresetProps('products');
 
@@ -53,7 +56,7 @@ function stockChip(qty) {
 }
 
 export default function ProductsPage() {
-  const { formatMoney } = useBusinessCurrency();
+  const { formatMoney, moneyLabel } = useBusinessCurrency();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -64,7 +67,9 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+  const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { hasFeature } = useTenantFeatures();
   const { register, handleSubmit, reset } = useForm();
 
   const queryParams = {
@@ -153,7 +158,7 @@ export default function ProductsPage() {
     { field: 'sku', label: 'SKU', render: (r) => r.sku || '-' },
     { field: 'sale_price', label: 'Price', render: (r) => formatMoney(r.sale_price) },
     { field: 'stock_quantity', label: 'Stock', render: (r) => stockChip(r.stock_quantity) },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={r.status} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
+    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
     {
       field: 'actions', label: 'Actions',
       render: (r) => (
@@ -190,7 +195,18 @@ export default function ProductsPage() {
 
   return (
     <>
-      <PageHeader title="Products" subtitle="Manage catalog, pricing, and stock" actionLabel="Add Product" actionIcon={<Add />} onAction={() => openForm()} />
+      <PageHeader
+        title="Products"
+        subtitle="Manage catalog, pricing, and stock"
+        actionLabel="Add Product"
+        actionIcon={<Add />}
+        onAction={() => openForm()}
+        secondaryAction={hasFeature('catalog_pro') ? {
+          label: 'Import CSV',
+          icon: <UploadFile />,
+          onClick: () => setImportOpen(true),
+        } : undefined}
+      />
 
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
         <TextField size="small" label="Search" placeholder="Name, SKU, barcode" value={search}
@@ -208,7 +224,7 @@ export default function ProductsPage() {
         <TextField size="small" select label="Status" value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} sx={{ minWidth: 120 }}>
           <MenuItem value="">All</MenuItem>
-          {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+          {STATUSES.map((s) => <MenuItem key={s} value={s}>{formatDisplayText(s)}</MenuItem>)}
         </TextField>
       </Box>
 
@@ -261,12 +277,12 @@ export default function ProductsPage() {
         </Grid>
         <Grid item xs={6}><TextField fullWidth label="SKU" {...register('sku')} /></Grid>
         <Grid item xs={6}><TextField fullWidth label="Barcode" {...register('barcode')} /></Grid>
-        <Grid item xs={4}><TextField fullWidth label="Cost Price" type="number" inputProps={{ step: '0.01' }} {...register('cost_price')} /></Grid>
-        <Grid item xs={4}><RHFTextField register={register} name="sale_price" rules={{ required: true }} label="Sale Price" type="number" inputProps={{ step: '0.01' }} /></Grid>
+        <Grid item xs={4}><TextField fullWidth label={moneyLabel('Cost Price')} type="number" inputProps={{ step: '0.01' }} {...register('cost_price')} /></Grid>
+        <Grid item xs={4}><RHFTextField register={register} name="sale_price" rules={{ required: true }} label={moneyLabel('Sale Price')} type="number" inputProps={{ step: '0.01' }} /></Grid>
         <Grid item xs={4}><TextField fullWidth label="Stock" type="number" {...register('stock_quantity')} /></Grid>
         <Grid item xs={12}>
           <TextField fullWidth select label="Status" defaultValue="active" {...register('status')}>
-            {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+            {STATUSES.map((s) => <MenuItem key={s} value={s}>{formatDisplayText(s)}</MenuItem>)}
           </TextField>
         </Grid>
         <Grid item xs={12}><TextField fullWidth label="Description" multiline rows={3} {...register('description')} /></Grid>
@@ -281,6 +297,12 @@ export default function ProductsPage() {
         loading={deleteMutation.isPending}
         danger
         confirmLabel="Delete"
+      />
+
+      <ProductsImportWizard
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={() => queryClient.invalidateQueries(['products'])}
       />
     </>
   );

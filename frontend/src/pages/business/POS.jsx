@@ -243,7 +243,7 @@ function CartPanel({
   items, discount, taxRate, subtotal, taxAmount, grandTotal, onDiscountChange, onLineDiscountChange,
   onQtyChange, onRemove, onCheckout, onHold, onSplitOpen, checkoutPending, holdPending,
   customer, onCustomerChange, customers, branchId, onBranchChange, branches, compact,
-  formatMoney, currency, hasPosPro,
+  formatMoney, currency, hasPosPro, moneyLabel,
 }) {
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
 
@@ -277,7 +277,18 @@ function CartPanel({
         <List dense sx={{ flex: 1, overflow: 'auto', maxHeight: compact ? 240 : 360 }}>
           {items.map((item, idx) => (
             <ListItem key={idx} secondaryAction={(
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {hasPosPro && (
+                  <TextField
+                    size="small"
+                    type="number"
+                    label={compact ? 'Disc' : moneyLabel('Disc')}
+                    sx={{ width: compact ? 78 : 96 }}
+                    value={item.line_discount || ''}
+                    onChange={(e) => onLineDiscountChange(idx, parseFloat(e.target.value) || 0)}
+                    inputProps={{ min: 0, step: 0.01 }}
+                  />
+                )}
                 <IconButton size="small" onClick={() => onQtyChange(idx, item.quantity - 1)}><Remove /></IconButton>
                 <Typography component="span" sx={{ mx: 0.5, minWidth: 20, textAlign: 'center' }}>{item.quantity}</Typography>
                 <IconButton size="small" onClick={() => onQtyChange(idx, item.quantity + 1)}><Add /></IconButton>
@@ -288,16 +299,6 @@ function CartPanel({
                 primary={item.product_name}
                 secondary={`${formatMoney(item.unit_price)} × ${item.quantity} = ${formatMoney(item.unit_price * item.quantity - (item.line_discount || 0))}`}
               />
-              {hasPosPro && (
-                <TextField
-                  size="small"
-                  type="number"
-                  label="Disc"
-                  sx={{ width: 72, ml: 1 }}
-                  value={item.line_discount || ''}
-                  onChange={(e) => onLineDiscountChange(idx, parseFloat(e.target.value) || 0)}
-                />
-              )}
             </ListItem>
           ))}
         </List>
@@ -325,8 +326,10 @@ function CartPanel({
           <Button fullWidth variant="outlined" disabled={!items.length} onClick={onSplitOpen}>Split Pay</Button>
         </Grid>
         <Grid item xs={6}>
+          {hasPosPro && (
           <Button fullWidth variant="outlined" disabled={!items.length || holdPending}
             startIcon={<Pause />} onClick={onHold}>Hold</Button>
+          )}
         </Grid>
       </Grid>
     </Box>
@@ -335,7 +338,7 @@ function CartPanel({
 
 export default function POSPage() {
   const navigate = useNavigate();
-  const { formatMoney, currency } = useBusinessCurrency();
+  const { formatMoney, currency, moneyLabel } = useBusinessCurrency();
   const { hasFeature } = useTenantFeatures();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -357,6 +360,9 @@ export default function POSPage() {
   const [managerOpen, setManagerOpen] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState(null);
   const [managerPin, setManagerPin] = useState('');
+  const [managerEmployeeId, setManagerEmployeeId] = useState('');
+  const [openPriceProduct, setOpenPriceProduct] = useState(null);
+  const [openPriceValue, setOpenPriceValue] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const barcodeRef = useRef(null);
   const dispatch = useDispatch();
@@ -410,9 +416,16 @@ export default function POSPage() {
     focusBarcode();
   };
 
+  const { data: employees } = useQuery({
+    queryKey: ['pos-employees'],
+    queryFn: () => api.get('/employees', { params: { limit: 100 } }).then((r) => r.data.data),
+    enabled: hasFeature('staff_pro'),
+  });
+
   const { data: heldOrders } = useQuery({
     queryKey: ['held-orders'],
     queryFn: () => api.get('/orders/held').then((r) => r.data.data),
+    enabled: hasFeature('pos_pro'),
   });
 
   const taxAmount = (subtotal - discount) * (taxRate / 100);
@@ -424,6 +437,7 @@ export default function POSPage() {
     variant_id: i.variant_id || undefined,
     quantity: i.quantity,
     discount: i.line_discount || 0,
+    unit_price: i.open_price != null ? i.open_price : undefined,
   }));
 
   const buildOrderPayload = (extra = {}) => ({
@@ -432,8 +446,14 @@ export default function POSPage() {
     customer_id: customer?.id || null,
     branch_id: branchId || null,
     coupon_code: couponCode || undefined,
+    manager_employee_id: extra.manager_employee_id || undefined,
+    manager_pin: extra.manager_pin || undefined,
     ...extra,
   });
+
+  const submitCheckout = (payload) => {
+    checkoutMutation.mutate(payload);
+  };
 
   const checkoutMutation = useMutation({
     mutationFn: (payload) => api.post('/orders', payload),
@@ -478,6 +498,11 @@ export default function POSPage() {
 
   const addProduct = (p) => {
     if (p.stock_quantity <= 0 && !hasFeature('allow_negative_stock')) return;
+    if (p.is_open_price && hasFeature('open_price_items')) {
+      setOpenPriceProduct(p);
+      setOpenPriceValue(String(p.sale_price || ''));
+      return;
+    }
     if (p.product_type === 'variable' && hasFeature('pos_pro')) {
       setVariantProductId(p.id);
       return;
@@ -520,7 +545,10 @@ export default function POSPage() {
     runCheckout(buildOrderPayload({ payment_method: method, status: 'paid' }));
   };
 
-  const handleHold = () => holdMutation.mutate(buildOrderPayload());
+  const handleHold = () => {
+    if (!hasFeature('pos_pro')) return;
+    holdMutation.mutate(buildOrderPayload());
+  };
 
   const handleSplitPay = () => {
     const cash = parseFloat(splitCash) || 0;
@@ -556,6 +584,7 @@ export default function POSPage() {
     branchId, onBranchChange: setBranchId, branches,
     formatMoney, currency,
     hasPosPro: hasFeature('pos_pro'),
+    moneyLabel,
   };
 
   const heldColumns = [
@@ -576,7 +605,9 @@ export default function POSPage() {
       <Typography variant="h5" fontWeight={700} gutterBottom>Point of Sale</Typography>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="New Sale" />
-        <Tab label={`Held Sales (${heldOrders?.length || 0})`} />
+        {hasFeature('pos_pro') && (
+          <Tab label={`Held Sales (${heldOrders?.length || 0})`} />
+        )}
       </Tabs>
 
       {tab === 0 ? (
@@ -697,8 +728,8 @@ export default function POSPage() {
         <DialogTitle>Split Payment</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>Total: {formatMoney(grandTotal)}</Typography>
-          <TextField fullWidth label="Cash" type="number" value={splitCash} onChange={(e) => setSplitCash(e.target.value)} sx={{ mb: 2 }} />
-          <TextField fullWidth label="Card" type="number" value={splitCard} onChange={(e) => setSplitCard(e.target.value)} sx={{ mb: 2 }} />
+          <TextField fullWidth label={moneyLabel('Cash')} type="number" value={splitCash} onChange={(e) => setSplitCash(e.target.value)} sx={{ mb: 2 }} />
+          <TextField fullWidth label={moneyLabel('Card')} type="number" value={splitCard} onChange={(e) => setSplitCard(e.target.value)} sx={{ mb: 2 }} />
           <Button fullWidth variant="contained" onClick={handleSplitPay}>Complete Payment</Button>
         </DialogContent>
       </Dialog>
@@ -729,19 +760,58 @@ export default function POSPage() {
       <Dialog open={managerOpen} onClose={() => setManagerOpen(false)}>
         <DialogTitle>Manager approval</DialogTitle>
         <DialogContent>
-          <Typography sx={{ mb: 2 }}>Discount exceeds 20%. Enter manager PIN to continue.</Typography>
+          <Typography sx={{ mb: 2 }}>Discount exceeds 20%. Select manager and enter PIN.</Typography>
+          <TextField fullWidth select label="Manager" value={managerEmployeeId}
+            onChange={(e) => setManagerEmployeeId(e.target.value)} sx={{ mb: 2 }}>
+            {(employees || []).map((e) => (
+              <MenuItem key={e.id} value={e.id}>{e.first_name} {e.last_name}</MenuItem>
+            ))}
+          </TextField>
           <TextField fullWidth type="password" label="Manager PIN" value={managerPin} onChange={(e) => setManagerPin(e.target.value)} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setManagerOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => {
-            if (managerPin.length >= 4) {
-              checkoutMutation.mutate(pendingCheckout);
+          <Button variant="contained" onClick={async () => {
+            if (!managerEmployeeId || managerPin.length < 4) return;
+            try {
+              await api.post('/employees/verify-pin', { employee_id: managerEmployeeId, pin: managerPin });
+              submitCheckout(buildOrderPayload({
+                ...pendingCheckout,
+                manager_employee_id: managerEmployeeId,
+                manager_pin: managerPin,
+              }));
               setManagerOpen(false);
               setManagerPin('');
+              setManagerEmployeeId('');
               setPendingCheckout(null);
+            } catch (err) {
+              alert(err.response?.data?.message || 'PIN verification failed');
             }
           }}>Approve</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!openPriceProduct} onClose={() => setOpenPriceProduct(null)}>
+        <DialogTitle>Set price — {openPriceProduct?.name}</DialogTitle>
+        <DialogContent>
+          <TextField fullWidth type="number" label="Sale price" value={openPriceValue}
+            onChange={(e) => setOpenPriceValue(e.target.value)} inputProps={{ min: 0, step: 0.01 }} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPriceProduct(null)}>Cancel</Button>
+          <Button variant="contained" onClick={() => {
+            const price = parseFloat(openPriceValue);
+            if (!Number.isFinite(price) || price < 0) return;
+            dispatch(addItem({
+              product_id: openPriceProduct.id,
+              product_name: openPriceProduct.name,
+              sku: openPriceProduct.sku,
+              unit_price: price,
+              open_price: price,
+            }));
+            setOpenPriceProduct(null);
+            focusBarcode();
+          }}>Add to cart</Button>
         </DialogActions>
       </Dialog>
     </Box>

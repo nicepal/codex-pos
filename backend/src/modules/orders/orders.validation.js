@@ -20,8 +20,12 @@ const createOrderSchema = Joi.object({
   status: Joi.string().valid('pending', 'paid', 'completed', 'on_hold', 'cancelled').optional(),
   payment_method: Joi.string().valid('cash', 'card', 'bank', 'other').allow(null).optional(),
   discount_amount: Joi.number().min(0).optional(),
+  manager_employee_id: Joi.string().uuid().allow(null).optional(),
+  manager_pin: Joi.string().max(20).allow(null).optional(),
   tax_amount: Joi.number().min(0).optional(),
   notes: Joi.string().max(2000).allow('', null).optional(),
+  fulfillment_type: Joi.string().valid('delivery', 'pickup').optional(),
+  pickup_branch_id: Joi.string().uuid().allow(null).optional(),
   payments: Joi.array().items(Joi.object({
     method: Joi.string().valid('cash', 'card', 'bank', 'other').required(),
     amount: Joi.number().min(0).required(),
@@ -34,6 +38,8 @@ const checkoutSchema = Joi.object({
   customer_name: Joi.string().min(1).max(255).required(),
   customer_email: Joi.string().email().allow('', null).optional(),
   customer_phone: Joi.string().max(50).allow('', null).optional(),
+  fulfillment_type: Joi.string().valid('delivery', 'pickup').optional(),
+  pickup_branch_id: Joi.string().uuid().allow(null).optional(),
   payment_method: Joi.string().valid('cash', 'card', 'bank', 'other').optional(),
   notes: Joi.string().max(2000).allow('', null).optional(),
 });

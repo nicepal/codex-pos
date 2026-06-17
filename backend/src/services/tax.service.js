@@ -1,9 +1,5 @@
 const db = require('../config/database');
 
-/**
- * Compute order tax server-side from tenant preferences (Phase 0).
- * Phase 2 extends with tax_rules table when tax_advanced is enabled.
- */
 async function getTaxRate(tenantId) {
   const result = await db.query(
     `SELECT value FROM settings WHERE tenant_id = $1 AND key = 'tax_rate'`,
@@ -18,9 +14,13 @@ async function getTaxRate(tenantId) {
   return Number.isFinite(rate) ? rate : 0;
 }
 
-function calculateOrderTax(subtotal, discountAmount, taxRatePercent) {
+function calculateOrderTax(subtotal, discountAmount, taxRatePercent, isInclusive = false) {
   const taxable = Math.max(0, subtotal - (discountAmount || 0));
   const rate = parseFloat(taxRatePercent) || 0;
+  if (rate <= 0) return 0;
+  if (isInclusive) {
+    return Math.round((taxable - taxable / (1 + rate / 100)) * 100) / 100;
+  }
   return Math.round(taxable * (rate / 100) * 100) / 100;
 }
 
@@ -40,31 +40,67 @@ function distributeLineTax(lineSubtotals, totalTax) {
   });
 }
 
-async function applyTaxToResolvedItems(tenantId, resolvedItems, discountAmount = 0) {
+async function loadTaxRules(tenantId) {
+  const result = await db.query(
+    `SELECT id, rate, category_id, is_default, is_inclusive FROM tax_rules
+     WHERE tenant_id = $1 AND status = 'active'`,
+    [tenantId]
+  );
+  return result.rows;
+}
+
+function resolveRuleForItem(rules, item, defaultRate, defaultInclusive) {
+  if (item.tax_rule_id) {
+    const productRule = rules.find((r) => r.id === item.tax_rule_id);
+    if (productRule) return { rate: parseFloat(productRule.rate), isInclusive: productRule.is_inclusive };
+  }
+  if (item.category_id) {
+    const catRule = rules.find((r) => r.category_id === item.category_id);
+    if (catRule) return { rate: parseFloat(catRule.rate), isInclusive: catRule.is_inclusive };
+  }
+  const defaultRule = rules.find((r) => r.is_default);
+  if (defaultRule) return { rate: parseFloat(defaultRule.rate), isInclusive: defaultRule.is_inclusive };
+  return { rate: defaultRate, isInclusive: defaultInclusive };
+}
+
+async function applyTaxToResolvedItems(tenantId, resolvedItems, discountAmount = 0, customerId = null) {
   const { resolveTenantFeatures, isFeatureEnabled } = require('../shared/features');
   const features = await resolveTenantFeatures(tenantId);
+  const baseRate = await getTaxRate(tenantId);
 
-  let taxRate;
-  if (isFeatureEnabled(features, 'tax_advanced')) {
-    const rules = await db.query(
-      `SELECT rate, category_id, is_default FROM tax_rules WHERE tenant_id = $1 AND status = 'active'`,
-      [tenantId]
+  let taxExempt = false;
+  if (customerId && isFeatureEnabled(features, 'tax_advanced')) {
+    const cust = await db.query(
+      'SELECT tax_exempt FROM customers WHERE id = $1 AND tenant_id = $2',
+      [customerId, tenantId]
     );
-    const defaultRule = rules.rows.find((r) => r.is_default);
-    taxRate = defaultRule ? parseFloat(defaultRule.rate) : await getTaxRate(tenantId);
-  } else {
-    taxRate = await getTaxRate(tenantId);
+    taxExempt = Boolean(cust.rows[0]?.tax_exempt);
   }
 
-  const subtotal = resolvedItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
-  const totalTax = calculateOrderTax(subtotal, discountAmount, taxRate);
-  const lineSubtotals = resolvedItems.map((i) => i.unit_price * i.quantity);
-  const lineTaxes = distributeLineTax(lineSubtotals, totalTax);
+  if (taxExempt) {
+    return resolvedItems.map((item) => ({ ...item, tax: 0 }));
+  }
 
-  return resolvedItems.map((item, idx) => ({
-    ...item,
-    tax: lineTaxes[idx],
-  }));
+  if (!isFeatureEnabled(features, 'tax_advanced')) {
+    const subtotal = resolvedItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
+    const totalTax = calculateOrderTax(subtotal, discountAmount, baseRate, false);
+    const lineSubtotals = resolvedItems.map((i) => i.unit_price * i.quantity);
+    const lineTaxes = distributeLineTax(lineSubtotals, totalTax);
+    return resolvedItems.map((item, idx) => ({ ...item, tax: lineTaxes[idx] }));
+  }
+
+  const rules = await loadTaxRules(tenantId);
+  const lineResults = resolvedItems.map((item) => {
+    const { rate, isInclusive } = resolveRuleForItem(rules, item, baseRate, false);
+    const lineSub = item.unit_price * item.quantity;
+  const lineDiscShare = discountAmount > 0
+      ? (lineSub / resolvedItems.reduce((s, i) => s + i.unit_price * i.quantity, 0)) * discountAmount
+      : 0;
+    const tax = calculateOrderTax(lineSub, lineDiscShare, rate, isInclusive);
+    return { ...item, tax };
+  });
+
+  return lineResults;
 }
 
 module.exports = {
@@ -72,4 +108,6 @@ module.exports = {
   calculateOrderTax,
   distributeLineTax,
   applyTaxToResolvedItems,
+  loadTaxRules,
+  resolveRuleForItem,
 };

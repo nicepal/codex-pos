@@ -13,6 +13,7 @@ import {
 import api from '../../services/api';
 import { formatMoney } from '../../utils/currency';
 import LoadingState from '../../components/LoadingState';
+import { formatDisplayText } from '../../utils/displayText';
 
 const STATUS_COLORS = {
   pending: 'warning',
@@ -53,8 +54,8 @@ function StatusBadge({ status }) {
       }}
     >
       <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: palette }} />
-      <Typography variant="body2" fontWeight={600} sx={{ textTransform: 'capitalize', color: palette }}>
-        {status}
+      <Typography variant="body2" fontWeight={600} sx={{ color: palette }}>
+        {formatDisplayText(status)}
       </Typography>
     </Box>
   );

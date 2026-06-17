@@ -9,6 +9,7 @@ import { ShoppingCart, Search, KeyboardArrowDown } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import api from '../services/api';
 import { resolveImageUrl } from '../utils/imageUrl';
+import { resolveCurrency } from '../utils/currency';
 import { createStorefrontTheme } from '../components/storefront/storefrontTheme';
 import StorefrontFooter from '../components/storefront/StorefrontFooter';
 import TrustBar from '../components/storefront/TrustBar';
@@ -39,7 +40,7 @@ function StorefrontShell() {
   const announcementColor = themeSettings.announcement_color || primaryColor;
   const storeName = theme?.name || 'Store';
   const logoUrl = resolveImageUrl(theme?.logo_url);
-  const currency = (theme?.currency || 'USD').toUpperCase();
+  const currency = resolveCurrency(theme?.currency);
   const showAnnouncement = themeSettings.show_announcement !== false;
   const announcement = themeSettings.announcement_text
     || 'Order online · Inventory synced with our POS · Pickup & delivery available';

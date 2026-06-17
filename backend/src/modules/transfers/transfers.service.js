@@ -78,23 +78,20 @@ class TransferService {
     if (transfer.status === 'completed') throw new ValidationError('Transfer already completed');
     if (transfer.status === 'cancelled') throw new ValidationError('Transfer was cancelled');
 
-    for (const item of transfer.items) {
-      const stockField = item.variant_id ? 'product_variants' : 'products';
-      const stockId = item.variant_id || item.product_id;
-      const dec = await db.query(
-        `UPDATE ${stockField} SET stock_quantity = stock_quantity - $1
-         WHERE id = $2 AND tenant_id = $3 AND stock_quantity >= $1 RETURNING id`,
-        [item.quantity, stockId, tenantId]
-      );
-      if (!dec.rows[0]) throw new ValidationError(`Insufficient stock for transfer item`);
-
-      await inventoryService.stockIn(tenantId, {
-        product_id: item.product_id,
-        variant_id: item.variant_id,
-        quantity: item.quantity,
-        notes: `Transfer ${transfer.transfer_number} received`,
-      }, userId);
-    }
+    const branchStockService = require('../inventory/branch-stock.service');
+    await branchStockService.transfer(
+      tenantId,
+      transfer.from_branch_id,
+      transfer.to_branch_id,
+      transfer.items.map((i) => ({
+        product_id: i.product_id,
+        variant_id: i.variant_id,
+        quantity: i.quantity,
+      })),
+      userId,
+      id,
+      `Transfer ${transfer.transfer_number}`
+    );
 
     await db.query(
       `UPDATE stock_transfers SET status = 'completed', completed_at = NOW() WHERE id = $1 AND tenant_id = $2`,

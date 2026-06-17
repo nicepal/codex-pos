@@ -68,6 +68,11 @@ const authSlice = createSlice({
       localStorage.setItem('accessToken', action.payload.accessToken);
       localStorage.setItem('refreshToken', action.payload.refreshToken);
     },
+    setTenantProfile(state, action) {
+      if (state.tenant) {
+        state.tenant = { ...state.tenant, ...action.payload };
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -112,7 +117,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, setTokens } = authSlice.actions;
+export const { logout, setTokens, setTenantProfile } = authSlice.actions;
 export const selectAuth = (state) => state.auth;
 export const selectIsPlatformAdmin = (state) =>
   state.auth.user?.roles?.some((r) => ['super_admin', 'support_agent', 'billing_manager'].includes(r));

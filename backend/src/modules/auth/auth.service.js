@@ -65,6 +65,9 @@ class AuthService {
       const user = userResult.rows[0];
 
       const ownerRole = await client.query(`SELECT id FROM roles WHERE name = 'business_owner'`);
+      if (!ownerRole.rows[0]) {
+        throw new Error("Roles not seeded: 'business_owner' role missing. Run `npm run seed` on the server.");
+      }
       await client.query(
         `INSERT INTO user_roles (user_id, role_id, tenant_id) VALUES ($1, $2, $3)`,
         [user.id, ownerRole.rows[0].id, tenant.id]
@@ -218,6 +221,26 @@ class AuthService {
     if (!valid) throw new ValidationError('Invalid MFA token');
     await userRepo.update(userId, { mfa_enabled: true });
     return { enabled: true };
+  }
+
+  async pinLogin(employeeId, pin, tenantId) {
+    const bcrypt = require('bcryptjs');
+    const result = await db.query(
+      `SELECT e.*, t.slug AS tenant_slug FROM employees e
+       JOIN tenants t ON t.id = e.tenant_id
+       WHERE e.id = $1 AND e.tenant_id = $2 AND e.status = 'active'`,
+      [employeeId, tenantId]
+    );
+    const employee = result.rows[0];
+    if (!employee?.pin_code) throw new UnauthorizedError('PIN not configured');
+    const valid = await bcrypt.compare(String(pin), employee.pin_code);
+    if (!valid) throw new UnauthorizedError('Invalid PIN');
+    return {
+      employee_id: employee.id,
+      name: `${employee.first_name} ${employee.last_name}`.trim(),
+      tenant_id: employee.tenant_id,
+      tenant_slug: employee.tenant_slug,
+    };
   }
 
   async disableMfa(userId, password, mfaToken) {

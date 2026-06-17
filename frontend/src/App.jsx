@@ -54,6 +54,8 @@ import TransfersPage from './pages/business/Transfers';
 import StockTakePage from './pages/business/StockTake';
 import OnboardingPage from './pages/business/Onboarding';
 import TeamPage from './pages/business/Team';
+import DrawerPage from './pages/business/Drawer';
+import TenantCouponsPage from './pages/business/TenantCoupons';
 import NotFoundPage from './pages/NotFound';
 
 import StoreHome from './pages/storefront/Home';
@@ -128,6 +130,8 @@ function AppRoutes() {
         <Route path="stock-take" element={<StockTakePage />} />
         <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="team" element={<TeamPage />} />
+        <Route path="drawer" element={<DrawerPage />} />
+        <Route path="coupons" element={<TenantCouponsPage />} />
         <Route path="pos" element={<POSPage />} />
       </Route>
 

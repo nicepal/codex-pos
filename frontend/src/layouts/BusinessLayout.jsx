@@ -1,6 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useQuery } from '@tanstack/react-query';
 import {
   Dashboard, Inventory, ShoppingCart, People, Assessment, PointOfSale,
   Warehouse, Category, Settings, CreditCard, Store, Support,
@@ -9,7 +8,9 @@ import {
 import { logout, selectAuth } from '../features/auth/authSlice';
 import ResponsiveDrawer from '../components/ResponsiveDrawer';
 import NotificationBell from '../components/NotificationBell';
-import api from '../services/api';
+import useTenantFeatures from '../hooks/useTenantFeatures';
+import { filterNavGroups, SHOP_FEATURE } from '../config/featureNav';
+import { BusinessCurrencyProvider } from '../contexts/BusinessCurrencyContext';
 
 export default function BusinessLayout() {
   const navigate = useNavigate();
@@ -17,22 +18,20 @@ export default function BusinessLayout() {
   const dispatch = useDispatch();
   const { user, tenant } = useSelector(selectAuth);
 
-  useQuery({
-    queryKey: ['business-settings'],
-    queryFn: () => api.get('/settings').then((r) => r.data.data),
-    staleTime: 5 * 60 * 1000,
-  });
   const shopSlug = tenant?.slug || (typeof window !== 'undefined' ? localStorage.getItem('tenantSlug') : null);
   const shopPath = shopSlug ? `/store/${shopSlug}` : null;
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
-  const navGroups = [
+  const { hasFeature } = useTenantFeatures();
+
+  const navGroups = filterNavGroups([
     {
       label: 'Sales',
       items: [
         { label: 'Dashboard', path: '/dashboard', icon: <Dashboard />, selected: isActive('/dashboard'), onClick: () => navigate('/dashboard') },
         { label: 'POS', path: '/pos', icon: <PointOfSale />, selected: isActive('/pos'), onClick: () => navigate('/pos') },
+        { label: 'Drawer', path: '/drawer', icon: <Receipt />, selected: isActive('/drawer'), onClick: () => navigate('/drawer') },
         { label: 'Orders', path: '/orders', icon: <ShoppingCart />, selected: isActive('/orders'), onClick: () => navigate('/orders') },
         ...(shopPath ? [{
           label: 'My Shop',
@@ -49,6 +48,7 @@ export default function BusinessLayout() {
         { label: 'Products', path: '/products', icon: <Inventory />, selected: isActive('/products'), onClick: () => navigate('/products') },
         { label: 'Categories', path: '/categories', icon: <Category />, selected: isActive('/categories'), onClick: () => navigate('/categories') },
         { label: 'Brands', path: '/brands', icon: <Label />, selected: isActive('/brands'), onClick: () => navigate('/brands') },
+        { label: 'Coupons', path: '/coupons', icon: <Receipt />, selected: isActive('/coupons'), onClick: () => navigate('/coupons') },
       ],
     },
     {
@@ -85,18 +85,20 @@ export default function BusinessLayout() {
         { label: 'Settings', path: '/settings', icon: <Settings />, selected: isActive('/settings'), onClick: () => navigate('/settings') },
       ],
     },
-  ];
+  ], hasFeature, { showShop: hasFeature(SHOP_FEATURE) });
 
   return (
-    <ResponsiveDrawer
-      title="EYZ POS"
-      subtitle={tenant?.name || 'My Business'}
-      navGroups={navGroups}
-      user={{ email: user?.email, initial: user?.first_name?.[0] }}
-      headerExtra={<NotificationBell />}
-      onLogout={() => { dispatch(logout()); navigate('/login'); }}
-    >
-      <Outlet />
-    </ResponsiveDrawer>
+    <BusinessCurrencyProvider>
+      <ResponsiveDrawer
+        title="EYZ POS"
+        subtitle={tenant?.name || 'My Business'}
+        navGroups={navGroups}
+        user={{ email: user?.email, initial: user?.first_name?.[0] }}
+        headerExtra={<NotificationBell />}
+        onLogout={() => { dispatch(logout()); navigate('/login'); }}
+      >
+        <Outlet />
+      </ResponsiveDrawer>
+    </BusinessCurrencyProvider>
   );
 }

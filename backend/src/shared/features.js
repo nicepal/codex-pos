@@ -109,6 +109,35 @@ function isFeatureEnabled(features, key) {
   return Boolean(features?.[key]);
 }
 
+/** Clamp tenant overrides to what the subscription plan allows */
+function clampFeaturesToPlan(planFeatures, requestedOverrides) {
+  const normalized = normalizeFeatures(requestedOverrides);
+  const clamped = {};
+  const capped = [];
+  for (const key of PACK_KEYS) {
+    const planAllows = Boolean(planFeatures[key]);
+    const requested = normalized[key];
+    if (typeof requested === 'boolean') {
+      if (requested && !planAllows) {
+        clamped[key] = false;
+        capped.push(key);
+      } else {
+        clamped[key] = requested;
+      }
+    }
+  }
+  return { clamped, capped };
+}
+
+async function assertFeatureEnabled(tenantId, key) {
+  const { ForbiddenError } = require('./errors');
+  const features = await resolveTenantFeatures(tenantId);
+  if (!isFeatureEnabled(features, key)) {
+    throw new ForbiddenError(`Feature "${key}" is not enabled for this business`);
+  }
+  return features;
+}
+
 module.exports = {
   FEATURE_PACKS,
   PACK_KEYS,
@@ -118,4 +147,6 @@ module.exports = {
   getTenantFeatureOverrides,
   resolveTenantFeatures,
   isFeatureEnabled,
+  clampFeaturesToPlan,
+  assertFeatureEnabled,
 };

@@ -1,7 +1,7 @@
 import { useOutletContext } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
-import { formatMoney } from '../utils/currency';
+import { formatMoney, resolveCurrency } from '../utils/currency';
 
 export default function useStoreCurrency() {
   const ctx = useOutletContext() || {};
@@ -14,7 +14,7 @@ export default function useStoreCurrency() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const currency = (ctx.currency || theme?.currency || 'USD').toUpperCase();
+  const currency = resolveCurrency(theme?.currency, ctx.currency);
   const fmt = (amount) => formatMoney(amount, currency);
 
   return { currency, formatMoney: fmt };

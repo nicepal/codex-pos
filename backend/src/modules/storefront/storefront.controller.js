@@ -30,6 +30,11 @@ module.exports = {
     return success(res, categories);
   }),
 
+  branches: asyncHandler(async (req, res) => {
+    const branches = await storefrontService.getPickupBranches(req.tenant.id);
+    return success(res, branches);
+  }),
+
   checkout: asyncHandler(async (req, res) => {
     const order = await checkoutService.checkout(req.tenant.id, req.body);
     return success(res, order, 'Order placed');

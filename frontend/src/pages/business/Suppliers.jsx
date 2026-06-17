@@ -12,6 +12,7 @@ import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
 import RHFTextField from '../../components/RHFTextField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
+import { formatDisplayText } from '../../utils/displayText';
 
 const empty = emptyPresetProps('suppliers');
 
@@ -59,7 +60,7 @@ export default function SuppliersPage() {
     { field: 'contact_person', label: 'Contact', render: (r) => r.contact_person || '-' },
     { field: 'email', label: 'Email', render: (r) => r.email || '-' },
     { field: 'phone', label: 'Phone', render: (r) => r.phone || '-' },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={r.status} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
+    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
     {
       field: 'actions', label: 'Actions',
       render: (r) => (

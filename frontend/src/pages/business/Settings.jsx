@@ -13,7 +13,12 @@ import LoadingState from '../../components/LoadingState';
 import RHFTextField from '../../components/RHFTextField';
 import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { fetchMe } from '../../features/auth/authSlice';
+import { fetchMe, setTenantProfile } from '../../features/auth/authSlice';
+import { CURRENCY_OPTIONS } from '../../utils/currency';
+import useTenantFeatures from '../../hooks/useTenantFeatures';
+import TaxRulesSection from './settings/TaxRulesSection';
+import WebhooksSection from './settings/WebhooksSection';
+import DomainsSection from './settings/DomainsSection';
 
 function MfaSection() {
   const [secret, setSecret] = useState('');
@@ -48,7 +53,7 @@ function MfaSection() {
   );
 }
 
-function FeaturesSection({ features, packs, onChange }) {
+function FeaturesSection({ features, planFeatures, packs, onChange }) {
   const entries = Object.entries(packs || {});
   if (!entries.length) return null;
 
@@ -57,29 +62,39 @@ function FeaturesSection({ features, packs, onChange }) {
       <CardContent>
         <Typography variant="h6" gutterBottom>Feature Packs</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Enable optional capabilities for your business. Availability may depend on your subscription plan.
+          Enable optional capabilities for your business. Some packs require a higher subscription plan.
         </Typography>
         <Stack spacing={1}>
-          {entries.map(([key, meta]) => (
-            <FormControlLabel
-              key={key}
-              control={(
-                <Switch
-                  checked={!!features?.[key]}
-                  onChange={(e) => onChange(key, e.target.checked)}
-                />
-              )}
-              label={(
-                <Box>
-                  <Typography variant="body2" fontWeight={600}>{meta.label || key}</Typography>
-                  {meta.description && (
-                    <Typography variant="caption" color="text.secondary">{meta.description}</Typography>
-                  )}
-                </Box>
-              )}
-              sx={{ alignItems: 'flex-start', ml: 0 }}
-            />
-          ))}
+          {entries.map(([key, meta]) => {
+            const planAllows = planFeatures?.[key] !== false && Boolean(planFeatures?.[key]);
+            const blockedByPlan = !planAllows;
+            return (
+              <FormControlLabel
+                key={key}
+                control={(
+                  <Switch
+                    checked={!!features?.[key]}
+                    disabled={blockedByPlan}
+                    onChange={(e) => onChange(key, e.target.checked)}
+                  />
+                )}
+                label={(
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>{meta.label || key}</Typography>
+                    {meta.description && (
+                      <Typography variant="caption" color="text.secondary" display="block">{meta.description}</Typography>
+                    )}
+                    {blockedByPlan && (
+                      <Typography variant="caption" color="warning.main" display="block">
+                        Not included in your current plan — upgrade to enable
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+                sx={{ alignItems: 'flex-start', ml: 0 }}
+              />
+            );
+          })}
         </Stack>
       </CardContent>
     </Card>
@@ -87,7 +102,6 @@ function FeaturesSection({ features, packs, onChange }) {
 }
 
 const timezones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Europe/London', 'Asia/Karachi', 'Asia/Dubai'];
-const currencies = ['USD', 'EUR', 'GBP', 'PKR', 'AED', 'SAR'];
 
 const DEFAULT_THEME = {
   primary_color: '#2563eb',
@@ -106,6 +120,9 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
   const [featureFlags, setFeatureFlags] = useState({});
+  const [planFeatures, setPlanFeatures] = useState({});
+  const [cappedFeatures, setCappedFeatures] = useState([]);
+  const { hasFeature } = useTenantFeatures();
 
   const { data, isLoading } = useQuery({
     queryKey: ['business-settings'],
@@ -139,15 +156,28 @@ export default function SettingsPage() {
       tax_rate: prefs.tax_rate ?? '',
       receipt_footer: prefs.receipt_footer ?? '',
       low_stock_alert: prefs.low_stock_alert ?? true,
+      pos_quick_keys: JSON.stringify(prefs.pos_quick_keys || [], null, 2),
+      loyalty_points_per_dollar: prefs.loyalty?.points_per_dollar ?? 1,
+      loyalty_redeem_rate: prefs.loyalty?.redeem_rate ?? 0.01,
       ...theme,
     });
     setFeatureFlags(data.features || {});
+    setPlanFeatures(data.plan_features || {});
+    setCappedFeatures([]);
   }, [data, reset]);
 
   const mutation = useMutation({
     mutationFn: (payload) => api.put('/settings', payload),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      const saved = res.data.data;
+      if (saved?.features) setFeatureFlags(saved.features);
+      if (saved?.plan_features) setPlanFeatures(saved.plan_features);
+      setCappedFeatures(saved?.features_capped || []);
       queryClient.invalidateQueries(['business-settings']);
+      queryClient.invalidateQueries({ queryKey: ['storefront-theme'] });
+      if (variables?.profile?.currency) {
+        dispatch(setTenantProfile({ currency: variables.profile.currency }));
+      }
       dispatch(fetchMe());
     },
   });
@@ -178,6 +208,11 @@ export default function SettingsPage() {
         tax_rate: parseFloat(form.tax_rate) || 0,
         receipt_footer: form.receipt_footer,
         low_stock_alert: form.low_stock_alert,
+        pos_quick_keys: form.pos_quick_keys ? JSON.parse(form.pos_quick_keys) : [],
+        loyalty: {
+          points_per_dollar: parseFloat(form.loyalty_points_per_dollar) || 1,
+          redeem_rate: parseFloat(form.loyalty_redeem_rate) || 0.01,
+        },
       },
       storefront_theme: {
         primary_color: form.primary_color || DEFAULT_THEME.primary_color,
@@ -204,6 +239,11 @@ export default function SettingsPage() {
     <Box>
       <Typography variant="h5" fontWeight={700} gutterBottom>Business Settings</Typography>
       {mutation.isSuccess && <Alert severity="success" sx={{ mb: 2 }}>Settings saved successfully</Alert>}
+      {cappedFeatures.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Some feature packs were not saved because they are not included in your subscription plan: {cappedFeatures.join(', ')}.
+        </Alert>
+      )}
 
       <form key={data?.profile?.slug || 'settings'} onSubmit={handleSubmit(onSubmit)}>
         <Grid container spacing={3}>
@@ -221,7 +261,7 @@ export default function SettingsPage() {
                       control={control}
                       render={({ field }) => (
                         <TextField fullWidth select label="Currency" {...field}>
-                          {currencies.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                          {CURRENCY_OPTIONS.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
                         </TextField>
                       )}
                     />
@@ -255,15 +295,39 @@ export default function SettingsPage() {
                   <Grid item xs={12}>
                     <TextField fullWidth label="Receipt Footer Text" multiline rows={2} {...register('receipt_footer')} placeholder="Thank you for your purchase!" />
                   </Grid>
+                  {featureFlags.pos_pro && (
+                    <Grid item xs={12}>
+                      <TextField fullWidth label="POS Quick Keys (JSON)" multiline rows={4}
+                        helperText='[{"product_id":"uuid","name":"Coffee"}]'
+                        {...register('pos_quick_keys')} />
+                    </Grid>
+                  )}
+                  {featureFlags.crm_pro && (
+                    <>
+                      <Grid item xs={12} sm={6}>
+                        <TextField fullWidth label="Loyalty points per dollar" type="number"
+                          inputProps={{ step: 0.1, min: 0 }} {...register('loyalty_points_per_dollar')} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField fullWidth label="Redeem rate ($ per point)" type="number"
+                          inputProps={{ step: 0.01, min: 0 }} {...register('loyalty_redeem_rate')} />
+                      </Grid>
+                    </>
+                  )}
                 </Grid>
               </CardContent>
             </Card>
 
             <FeaturesSection
               features={featureFlags}
+              planFeatures={planFeatures}
               packs={data?.feature_packs}
               onChange={(key, val) => setFeatureFlags((prev) => ({ ...prev, [key]: val }))}
             />
+
+            <TaxRulesSection enabled={hasFeature('tax_advanced')} />
+            <WebhooksSection enabled={hasFeature('omnichannel')} />
+            <DomainsSection enabled={hasFeature('omnichannel')} storeSlug={storeSlug} />
 
             <Card>
               <CardContent>

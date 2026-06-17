@@ -18,6 +18,11 @@ class BusinessController {
     return success(res, business);
   });
 
+  tenantDashboard = asyncHandler(async (req, res) => {
+    const data = await businessService.getTenantDashboard(req.params.id);
+    return success(res, data);
+  });
+
   update = asyncHandler(async (req, res) => {
     const business = await businessService.update(req.params.id, req.body);
     return success(res, business, 'Business updated');

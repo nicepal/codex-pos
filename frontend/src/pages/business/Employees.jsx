@@ -12,6 +12,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
+import { formatDisplayText } from '../../utils/displayText';
 
 const empty = emptyPresetProps('employees');
 
@@ -61,8 +62,8 @@ export default function EmployeesPage() {
     { field: 'name', label: 'Name' },
     { field: 'email', label: 'Email', render: (r) => r.email || '-' },
     { field: 'phone', label: 'Phone', render: (r) => r.phone || '-' },
-    { field: 'role', label: 'Role', render: (r) => <Chip label={r.role} size="small" /> },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={r.status} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
+    { field: 'role', label: 'Role', render: (r) => <Chip label={formatDisplayText(r.role)} size="small" /> },
+    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
     { field: 'hired_at', label: 'Hired', render: (r) => r.hired_at ? new Date(r.hired_at).toLocaleDateString() : '-' },
     {
       field: 'actions', label: 'Actions',
@@ -99,12 +100,12 @@ export default function EmployeesPage() {
         <Grid item xs={12} sm={6}><TextField fullWidth label="Phone" {...register('phone')} /></Grid>
         <Grid item xs={12} sm={6}>
           <TextField fullWidth select label="Role" defaultValue="cashier" {...register('role')}>
-            {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+            {ROLES.map((r) => <MenuItem key={r} value={r}>{formatDisplayText(r)}</MenuItem>)}
           </TextField>
         </Grid>
         <Grid item xs={12} sm={6}>
           <TextField fullWidth select label="Status" defaultValue="active" {...register('status')}>
-            {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+            {STATUSES.map((s) => <MenuItem key={s} value={s}>{formatDisplayText(s)}</MenuItem>)}
           </TextField>
         </Grid>
         <Grid item xs={12}><TextField fullWidth label="Hire Date" type="date" InputLabelProps={{ shrink: true }} {...register('hired_at')} /></Grid>

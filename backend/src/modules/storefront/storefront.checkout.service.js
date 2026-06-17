@@ -17,6 +17,8 @@ class StorefrontCheckoutService {
       notes: data.notes || customerNote || null,
       order_type: 'online',
       status: data.payment_method ? 'paid' : 'pending',
+      fulfillment_type: data.fulfillment_type,
+      pickup_branch_id: data.pickup_branch_id,
     }, null);
 
     if (data.customer_id && order.status === 'paid') {

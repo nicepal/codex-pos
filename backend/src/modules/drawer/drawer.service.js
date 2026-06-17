@@ -15,16 +15,18 @@ class DrawerService {
   }
 
   async open(tenantId, data, userId) {
+    const branchId = data.branch_id || null;
     const existing = await db.query(
-      `SELECT id FROM cash_drawer_sessions WHERE tenant_id = $1 AND branch_id = $2 AND status = 'open'`,
-      [tenantId, data.branch_id || null]
+      `SELECT id FROM cash_drawer_sessions
+       WHERE tenant_id = $1 AND branch_id IS NOT DISTINCT FROM $2 AND status = 'open'`,
+      [tenantId, branchId]
     );
     if (existing.rows[0]) throw new ValidationError('Drawer already open for this branch');
 
     const result = await db.query(
       `INSERT INTO cash_drawer_sessions (tenant_id, branch_id, employee_id, opened_by, opening_float, status)
        VALUES ($1, $2, $3, $4, $5, 'open') RETURNING *`,
-      [tenantId, data.branch_id || null, data.employee_id || null, userId, data.opening_float || 0]
+      [tenantId, branchId, data.employee_id || null, userId, data.opening_float || 0]
     );
     return result.rows[0];
   }

@@ -4,6 +4,7 @@ import { Box, Typography, Chip, Button } from '@mui/material';
 import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
+import { formatDisplayText } from '../../utils/displayText';
 
 export default function AffiliatesPage() {
   const [selectedId, setSelectedId] = useState(null);
@@ -45,7 +46,7 @@ export default function AffiliatesPage() {
   const commissionColumns = [
     { field: 'tenant_name', label: 'Business', render: (r) => r.tenant_name || '-' },
     { field: 'amount', label: 'Amount', render: (r) => `$${Number(r.amount).toFixed(2)}` },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={r.status} size="small" /> },
+    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" /> },
     {
       field: 'actions', label: 'Actions',
       render: (r) => (

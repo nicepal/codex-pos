@@ -12,6 +12,7 @@ import {
 } from '@mui/icons-material';
 import api from '../../services/api';
 import LoadingState from '../LoadingState';
+import { formatDisplayText } from '../../utils/displayText';
 
 const STATUS_STYLES = {
   open: { color: '#94a3b8', bg: alpha('#94a3b8', 0.15) },
@@ -55,7 +56,7 @@ function Pill({ label, styles }) {
         textTransform: 'capitalize',
       }}
     >
-      {label?.replace('_', ' ') || '—'}
+      {formatDisplayText(label) || '—'}
     </Box>
   );
 }

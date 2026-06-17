@@ -1,6 +1,6 @@
 const db = require('../../config/database');
 const { NotFoundError } = require('../../shared/errors');
-const { resolveTenantFeatures, isFeatureEnabled, FEATURE_PACKS, normalizeFeatures } = require('../../shared/features');
+const { resolveTenantFeatures, FEATURE_PACKS, normalizeFeatures, getPlanFeatures, clampFeaturesToPlan } = require('../../shared/features');
 
 class SettingsService {
   async getBusinessSettings(tenantId) {
@@ -29,6 +29,7 @@ class SettingsService {
     const checkoutService = require('../storefront/storefront.checkout.service');
     const themeData = await checkoutService.getTheme(tenantId);
     const features = await resolveTenantFeatures(tenantId);
+    const planFeatures = await getPlanFeatures(tenantId);
     const { features: _feat, ...prefsWithoutFeatures } = settingsMap;
 
     return {
@@ -48,6 +49,7 @@ class SettingsService {
       },
       preferences: prefsWithoutFeatures,
       features,
+      plan_features: planFeatures,
       feature_packs: FEATURE_PACKS,
       storefront_theme: themeData.theme || {},
     };
@@ -83,13 +85,19 @@ class SettingsService {
     }
 
     if (featureOverrides && typeof featureOverrides === 'object') {
-      const normalized = normalizeFeatures(featureOverrides);
+      const planFeatures = await getPlanFeatures(tenantId);
+      const { clamped, capped } = clampFeaturesToPlan(planFeatures, featureOverrides);
       await db.query(
         `INSERT INTO settings (tenant_id, key, value)
          VALUES ($1, 'features', $2)
          ON CONFLICT (tenant_id, key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-        [tenantId, JSON.stringify(normalized)]
+        [tenantId, JSON.stringify(clamped)]
       );
+      if (capped.length) {
+        const result = await this.getBusinessSettings(tenantId);
+        result.features_capped = capped;
+        return result;
+      }
     }
 
     if (storefront_theme) {

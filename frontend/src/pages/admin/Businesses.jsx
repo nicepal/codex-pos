@@ -10,6 +10,7 @@ import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
 import RHFTextField from '../../components/RHFTextField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
+import { formatDisplayText } from '../../utils/displayText';
 
 const statusColors = { active: 'success', trial: 'info', suspended: 'error', expired: 'warning' };
 const empty = emptyPresetProps('businesses');
@@ -77,7 +78,7 @@ export default function BusinessesPage() {
     { field: 'name', label: 'Business' },
     { field: 'owner', label: 'Owner', render: (r) => r.owner_name || r.owner_email },
     { field: 'plan_name', label: 'Plan', render: (r) => r.plan_name || '-' },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={r.status} color={statusColors[r.status] || 'default'} size="small" /> },
+    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} color={statusColors[r.status] || 'default'} size="small" /> },
     { field: 'subdomain', label: 'Subdomain', render: (r) => r.subdomain || `${r.slug}.eyz.com` },
     {
       field: 'actions', label: 'Actions',

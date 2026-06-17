@@ -7,6 +7,7 @@ import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
+import { formatDisplayText } from '../../utils/displayText';
 
 const empty = emptyPresetProps('orders');
 
@@ -37,9 +38,9 @@ export default function OrdersPage() {
 
   const columns = [
     { field: 'order_number', label: 'Order #' },
-    { field: 'order_type', label: 'Type', render: (r) => r.order_type?.toUpperCase() },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={r.status} size="small" color={statusColors[r.status] || 'default'} /> },
-    { field: 'payment_method', label: 'Payment', render: (r) => r.payment_method || '-' },
+    { field: 'order_type', label: 'Type', render: (r) => formatDisplayText(r.order_type) || '—' },
+    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={statusColors[r.status] || 'default'} /> },
+    { field: 'payment_method', label: 'Payment', render: (r) => formatDisplayText(r.payment_method) || '-' },
     { field: 'total_amount', label: 'Total', align: 'right', render: (r) => formatMoney(r.total_amount) },
     { field: 'created_at', label: 'Date', render: (r) => new Date(r.created_at).toLocaleString() },
   ];

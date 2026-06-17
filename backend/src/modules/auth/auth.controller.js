@@ -1,6 +1,7 @@
 const authService = require('./auth.service');
 const { success, created } = require('../../shared/response');
 const { asyncHandler } = require('../../middleware/errorHandler');
+const { ValidationError } = require('../../shared/errors');
 
 class AuthController {
   register = asyncHandler(async (req, res) => {
@@ -74,6 +75,19 @@ class AuthController {
   disableMfa = asyncHandler(async (req, res) => {
     const result = await authService.disableMfa(req.user.id, req.body.password, req.body.token);
     return success(res, result);
+  });
+
+  pinLogin = asyncHandler(async (req, res) => {
+    const { employee_id: employeeId, pin, tenant_id: tenantId, tenant_slug: tenantSlug } = req.body;
+    let resolvedTenantId = tenantId;
+    if (!resolvedTenantId && tenantSlug) {
+      const db = require('../../config/database');
+      const t = await db.query('SELECT id FROM tenants WHERE slug = $1', [tenantSlug]);
+      resolvedTenantId = t.rows[0]?.id;
+    }
+    if (!resolvedTenantId) throw new ValidationError('tenant_id or tenant_slug required');
+    const result = await authService.pinLogin(employeeId, pin, resolvedTenantId);
+    return success(res, result, 'PIN login successful');
   });
 }
 

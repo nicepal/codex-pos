@@ -10,7 +10,7 @@ import api from '../../services/api';
 import LoadingState from '../../components/LoadingState';
 import EmptyState from '../../components/EmptyState';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
-import { formatMoney as formatMoneyCurrency } from '../../utils/currency';
+import { formatDisplayText } from '../../utils/displayText';
 
 function formatLimit(value) {
   if (value === -1 || value === null || value === undefined) return 'Unlimited';
@@ -127,10 +127,10 @@ export default function SubscriptionPage() {
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
               <Typography variant="h6">{current.plan_name || 'Current plan'}</Typography>
-              <Chip label={current.status} color="primary" size="small" sx={{ textTransform: 'capitalize' }} />
+              <Chip label={formatDisplayText(current.status)} color="primary" size="small" />
             </Box>
             <Typography variant="body2" color="text.secondary">
-              Billing cycle: {current.billing_cycle || 'monthly'}
+              Billing cycle: {formatDisplayText(current.billing_cycle || 'monthly')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Renews: {current.current_period_end ? new Date(current.current_period_end).toLocaleDateString() : '—'}
@@ -263,7 +263,7 @@ export default function SubscriptionPage() {
             {checkout?.plan_name} — {checkout?.billing_cycle === 'annual' ? 'Yearly' : 'Monthly'} billing
           </Typography>
           <Typography gutterBottom>
-            Total: {formatMoneyCurrency(checkout?.amount, checkout?.currency || currency)}
+            Total: {formatMoney(checkout?.amount)}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             In production this redirects to a payment provider. For development, confirm the simulated payment below.

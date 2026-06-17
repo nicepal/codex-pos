@@ -35,7 +35,12 @@ const couponRoutes = require('./modules/coupons/coupons.routes');
 const transferRoutes = require('./modules/transfers/transfers.routes');
 const webhookRoutes = require('./modules/webhooks/webhooks.routes');
 const drawerRoutes = require('./modules/drawer/drawer.routes');
+const taxRulesRoutes = require('./modules/tax-rules/tax-rules.routes');
+const activityRoutes = require('./modules/activity/activity.routes');
+const domainRoutes = require('./modules/domains/domains.routes');
+const expenseRoutes = require('./modules/expenses/expenses.routes');
 const crudModules = require('./modules/_crud');
+const employeeRoutes = require('./modules/employees/employees.routes');
 const platform = require('./modules/platform/platform.services');
 const { authenticate, authorize, requireTenantAccess, requirePlatformAdmin } = require('./middleware/auth');
 const { requireTenant } = require('./middleware/tenant');
@@ -93,8 +98,8 @@ function createApp() {
   api.use('/customers', customerRoutes);
   api.use('/suppliers', createCrudRouter('suppliers'));
   api.use('/orders', orderRoutes);
-  api.use('/employees', createCrudRouter('employees'));
-  api.use('/expenses', createCrudRouter('expenses'));
+  api.use('/employees', employeeRoutes);
+  api.use('/expenses', expenseRoutes);
   api.use('/reports', reportRoutes);
   api.use('/storefront', storefrontRoutes);
   api.use('/settings', settingsRoutes);
@@ -115,6 +120,9 @@ function createApp() {
   api.use('/transfers', transferRoutes);
   api.use('/webhooks', webhookRoutes);
   api.use('/drawer', drawerRoutes);
+  api.use('/tax-rules', taxRulesRoutes);
+  api.use('/activity', activityRoutes);
+  api.use('/domains', domainRoutes);
 
   api.get('/plans', asyncHandler(async (req, res) => {
     const result = await platform.plans.service.list(req.query);

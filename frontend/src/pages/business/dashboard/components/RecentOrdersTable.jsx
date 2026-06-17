@@ -3,6 +3,7 @@ import { Visibility, Print, Replay } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import DashboardSection from './DashboardSection';
 import DataTable from '../../../../components/DataTable';
+import { formatDisplayText } from '../../../../utils/displayText';
 
 const statusColors = {
   pending: 'warning',
@@ -28,7 +29,7 @@ export default function RecentOrdersTable({ orders, formatMoney, loading, error,
       id: 'status',
       label: 'Status',
       render: (row) => (
-        <Chip label={row.status} size="small" color={statusColors[row.status] || 'default'} />
+        <Chip label={formatDisplayText(row.status)} size="small" color={statusColors[row.status] || 'default'} />
       ),
     },
     {

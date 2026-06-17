@@ -16,6 +16,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import StatCard from '../../components/StatCard';
 import EmptyState from '../../components/EmptyState';
 import useTenantFeatures from '../../hooks/useTenantFeatures';
+import { formatDisplayText } from '../../utils/displayText';
 
 function varianceChip(expected, counted) {
   if (counted === '' || counted === null || counted === undefined) return null;
@@ -185,7 +186,7 @@ export default function StockTakePage() {
     { field: 'session_number', label: 'Session' },
     { field: 'branch_name', label: 'Branch', render: (r) => r.branch_name || 'All' },
     { field: 'line_count', label: 'Products counted' },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={r.status} size="small" color={statusColors[r.status] || 'default'} /> },
+    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={statusColors[r.status] || 'default'} /> },
     {
       field: 'created_at',
       label: 'Date',

@@ -3,6 +3,7 @@ const BaseRepository = require('../../shared/base.repository');
 const { generateOrderNumber } = require('../../utils/helpers');
 const { NotFoundError, ValidationError } = require('../../shared/errors');
 const inventoryService = require('../inventory/inventory.service');
+const branchStockService = require('../inventory/branch-stock.service');
 const { applyTaxToResolvedItems } = require('../../services/tax.service');
 const { resolveTenantFeatures, isFeatureEnabled } = require('../../shared/features');
 
@@ -27,7 +28,42 @@ class OrderService {
     this.repo = new OrderRepository();
   }
 
-  async _resolveLineItems(client, tenantId, items, { skipStockCheck = false, allowNegativeStock = false } = {}) {
+  async _validatePosProFeatures(features, data, resolvedItems) {
+    const hasVariant = data.items?.some((i) => i.variant_id) || resolvedItems?.some((i) => i.variant_id);
+    if (hasVariant && !isFeatureEnabled(features, 'pos_pro')) {
+      throw new ValidationError('POS Pro is required for variant sales');
+    }
+    const hasLineDiscount = data.items?.some((i) => parseFloat(i.discount) > 0);
+    if (hasLineDiscount && !isFeatureEnabled(features, 'pos_pro')) {
+      throw new ValidationError('POS Pro is required for line discounts');
+    }
+  }
+
+  async _validateManagerDiscount(tenantId, features, subtotal, discountAmount, data) {
+    if (discountAmount <= subtotal * 0.2) return;
+    if (!isFeatureEnabled(features, 'pos_pro')) {
+      throw new ValidationError('Discount exceeds allowed limit');
+    }
+    if (!data.manager_employee_id || !data.manager_pin) {
+      throw new ValidationError('Manager approval required for discounts over 20%');
+    }
+    const bcrypt = require('bcryptjs');
+    const result = await db.query(
+      `SELECT pin_code FROM employees WHERE id = $1 AND tenant_id = $2 AND status = 'active'`,
+      [data.manager_employee_id, tenantId]
+    );
+    const employee = result.rows[0];
+    if (!employee?.pin_code) throw new ValidationError('Manager PIN not configured');
+    const valid = await bcrypt.compare(String(data.manager_pin), employee.pin_code);
+    if (!valid) throw new ValidationError('Invalid manager PIN');
+  }
+
+  async _resolveLineItems(client, tenantId, items, {
+    skipStockCheck = false,
+    allowNegativeStock = false,
+    branchId = null,
+    features = {},
+  } = {}) {
     if (!items?.length) throw new ValidationError('Order must have at least one item');
 
     const resolved = [];
@@ -41,10 +77,14 @@ class OrderService {
       let productName;
       let sku;
       let stockQty;
+      let isOpenPrice = false;
+      let productType = 'simple';
+      let categoryId = null;
+      let taxRuleId = null;
 
       if (variantId) {
         const result = await client.query(
-          `SELECT pv.*, p.name AS parent_name, p.id AS parent_product_id
+          `SELECT pv.*, p.name AS parent_name, p.id AS parent_product_id, p.is_open_price, p.product_type, p.category_id, p.tax_rule_id
            FROM product_variants pv
            JOIN products p ON p.id = pv.product_id AND p.tenant_id = $1
            WHERE pv.id = $2 AND pv.tenant_id = $1`,
@@ -56,7 +96,15 @@ class OrderService {
         unitPrice = parseFloat(row.sale_price);
         productName = `${row.parent_name} - ${row.name}`;
         sku = row.sku;
-        stockQty = row.stock_quantity;
+        isOpenPrice = row.is_open_price;
+        productType = row.product_type;
+        categoryId = row.category_id;
+        taxRuleId = row.tax_rule_id;
+        if (branchId) {
+          stockQty = await branchStockService.getQuantity(tenantId, branchId, productId, variantId, client);
+        } else {
+          stockQty = row.stock_quantity;
+        }
       } else if (productId) {
         const result = await client.query(
           `SELECT * FROM products WHERE id = $1 AND tenant_id = $2 AND status = 'active'`,
@@ -64,12 +112,40 @@ class OrderService {
         );
         const row = result.rows[0];
         if (!row) throw new NotFoundError('Product not found or inactive');
+        if (row.product_type === 'bundle') {
+          const bundleService = require('../products/catalog-bundle.service');
+          const expanded = await bundleService.expandBundleForOrder(client, tenantId, productId, qty);
+          resolved.push(...expanded.map((e) => ({
+            ...e,
+            discount: parseFloat(item.discount) || 0,
+            tax: 0,
+            category_id: row.category_id,
+            tax_rule_id: row.tax_rule_id,
+            product_type: 'bundle',
+          })));
+          continue;
+        }
         unitPrice = parseFloat(row.sale_price);
         productName = row.name;
         sku = row.sku;
-        stockQty = row.stock_quantity;
+        isOpenPrice = row.is_open_price;
+        productType = row.product_type;
+        categoryId = row.category_id;
+        taxRuleId = row.tax_rule_id;
+        if (branchId) {
+          stockQty = await branchStockService.getQuantity(tenantId, branchId, productId, null, client);
+        } else {
+          stockQty = row.stock_quantity;
+        }
       } else {
         throw new ValidationError('Each item must have product_id or variant_id');
+      }
+
+      if (item.unit_price != null && parseFloat(item.unit_price) !== unitPrice) {
+        if (!isFeatureEnabled(features, 'open_price_items') || !isOpenPrice) {
+          throw new ValidationError(`Open price not allowed for ${productName}`);
+        }
+        unitPrice = parseFloat(item.unit_price);
       }
 
       if (!skipStockCheck && !allowNegativeStock && stockQty < qty) {
@@ -85,6 +161,11 @@ class OrderService {
         unit_price: unitPrice,
         discount: parseFloat(item.discount) || 0,
         tax: parseFloat(item.tax) || 0,
+        category_id: categoryId,
+        tax_rule_id: taxRuleId,
+        product_type: productType,
+        serial_numbers: item.serial_numbers || [],
+        batch_id: item.batch_id || null,
       });
     }
     return resolved;
@@ -177,12 +258,19 @@ class OrderService {
 
       await this._validateCustomer(client, tenantId, data.customer_id);
       await this._validateBranch(client, tenantId, data.branch_id);
+      const branchId = data.branch_id || await branchStockService.getDefaultBranchId(tenantId, client);
+
+      await this._validatePosProFeatures(features, data);
 
       let resolvedItems = await this._resolveLineItems(client, tenantId, data.items, {
         skipStockCheck,
         allowNegativeStock,
+        branchId,
+        features,
       });
       const discountAmount = Math.max(0, parseFloat(data.discount_amount) || 0);
+      const preSubtotal = resolvedItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
+      await this._validateManagerDiscount(tenantId, features, preSubtotal, discountAmount, data);
       let couponDiscount = 0;
       let couponId = null;
       if (data.coupon_code) {
@@ -193,20 +281,25 @@ class OrderService {
         couponId = applied.coupon.id;
       }
       const totalDiscount = discountAmount + couponDiscount;
-      resolvedItems = await applyTaxToResolvedItems(tenantId, resolvedItems, totalDiscount);
+      resolvedItems = await applyTaxToResolvedItems(tenantId, resolvedItems, totalDiscount, data.customer_id);
 
       const orderNumber = generateOrderNumber();
       let subtotal = 0;
       let taxAmount = 0;
 
+      const fulfillmentStatus = data.fulfillment_type === 'pickup' ? 'awaiting_pickup' : (data.fulfillment_type ? 'none' : 'none');
+
       const orderResult = await client.query(
         `INSERT INTO orders (tenant_id, order_number, customer_id, employee_id, branch_id, order_type, status,
-         subtotal, tax_amount, discount_amount, total_amount, payment_method, payment_status, notes, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 0, $8, 0, $9, $10, $11, $12) RETURNING *`,
+         subtotal, tax_amount, discount_amount, total_amount, payment_method, payment_status, notes, created_by,
+         fulfillment_status, pickup_branch_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 0, $8, 0, $9, $10, $11, $12, $13, $14) RETURNING *`,
         [
           tenantId, orderNumber, data.customer_id || null, data.employee_id || null, data.branch_id || null,
           data.order_type || 'pos', status, totalDiscount, data.payment_method || null,
           data.payment_method && status !== 'on_hold' ? 'paid' : 'pending', data.notes || null, userId,
+          data.fulfillment_type === 'pickup' ? fulfillmentStatus : 'none',
+          data.pickup_branch_id || null,
         ]
       );
       const order = orderResult.rows[0];
@@ -224,30 +317,9 @@ class OrderService {
         );
 
         if (item.product_id && !skipStockCheck) {
-          const stockField = item.variant_id ? 'product_variants' : 'products';
-          const stockId = item.variant_id || item.product_id;
-          if (allowNegativeStock) {
-            await client.query(
-              `UPDATE ${stockField} SET stock_quantity = stock_quantity - $1
-               WHERE id = $2 AND tenant_id = $3`,
-              [item.quantity, stockId, tenantId]
-            );
-          } else {
-            const stockResult = await client.query(
-              `UPDATE ${stockField} SET stock_quantity = stock_quantity - $1
-               WHERE id = $2 AND tenant_id = $3 AND stock_quantity >= $1
-               RETURNING id`,
-              [item.quantity, stockId, tenantId]
-            );
-            if (!stockResult.rows[0]) {
-              throw new ValidationError(`Insufficient stock for ${item.product_name}`);
-            }
-          }
-
-          await client.query(
-            `INSERT INTO inventory_transactions (tenant_id, product_id, variant_id, transaction_type, quantity, reference_type, reference_id, created_by)
-             VALUES ($1, $2, $3, 'sale', $4, 'order', $5, $6)`,
-            [tenantId, item.product_id, item.variant_id, -item.quantity, order.id, userId]
+          await branchStockService.saleDecrement(
+            tenantId, branchId, item.product_id, item.variant_id,
+            item.quantity, order.id, userId, allowNegativeStock, client
           );
         }
       }
@@ -325,11 +397,15 @@ class OrderService {
     const order = await this.getById(tenantId, orderId);
     if (order.status !== 'on_hold') throw new ValidationError('Order is not on hold');
 
+    const features = await resolveTenantFeatures(tenantId);
+    const allowNegativeStock = isFeatureEnabled(features, 'allow_negative_stock');
+    const branchId = order.branch_id || await branchStockService.getDefaultBranchId(tenantId);
+
     await this._resolveLineItems(db, tenantId, order.items.map((i) => ({
       product_id: i.product_id,
       variant_id: i.variant_id,
       quantity: i.quantity,
-    })));
+    })), { allowNegativeStock, branchId, features });
 
     await this.repo.update(orderId, {
       status: 'paid',
@@ -340,16 +416,10 @@ class OrderService {
 
     for (const item of order.items) {
       if (item.product_id) {
-        const stockField = item.variant_id ? 'product_variants' : 'products';
-        const stockId = item.variant_id || item.product_id;
-        const stockResult = await db.query(
-          `UPDATE ${stockField} SET stock_quantity = stock_quantity - $1
-           WHERE id = $2 AND tenant_id = $3 AND stock_quantity >= $1 RETURNING id`,
-          [item.quantity, stockId, tenantId]
+        await branchStockService.saleDecrement(
+          tenantId, branchId, item.product_id, item.variant_id,
+          item.quantity, orderId, userId, allowNegativeStock
         );
-        if (!stockResult.rows[0]) {
-          throw new ValidationError(`Insufficient stock for ${item.product_name}`);
-        }
       }
     }
 

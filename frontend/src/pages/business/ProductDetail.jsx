@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Tabs, Tab, Grid, TextField, Button, IconButton, Chip, Avatar,
-  Card, CardContent, MenuItem, Divider, Checkbox,
+  Card, CardContent, MenuItem, Divider, Checkbox, FormControlLabel, Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
 import { ArrowBack, Add, Delete, Save } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
@@ -14,6 +14,9 @@ import LoadingState from '../../components/LoadingState';
 import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteToolbar from '../../components/BulkDeleteToolbar';
+import useBusinessCurrency from '../../hooks/useBusinessCurrency';
+import useTenantFeatures from '../../hooks/useTenantFeatures';
+import { formatDisplayText } from '../../utils/displayText';
 
 function TabPanel({ value, index, children }) {
   return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null;
@@ -29,8 +32,12 @@ export default function ProductDetailPage() {
   const [selectedImageIds, setSelectedImageIds] = useState([]);
   const [bulkDeleteImagesOpen, setBulkDeleteImagesOpen] = useState(false);
   const [selectedVariantIds, setSelectedVariantIds] = useState([]);
-  const [bulkDeleteVariantsOpen, setBulkDeleteVariantsOpen] = useState(false);
+  const [serialForm, setSerialForm] = useState({ serial_number: '', branch_id: '' });
+  const [batchForm, setBatchForm] = useState({ batch_number: '', quantity: '', expiry_date: '', branch_id: '' });
   const queryClient = useQueryClient();
+  const { moneyLabel } = useBusinessCurrency();
+  const { hasFeature } = useTenantFeatures();
+  const catalogPro = hasFeature('catalog_pro');
   const { register, handleSubmit, reset } = useForm();
 
   const { data: product, isLoading } = useQuery({
@@ -98,6 +105,46 @@ export default function ProductDetailPage() {
     },
   });
 
+  const [bulkDeleteVariantsOpen, setBulkDeleteVariantsOpen] = useState(false);
+
+  const { data: branches } = useQuery({
+    queryKey: ['branches'],
+    queryFn: () => api.get('/branches', { params: { limit: 100 } }).then((r) => r.data.data),
+    enabled: catalogPro,
+  });
+
+  const { data: serials, refetch: refetchSerials } = useQuery({
+    queryKey: ['product-serials', id],
+    queryFn: () => api.get(`/products/${id}/serials`).then((r) => r.data.data),
+    enabled: catalogPro && !!id,
+  });
+
+  const { data: batches, refetch: refetchBatches } = useQuery({
+    queryKey: ['product-batches', id],
+    queryFn: () => api.get(`/products/${id}/batches`).then((r) => r.data.data),
+    enabled: catalogPro && !!id,
+  });
+
+  const addSerialMutation = useMutation({
+    mutationFn: (payload) => api.post(`/products/${id}/serials`, payload),
+    onSuccess: () => { refetchSerials(); setSerialForm({ serial_number: '', branch_id: '' }); },
+  });
+
+  const deleteSerialMutation = useMutation({
+    mutationFn: (serialId) => api.delete(`/products/${id}/serials/${serialId}`),
+    onSuccess: () => refetchSerials(),
+  });
+
+  const addBatchMutation = useMutation({
+    mutationFn: (payload) => api.post(`/products/${id}/batches`, payload),
+    onSuccess: () => { refetchBatches(); setBatchForm({ batch_number: '', quantity: '', expiry_date: '', branch_id: '' }); },
+  });
+
+  const deleteBatchMutation = useMutation({
+    mutationFn: (batchId) => api.delete(`/products/${id}/batches/${batchId}`),
+    onSuccess: () => refetchBatches(),
+  });
+
   const toggleImageSelection = (imageId) => {
     setSelectedImageIds((prev) => (prev.includes(imageId) ? prev.filter((x) => x !== imageId) : [...prev, imageId]));
   };
@@ -132,6 +179,9 @@ export default function ProductDetailPage() {
     brand_id: d.brand_id || null,
     meta_title: d.meta_title,
     meta_description: d.meta_description,
+    is_open_price: !!d.is_open_price,
+    tracks_serials: !!d.tracks_serials,
+    tracks_batches: !!d.tracks_batches,
   }));
 
   const saveVariants = () => updateMutation.mutate({
@@ -157,6 +207,8 @@ export default function ProductDetailPage() {
         <Tab label="General" />
         <Tab label={`Variants (${product.variants?.length || 0})`} />
         <Tab label={`Images (${product.images?.length || 0})`} />
+        {catalogPro && <Tab label={`Serials (${serials?.length || 0})`} />}
+        {catalogPro && <Tab label={`Batches (${batches?.length || 0})`} />}
       </Tabs>
 
       <TabPanel value={tab} index={0}>
@@ -173,12 +225,33 @@ export default function ProductDetailPage() {
                 <CardContent>
                   <TextField fullWidth label="SKU" sx={{ mb: 2 }} {...register('sku')} />
                   <TextField fullWidth label="Barcode" sx={{ mb: 2 }} {...register('barcode')} />
-                  <TextField fullWidth label="Sale Price" type="number" sx={{ mb: 2 }} {...register('sale_price')} />
-                  <TextField fullWidth label="Cost Price" type="number" sx={{ mb: 2 }} {...register('cost_price')} />
+                  <TextField fullWidth label={moneyLabel('Sale Price')} type="number" sx={{ mb: 2 }} {...register('sale_price')} />
+                  <TextField fullWidth label={moneyLabel('Cost Price')} type="number" sx={{ mb: 2 }} {...register('cost_price')} />
                   <TextField fullWidth label="Stock" type="number" sx={{ mb: 2 }} {...register('stock_quantity')} />
                   <TextField fullWidth select label="Status" defaultValue="active" {...register('status')}>
-                    {['active', 'inactive', 'draft'].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                    {['active', 'inactive', 'draft'].map((s) => <MenuItem key={s} value={s}>{formatDisplayText(s)}</MenuItem>)}
                   </TextField>
+                  {hasFeature('open_price_items') && (
+                    <FormControlLabel
+                      control={<Checkbox {...register('is_open_price')} defaultChecked={!!product.is_open_price} />}
+                      label="Open price at POS"
+                      sx={{ mt: 1, display: 'block' }}
+                    />
+                  )}
+                  {catalogPro && (
+                    <>
+                      <FormControlLabel
+                        control={<Checkbox {...register('tracks_serials')} defaultChecked={!!product.tracks_serials} />}
+                        label="Track serial numbers"
+                        sx={{ mt: 1, display: 'block' }}
+                      />
+                      <FormControlLabel
+                        control={<Checkbox {...register('tracks_batches')} defaultChecked={!!product.tracks_batches} />}
+                        label="Track batches / expiry"
+                        sx={{ display: 'block' }}
+                      />
+                    </>
+                  )}
                   <Button type="submit" variant="contained" startIcon={<Save />} fullWidth sx={{ mt: 2 }} disabled={updateMutation.isPending}>
                     Save Changes
                   </Button>
@@ -218,7 +291,7 @@ export default function ProductDetailPage() {
                   <TextField fullWidth label="SKU" value={v.sku || ''} onChange={(e) => updateVariant(idx, 'sku', e.target.value)} />
                 </Grid>
                 <Grid item xs={6} sm={2}>
-                  <TextField fullWidth label="Price" type="number" value={v.sale_price} onChange={(e) => updateVariant(idx, 'sale_price', e.target.value)} />
+                  <TextField fullWidth label={moneyLabel('Price')} type="number" value={v.sale_price} onChange={(e) => updateVariant(idx, 'sale_price', e.target.value)} />
                 </Grid>
                 <Grid item xs={6} sm={2}>
                   <TextField fullWidth label="Stock" type="number" value={v.stock_quantity} onChange={(e) => updateVariant(idx, 'stock_quantity', e.target.value)} />
@@ -273,6 +346,124 @@ export default function ProductDetailPage() {
           <Typography color="text.secondary">No images yet. Upload one above.</Typography>
         )}
       </TabPanel>
+
+      {catalogPro && (
+        <TabPanel value={tab} index={3}>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth label="Serial number" value={serialForm.serial_number}
+                onChange={(e) => setSerialForm({ ...serialForm, serial_number: e.target.value })} />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth select label="Branch" value={serialForm.branch_id}
+                onChange={(e) => setSerialForm({ ...serialForm, branch_id: e.target.value })}>
+                <MenuItem value="">Any</MenuItem>
+                {(branches || []).map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Button variant="contained" startIcon={<Add />} fullWidth sx={{ height: '56px' }}
+                disabled={!serialForm.serial_number || addSerialMutation.isPending}
+                onClick={() => addSerialMutation.mutate({
+                  serial_number: serialForm.serial_number,
+                  branch_id: serialForm.branch_id || null,
+                })}>
+                Add serial
+              </Button>
+            </Grid>
+          </Grid>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Serial</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Branch</TableCell>
+                <TableCell align="right" />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {(serials || []).map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell>{s.serial_number}</TableCell>
+                  <TableCell><Chip label={formatDisplayText(s.status)} size="small" /></TableCell>
+                  <TableCell>{s.branch_name || '—'}</TableCell>
+                  <TableCell align="right">
+                    <IconButton size="small" color="error" onClick={() => deleteSerialMutation.mutate(s.id)}><Delete /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!serials?.length && (
+                <TableRow><TableCell colSpan={4} align="center">No serial numbers</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TabPanel>
+      )}
+
+      {catalogPro && (
+        <TabPanel value={tab} index={4}>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} sm={3}>
+              <TextField fullWidth label="Batch number" value={batchForm.batch_number}
+                onChange={(e) => setBatchForm({ ...batchForm, batch_number: e.target.value })} />
+            </Grid>
+            <Grid item xs={6} sm={2}>
+              <TextField fullWidth label="Quantity" type="number" value={batchForm.quantity}
+                onChange={(e) => setBatchForm({ ...batchForm, quantity: e.target.value })} />
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <TextField fullWidth label="Expiry date" type="date" InputLabelProps={{ shrink: true }}
+                value={batchForm.expiry_date} onChange={(e) => setBatchForm({ ...batchForm, expiry_date: e.target.value })} />
+            </Grid>
+            <Grid item xs={12} sm={2}>
+              <TextField fullWidth select label="Branch" value={batchForm.branch_id}
+                onChange={(e) => setBatchForm({ ...batchForm, branch_id: e.target.value })}>
+                <MenuItem value="">Default</MenuItem>
+                {(branches || []).map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={2}>
+              <Button variant="contained" startIcon={<Add />} fullWidth sx={{ height: '56px' }}
+                disabled={!batchForm.batch_number || addBatchMutation.isPending}
+                onClick={() => addBatchMutation.mutate({
+                  batch_number: batchForm.batch_number,
+                  quantity: parseInt(batchForm.quantity, 10) || 0,
+                  expiry_date: batchForm.expiry_date || null,
+                  branch_id: batchForm.branch_id || null,
+                })}>
+                Add batch
+              </Button>
+            </Grid>
+          </Grid>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Batch</TableCell>
+                <TableCell>Qty</TableCell>
+                <TableCell>Expiry</TableCell>
+                <TableCell>Branch</TableCell>
+                <TableCell align="right" />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {(batches || []).map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell>{b.batch_number}</TableCell>
+                  <TableCell>{b.quantity}</TableCell>
+                  <TableCell>{b.expiry_date ? new Date(b.expiry_date).toLocaleDateString() : '—'}</TableCell>
+                  <TableCell>{b.branch_name || '—'}</TableCell>
+                  <TableCell align="right">
+                    <IconButton size="small" color="error" onClick={() => deleteBatchMutation.mutate(b.id)}><Delete /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!batches?.length && (
+                <TableRow><TableCell colSpan={5} align="center">No batches</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TabPanel>
+      )}
 
       <ConfirmDialog
         open={!!deleteImageId}

@@ -11,8 +11,8 @@ router.use(authenticate, requireTenant, requireTenantAccess, authorize('business
 
 router.get('/', controller.list);
 router.get('/:id/detail', controller.getDetail);
-router.get('/:id/loyalty', controller.loyaltyHistory);
-router.post('/:id/loyalty/redeem', controller.redeemLoyalty);
+router.get('/:id/loyalty', requireFeature('crm_pro'), controller.loyaltyHistory);
+router.post('/:id/loyalty/redeem', requireFeature('crm_pro'), controller.redeemLoyalty);
 router.get('/:id', controller.getById);
 router.post('/', auditLog('customer.create', 'customer'), validate(createCustomerSchema), controller.create);
 router.put('/:id', auditLog('customer.update', 'customer'), validate(updateCustomerSchema), controller.update);

@@ -19,6 +19,7 @@ router.get('/invoices/all', asyncHandler(async (req, res) => {
   return paginated(res, result.rows, result.pagination);
 }));
 
+router.get('/:id/dashboard', controller.tenantDashboard);
 router.get('/:id/invoices', controller.invoices);
 router.post('/:id/upgrade-plan', auditLog('business.upgrade_plan', 'tenant'), controller.upgradePlan);
 router.get('/:id', controller.getById);

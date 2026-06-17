@@ -12,6 +12,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
+import { formatDisplayText } from '../../utils/displayText';
 
 const empty = emptyPresetProps('categories');
 
@@ -77,7 +78,7 @@ export default function CategoriesPage() {
     { field: 'name', label: 'Name' },
     { field: 'slug', label: 'Slug' },
     { field: 'parent_name', label: 'Parent', render: (r) => r.parent_name || '-' },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={r.status} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
+    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
     {
       field: 'actions', label: 'Actions',
       render: (r) => (

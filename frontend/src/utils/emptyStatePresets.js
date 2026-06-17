@@ -56,7 +56,7 @@ export const EMPTY_PRESETS = {
   },
   expenses: {
     title: 'No expenses yet',
-    message: "Start tracking business spending to understand your costs.",
+    message: "Start tracking business spending to understand profitability and control costs.",
     actionLabel: 'Add Expense',
     illustration: 'orders',
     benefits: [
@@ -85,6 +85,17 @@ export const EMPTY_PRESETS = {
       { icon: 'people', title: 'Customer profiles', description: 'Store contact info and purchase preferences.' },
       { icon: 'tag', title: 'Loyalty rewards', description: 'Earn and redeem points on future purchases.' },
       { icon: 'chart', title: 'Order history', description: 'View past orders and credit balances.' },
+    ],
+  },
+  coupons: {
+    title: 'No coupons yet',
+    message: 'Create discount codes for POS checkout and your online storefront.',
+    actionLabel: 'Create Coupon',
+    illustration: 'orders',
+    benefits: [
+      { icon: 'tag', title: 'Drive sales', description: 'Offer percentage or fixed discounts with promo codes.' },
+      { icon: 'chart', title: 'POS & storefront', description: 'Customers can apply codes at checkout in-store or online.' },
+      { icon: 'inventory', title: 'Usage limits', description: 'Set minimum order amounts, expiry dates, and max redemptions.' },
     ],
   },
   orders: {

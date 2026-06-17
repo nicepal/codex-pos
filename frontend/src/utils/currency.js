@@ -1,3 +1,5 @@
+export const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'PKR', 'AED', 'SAR'];
+
 const LOCALE_BY_CURRENCY = {
   PKR: 'en-PK',
   AED: 'en-AE',
@@ -6,8 +8,13 @@ const LOCALE_BY_CURRENCY = {
   GBP: 'en-GB',
 };
 
+export function resolveCurrency(settingsCurrency, tenantCurrency, fallback = 'USD') {
+  const code = settingsCurrency || tenantCurrency || fallback;
+  return (code || fallback).toUpperCase();
+}
+
 export function formatMoney(amount, currencyCode = 'USD') {
-  const code = (currencyCode || 'USD').toUpperCase();
+  const code = resolveCurrency(currencyCode);
   const value = Number(amount);
   const safe = Number.isFinite(value) ? value : 0;
 
@@ -22,4 +29,8 @@ export function formatMoney(amount, currencyCode = 'USD') {
   } catch {
     return `${code} ${safe.toFixed(2)}`;
   }
+}
+
+export function moneyFieldLabel(label, currencyCode) {
+  return `${label} (${resolveCurrency(currencyCode)})`;
 }

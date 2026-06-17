@@ -10,6 +10,7 @@ import { ArrowBack } from '@mui/icons-material';
 import api from '../../services/api';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import useTenantFeatures from '../../hooks/useTenantFeatures';
+import { formatDisplayText } from '../../utils/displayText';
 
 const statusColors = { pending: 'warning', paid: 'success', completed: 'success', cancelled: 'error', on_hold: 'info', refunded: 'default' };
 
@@ -78,7 +79,7 @@ export default function OrderDetailPage() {
           {hasFeature('pos_pro') && ['paid', 'completed'].includes(order.status) && (
             <Button variant="outlined" onClick={openReturn}>Process Return</Button>
           )}
-          <Chip label={order.status} color={statusColors[order.status] || 'default'} />
+          <Chip label={formatDisplayText(order.status)} color={statusColors[order.status] || 'default'} />
         </Box>
       </Box>
 
@@ -94,6 +95,8 @@ export default function OrderDetailPage() {
                     <TableCell>SKU</TableCell>
                     <TableCell align="right">Qty</TableCell>
                     <TableCell align="right">Price</TableCell>
+                    <TableCell align="right">Discount</TableCell>
+                    <TableCell align="right">Tax</TableCell>
                     <TableCell align="right">Total</TableCell>
                   </TableRow>
                 </TableHead>
@@ -104,6 +107,8 @@ export default function OrderDetailPage() {
                       <TableCell>{item.sku || '-'}</TableCell>
                       <TableCell align="right">{item.quantity}</TableCell>
                       <TableCell align="right">{formatMoney(item.unit_price)}</TableCell>
+                      <TableCell align="right">-{formatMoney(item.discount || 0)}</TableCell>
+                      <TableCell align="right">{formatMoney(item.tax || 0)}</TableCell>
                       <TableCell align="right">{formatMoney(item.total)}</TableCell>
                     </TableRow>
                   ))}
@@ -124,9 +129,9 @@ export default function OrderDetailPage() {
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>Payment</Typography>
-              <Typography><strong>Method:</strong> {order.payment_method || 'N/A'}</Typography>
-              <Typography><strong>Status:</strong> {order.payment_status}</Typography>
-              <Typography><strong>Type:</strong> {order.order_type?.toUpperCase()}</Typography>
+              <Typography><strong>Method:</strong> {formatDisplayText(order.payment_method) || 'N/A'}</Typography>
+              <Typography><strong>Status:</strong> {formatDisplayText(order.payment_status) || '—'}</Typography>
+              <Typography><strong>Type:</strong> {formatDisplayText(order.order_type) || '—'}</Typography>
             </CardContent>
           </Card>
 
@@ -150,7 +155,7 @@ export default function OrderDetailPage() {
                 onChange={(e) => statusMutation.mutate(e.target.value)}
               >
                 {['pending', 'paid', 'completed', 'cancelled', 'refunded', 'on_hold'].map((s) => (
-                  <MenuItem key={s} value={s}>{s}</MenuItem>
+                  <MenuItem key={s} value={s}>{formatDisplayText(s)}</MenuItem>
                 ))}
               </TextField>
               {order.notes && (

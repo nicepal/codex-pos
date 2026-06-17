@@ -87,6 +87,15 @@ class StorefrontService {
     return result.rows;
   }
 
+  async getPickupBranches(tenantId) {
+    const result = await db.query(
+      `SELECT id, name, address, city, phone FROM branches
+       WHERE tenant_id = $1 AND status = 'active' ORDER BY name`,
+      [tenantId]
+    );
+    return result.rows;
+  }
+
   async getRelatedProducts(tenantId, productId, categoryId, limit = 4) {
     const result = await db.query(
       `SELECT p.id, p.name, p.slug, p.sale_price,

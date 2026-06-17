@@ -1,19 +1,22 @@
-import { useQuery } from '@tanstack/react-query';
+import { useContext } from 'react';
 import { useSelector } from 'react-redux';
-import api from '../services/api';
-import { formatMoney } from '../utils/currency';
+import { BusinessCurrencyContext } from '../contexts/BusinessCurrencyContext';
+import { formatMoney, resolveCurrency, moneyFieldLabel } from '../utils/currency';
 
 export default function useBusinessCurrency() {
+  const ctx = useContext(BusinessCurrencyContext);
   const tenantCurrency = useSelector((s) => s.auth.tenant?.currency);
 
-  const { data: settings } = useQuery({
-    queryKey: ['business-settings'],
-    queryFn: () => api.get('/settings').then((r) => r.data.data),
-    staleTime: 5 * 60 * 1000,
-  });
+  if (ctx) {
+    return ctx;
+  }
 
-  const currency = (settings?.profile?.currency || tenantCurrency || 'USD').toUpperCase();
-  const fmt = (amount) => formatMoney(amount, currency);
-
-  return { currency, formatMoney: fmt };
+  const currency = resolveCurrency(null, tenantCurrency);
+  return {
+    currency,
+    formatMoney: (amount) => formatMoney(amount, currency),
+    moneyLabel: (label) => moneyFieldLabel(label, currency),
+    isLoading: false,
+    isFetching: false,
+  };
 }

@@ -1,8 +1,24 @@
 const db = require('../../config/database');
 
 class LoyaltyService {
-  async earnPoints(tenantId, customerId, orderId, amount, pointsPerDollar = 1) {
-    const points = Math.floor(parseFloat(amount) * pointsPerDollar);
+  async getSettings(tenantId) {
+    const result = await db.query(
+      `SELECT value FROM settings WHERE tenant_id = $1 AND key = 'loyalty'`,
+      [tenantId]
+    );
+    let val = result.rows[0]?.value;
+    if (typeof val === 'string') {
+      try { val = JSON.parse(val); } catch { val = {}; }
+    }
+    return {
+      points_per_dollar: parseFloat(val?.points_per_dollar) || 1,
+      redeem_rate: parseFloat(val?.redeem_rate) || 0.01,
+    };
+  }
+
+  async earnPoints(tenantId, customerId, orderId, amount) {
+    const settings = await this.getSettings(tenantId);
+    const points = Math.floor(parseFloat(amount) * settings.points_per_dollar);
     if (points <= 0) return null;
 
     await db.query('UPDATE customers SET loyalty_points = loyalty_points + $1 WHERE id = $2 AND tenant_id = $3', [points, customerId, tenantId]);
