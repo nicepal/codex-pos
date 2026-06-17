@@ -439,7 +439,7 @@ export default function SettingsPage() {
                 />
                 <Divider sx={{ my: 2 }} />
                 <Typography variant="body2" color="text.secondary" gutterBottom>Store URL</Typography>
-                <Typography variant="body1" fontWeight={600}>{storeSlug}.eyz.com</Typography>
+                <Typography variant="body1" fontWeight={600}>{storeSlug}.poshive.store</Typography>
               </CardContent>
             </Card>
 

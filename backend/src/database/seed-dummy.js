@@ -377,7 +377,7 @@ async function seedTenantBusiness(data) {
     await client.query(
       `INSERT INTO tenant_domains (tenant_id, domain, domain_type, is_primary, verification_status)
        VALUES ($1, $2, 'subdomain', true, 'verified')`,
-      [tenantId, `${slug}.eyz.com`]
+      [tenantId, `${slug}.poshive.store`]
     );
 
     await client.query(
@@ -544,7 +544,7 @@ async function seedDummyData() {
     const type = pick(BUSINESS_TYPES);
     const name = `${prefix} ${type} ${num}`;
     const slug = `business-${num}`;
-    const email = `owner${num}@seed.eyz.com`;
+    const email = `owner${num}@seed.poshive.store`;
     const plan = pick(planIds);
 
     try {
@@ -579,7 +579,7 @@ async function seedDummyData() {
   logger.info('Summary:', stats.rows[0]);
   logger.info(`Created ${created} new businesses`);
   logger.info('All business owners password: Owner@123456');
-  logger.info('Example logins: owner01@seed.eyz.com ... owner50@seed.eyz.com');
+  logger.info('Example logins: owner01@seed.poshive.store ... owner50@seed.poshive.store');
 }
 
 if (require.main === module) {

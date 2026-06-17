@@ -52,7 +52,7 @@ class StorefrontCheckoutService {
     const tenant = await db.query('SELECT slug FROM tenants WHERE id = $1', [tenantId]);
     const products = await db.query(`SELECT slug, updated_at FROM products WHERE tenant_id = $1 AND status = 'active'`, [tenantId]);
     const categories = await db.query(`SELECT slug, updated_at FROM categories WHERE tenant_id = $1 AND status = 'active'`, [tenantId]);
-    const base = `https://${tenant.rows[0]?.slug}.eyz.com`;
+    const base = `https://${tenant.rows[0]?.slug}.poshive.store`;
     return {
       urls: [
         { loc: base, changefreq: 'daily' },

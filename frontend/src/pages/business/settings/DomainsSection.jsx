@@ -61,7 +61,7 @@ export default function DomainsSection({ enabled, storeSlug }) {
       <CardContent>
         <Typography variant="h6" gutterBottom>Domains</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Your default shop URL is <strong>{storeSlug}.eyz.com</strong>. Add a custom domain and point DNS to your server.
+          Your default shop URL is <strong>{storeSlug}.poshive.store</strong>. Add a custom domain and point DNS to your server.
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}

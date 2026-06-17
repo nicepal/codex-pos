@@ -122,7 +122,7 @@ class BusinessDashboardService {
       subscriptionStatus: row.subscription_status,
       registeredAt: row.created_at,
       lastLoginAt: row.last_login_at,
-      primaryDomain: row.primary_domain || `${row.slug}.eyz.com`,
+      primaryDomain: row.primary_domain || `${row.slug}.poshive.store`,
       currentPeriodStart: row.current_period_start,
       currentPeriodEnd: row.current_period_end,
       trialEndsAt: row.trial_ends_at,

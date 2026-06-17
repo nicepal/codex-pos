@@ -7,7 +7,7 @@ Production-grade Multi-Tenant SaaS Point of Sale + Inventory Management + eComme
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Nginx (Reverse Proxy)                    │
-│              *.eyz.com │ api.eyz.com │ admin.eyz.com            │
+│              *.poshive.store │ api.poshive.store │ admin.poshive.store            │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
         ┌──────────────────────┼──────────────────────┐
@@ -29,7 +29,7 @@ Production-grade Multi-Tenant SaaS Point of Sale + Inventory Management + eComme
 
 - **Shared database, shared schema** with `tenant_id` on every tenant-scoped table
 - **Automatic tenant scoping** via middleware + repository layer
-- **Subdomain resolution**: `{slug}.eyz.com` → tenant context
+- **Subdomain resolution**: `{slug}.poshive.store` → tenant context
 - **Custom domains**: `www.store.com` → mapped via `tenant_domains`
 
 ## Tech Stack
@@ -63,8 +63,8 @@ cd frontend && npm install && npm run dev
 
 | Role | Email | Password |
 |------|-------|----------|
-| Super Admin | admin@eyz.com | Admin@123456 |
-| Business Owner | owner@demo.eyz.com | Owner@123456 |
+| Super Admin | admin@poshive.store | Admin@123456 |
+| Business Owner | owner@demo.poshive.store | Owner@123456 |
 
 ## API Documentation
 

@@ -38,7 +38,7 @@ Format: `ID | Module | Preconditions | Steps | Expected Result`
 | AUTH-026 | Brute force | 100 failed logins | Rate limit | 429 |
 | AUTH-027 | XSS in name | Register with script | Store user | Escaped in UI |
 | AUTH-028 | SQL in email | Login | POST login | Parameterized — safe |
-| AUTH-029 | Platform admin login | admin@eyz.com | Login | Routes to /admin |
+| AUTH-029 | Platform admin login | admin@poshive.store | Login | Routes to /admin |
 | AUTH-030 | Business user login | owner@demo | Login | Routes to /dashboard |
 | AUTH-031 | fetchMe hydration | Token in localStorage | App load | User populated — **BUG: not called** |
 | AUTH-032 | Admin refresh | Platform admin F5 | Reload /admin | Stay on admin — **BUG** |
@@ -150,7 +150,7 @@ Format: `ID | Module | Preconditions | Steps | Expected Result`
 | SF-007 | Order confirm link | Continue shopping | **BUG: goes to /store/demo** |
 | SF-008 | Theme color | primary_color | Applied |
 | SF-009 | SEO meta | View source | **Missing meta tags** |
-| SF-010 | Subdomain routing | demo.eyz.com | **Not implemented — path only** |
+| SF-010 | Subdomain routing | demo.poshive.store | **Not implemented — path only** |
 | SF-011 | Cart persistence | Refresh | **Lost — no persist** |
 | SF-012 | Guest checkout | No account | Works |
 | SF-013 | OOS purchase | Checkout OOS | **Should block** |

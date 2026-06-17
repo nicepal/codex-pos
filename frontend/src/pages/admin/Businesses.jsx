@@ -79,7 +79,7 @@ export default function BusinessesPage() {
     { field: 'owner', label: 'Owner', render: (r) => r.owner_name || r.owner_email },
     { field: 'plan_name', label: 'Plan', render: (r) => r.plan_name || '-' },
     { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} color={statusColors[r.status] || 'default'} size="small" /> },
-    { field: 'subdomain', label: 'Subdomain', render: (r) => r.subdomain || `${r.slug}.eyz.com` },
+    { field: 'subdomain', label: 'Subdomain', render: (r) => r.subdomain || `${r.slug}.poshive.store` },
     {
       field: 'actions', label: 'Actions',
       render: (r) => (

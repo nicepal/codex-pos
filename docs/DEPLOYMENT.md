@@ -4,7 +4,7 @@
 
 - Ubuntu 22.04+ server
 - Docker & Docker Compose
-- Domain with wildcard DNS (`*.eyz.com`)
+- Domain with wildcard DNS (`*.poshive.store`)
 - SSL certificate (Let's Encrypt recommended)
 
 ## Production Deployment
@@ -47,12 +47,12 @@ nano backend/.env
 
 | Record | Type | Value |
 |--------|------|-------|
-| eyz.com | A | YOUR_SERVER_IP |
-| *.eyz.com | A | YOUR_SERVER_IP |
-| api.eyz.com | A | YOUR_SERVER_IP |
+| poshive.store | A | YOUR_SERVER_IP |
+| *.poshive.store | A | YOUR_SERVER_IP |
+| api.poshive.store | A | YOUR_SERVER_IP |
 
 **Custom domains (per tenant):**
-- CNAME `www.store.com` → `eyz.com`
+- CNAME `www.store.com` → `poshive.store`
 - TXT `_eyz-verify.store.com` → verification token from admin panel
 
 ### 4. Launch Stack
@@ -69,7 +69,7 @@ docker compose logs -f api
 
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d eyz.com -d www.eyz.com -d '*.eyz.com'
+sudo certbot --nginx -d poshive.store -d www.poshive.store -d '*.poshive.store'
 ```
 
 ### 6. Database Backups
