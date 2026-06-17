@@ -1,0 +1,19 @@
+{
+  "name": "EYZ POS",
+  "short_name": "EYZ POS",
+  "description": "Multi-tenant point of sale that keeps selling even offline.",
+  "start_url": "/pos",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#1976d2",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

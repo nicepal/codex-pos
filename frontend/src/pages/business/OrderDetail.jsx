@@ -11,6 +11,7 @@ import api from '../../services/api';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import useTenantFeatures from '../../hooks/useTenantFeatures';
 import { formatDisplayText } from '../../utils/displayText';
+import { downloadBlob, fileNameFromDisposition } from '../../utils/fileDownload';
 
 const statusColors = { pending: 'warning', paid: 'success', completed: 'success', cancelled: 'error', on_hold: 'info', refunded: 'default' };
 
@@ -33,6 +34,15 @@ export default function OrderDetailPage() {
   const statusMutation = useMutation({
     mutationFn: (status) => api.patch(`/orders/${id}/status`, { status }),
     onSuccess: () => queryClient.invalidateQueries(['order', id]),
+  });
+
+  const taxInvoiceMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.get(`/compliance/orders/${id}/tax-invoice`, { responseType: 'blob' });
+      const disposition = response.headers['content-disposition'] || response.headers['Content-Disposition'];
+      const fileName = fileNameFromDisposition(disposition, `tax-invoice-${id}.pdf`);
+      downloadBlob(response.data, fileName);
+    },
   });
 
   const returnMutation = useMutation({
@@ -76,6 +86,11 @@ export default function OrderDetailPage() {
           <Typography color="text.secondary">{new Date(order.created_at).toLocaleString()}</Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          {['paid', 'completed'].includes(order.status) && (
+            <Button variant="outlined" onClick={() => taxInvoiceMutation.mutate()} disabled={taxInvoiceMutation.isPending}>
+              Tax Invoice
+            </Button>
+          )}
           {hasFeature('pos_pro') && ['paid', 'completed'].includes(order.status) && (
             <Button variant="outlined" onClick={openReturn}>Process Return</Button>
           )}

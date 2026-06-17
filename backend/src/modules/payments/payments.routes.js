@@ -41,6 +41,8 @@ router.post(
   controller.confirmCheckout
 );
 
+router.get('/config', controller.publicConfig);
+
 router.post('/webhook', controller.webhook);
 
 module.exports = router;

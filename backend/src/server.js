@@ -1,9 +1,12 @@
+const http = require('http');
 const { createApp } = require('./app');
 const config = require('./config');
 const logger = require('./utils/logger');
 const db = require('./config/database');
+const { initRealtime } = require('./realtime/socket');
 
 const app = createApp();
+const server = http.createServer(app);
 
 async function start() {
   try {
@@ -22,7 +25,9 @@ async function start() {
     await db.query('SELECT 1');
     logger.info('Database connected');
 
-    app.listen(config.port, () => {
+    initRealtime(server);
+
+    server.listen(config.port, () => {
       logger.info(`${config.app.name} API running on port ${config.port}`);
       logger.info(`Environment: ${config.env}`);
       logger.info(`API: http://localhost:${config.port}${config.apiPrefix}`);

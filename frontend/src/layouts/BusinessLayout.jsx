@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   Dashboard, Inventory, ShoppingCart, People, Assessment, PointOfSale,
   Warehouse, Category, Settings, CreditCard, Store, Support,
-  LocalShipping, Receipt, Groups, Label, ShoppingBag, Badge, Storefront,
+  LocalShipping, Receipt, Groups, Label, ShoppingBag, Badge, Storefront, AutoAwesome, Code, Star,
 } from '@mui/icons-material';
 import { logout, selectAuth } from '../features/auth/authSlice';
 import ResponsiveDrawer from '../components/ResponsiveDrawer';
@@ -49,6 +49,9 @@ export default function BusinessLayout() {
         { label: 'Categories', path: '/categories', icon: <Category />, selected: isActive('/categories'), onClick: () => navigate('/categories') },
         { label: 'Brands', path: '/brands', icon: <Label />, selected: isActive('/brands'), onClick: () => navigate('/brands') },
         { label: 'Coupons', path: '/coupons', icon: <Receipt />, selected: isActive('/coupons'), onClick: () => navigate('/coupons') },
+        { label: 'Gift Cards', path: '/gift-cards', icon: <CreditCard />, selected: isActive('/gift-cards'), onClick: () => navigate('/gift-cards') },
+        { label: 'Reviews', path: '/reviews', icon: <Star />, selected: isActive('/reviews'), onClick: () => navigate('/reviews') },
+        { label: 'Sales Channels', path: '/marketplace', icon: <Storefront />, selected: isActive('/marketplace'), onClick: () => navigate('/marketplace') },
       ],
     },
     {
@@ -74,6 +77,7 @@ export default function BusinessLayout() {
       label: 'Insights',
       items: [
         { label: 'Reports', path: '/reports', icon: <Assessment />, selected: isActive('/reports'), onClick: () => navigate('/reports') },
+        { label: 'AI Insights', path: '/ai-insights', icon: <AutoAwesome />, selected: isActive('/ai-insights'), onClick: () => navigate('/ai-insights') },
       ],
     },
     {
@@ -82,6 +86,7 @@ export default function BusinessLayout() {
         { label: 'Support', path: '/support', icon: <Support />, selected: isActive('/support'), onClick: () => navigate('/support') },
         { label: 'Branches', path: '/branches', icon: <Store />, selected: isActive('/branches'), onClick: () => navigate('/branches') },
         { label: 'Subscription', path: '/subscription', icon: <CreditCard />, selected: isActive('/subscription'), onClick: () => navigate('/subscription') },
+        { label: 'Developers', path: '/developers', icon: <Code />, selected: isActive('/developers'), onClick: () => navigate('/developers') },
         { label: 'Settings', path: '/settings', icon: <Settings />, selected: isActive('/settings'), onClick: () => navigate('/settings') },
       ],
     },

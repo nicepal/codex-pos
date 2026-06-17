@@ -20,6 +20,12 @@ import EmptyState from '../../components/EmptyState';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import DataTable from '../../components/DataTable';
 import useTenantFeatures from '../../hooks/useTenantFeatures';
+import useOfflineOrderSync from '../../hooks/useOfflineOrderSync';
+import { enqueueOrder } from '../../utils/offlineQueue';
+
+function genClientOrderId() {
+  return `off_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function ReceiptDialog({ orderId, open, onClose }) {
   const { formatMoney } = useBusinessCurrency();
@@ -365,10 +371,19 @@ export default function POSPage() {
   const [openPriceValue, setOpenPriceValue] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const barcodeRef = useRef(null);
+  const [offlineMsg, setOfflineMsg] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const { items, discount } = useSelector((s) => s.cart);
   const { subtotal, total } = useSelector(selectCartTotal);
+
+  const { online, pending, syncing, refreshCount } = useOfflineOrderSync({
+    onSynced: (count) => {
+      setSyncMsg(`${count} offline sale${count > 1 ? 's' : ''} synced`);
+      queryClient.invalidateQueries(['orders']);
+    },
+  });
 
   const focusBarcode = useCallback(() => {
     setTimeout(() => barcodeRef.current?.focus(), 100);
@@ -451,25 +466,52 @@ export default function POSPage() {
     ...extra,
   });
 
-  const submitCheckout = (payload) => {
-    checkoutMutation.mutate(payload);
+  const [placing, setPlacing] = useState(false);
+
+  const completeSaleUi = () => {
+    dispatch(clearCart());
+    setCustomer(null);
+    setCartOpen(false);
+    focusBarcode();
   };
 
-  const checkoutMutation = useMutation({
-    mutationFn: (payload) => api.post('/orders', payload),
-    onSuccess: (res) => {
-      dispatch(clearCart());
-      setCustomer(null);
-      setCartOpen(false);
+  const queueOffline = async (payload) => {
+    await enqueueOrder(payload);
+    completeSaleUi();
+    await refreshCount();
+    setOfflineMsg(true);
+  };
+
+  // Single entry point for completing a sale. Queues locally when offline (or on
+  // a network error) so the register keeps working; synced later automatically.
+  const placeOrder = async (payload) => {
+    const finalPayload = { ...payload, client_order_id: payload.client_order_id || genClientOrderId() };
+    if (!online) {
+      await queueOffline(finalPayload);
+      return;
+    }
+    setPlacing(true);
+    try {
+      const res = await api.post('/orders', finalPayload);
+      completeSaleUi();
       setReceiptId(res.data.data.id);
       queryClient.invalidateQueries(['held-orders']);
       queryClient.invalidateQueries(['orders']);
-      focusBarcode();
-    },
-    onError: (err) => {
-      alert(err.response?.data?.message || 'Checkout failed');
-    },
-  });
+    } catch (err) {
+      if (!err.response) {
+        // Connection dropped mid-request — preserve the sale offline
+        await queueOffline(finalPayload);
+      } else {
+        alert(err.response?.data?.message || 'Checkout failed');
+      }
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  const submitCheckout = (payload) => {
+    placeOrder(payload);
+  };
 
   const holdMutation = useMutation({
     mutationFn: (payload) => api.post('/orders/hold', payload),
@@ -538,7 +580,7 @@ export default function POSPage() {
       setManagerOpen(true);
       return;
     }
-    checkoutMutation.mutate(payload);
+    placeOrder(payload);
   };
 
   const handleCheckout = (method) => {
@@ -578,7 +620,7 @@ export default function POSPage() {
     onCheckout: handleCheckout,
     onHold: handleHold,
     onSplitOpen: () => setSplitOpen(true),
-    checkoutPending: checkoutMutation.isPending,
+    checkoutPending: placing,
     holdPending: holdMutation.isPending,
     customer, onCustomerChange: setCustomer, customers,
     branchId, onBranchChange: setBranchId, branches,
@@ -603,6 +645,18 @@ export default function POSPage() {
   return (
     <Box sx={{ pb: isMobile ? 10 : 0, ...(isTablet && { maxWidth: 1200, mx: 'auto' }) }}>
       <Typography variant="h5" fontWeight={700} gutterBottom>Point of Sale</Typography>
+
+      {!online && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          You are offline. Sales will be saved on this device and synced automatically when the connection returns.
+        </Alert>
+      )}
+      {online && pending > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {syncing ? 'Syncing' : 'Pending'} {pending} offline sale{pending > 1 ? 's' : ''}…
+        </Alert>
+      )}
+
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="New Sale" />
         {hasFeature('pos_pro') && (
@@ -756,6 +810,12 @@ export default function POSPage() {
 
       <Snackbar open={barcodeMiss} autoHideDuration={3000} onClose={() => setBarcodeMiss(false)}
         message="No product found for scanned barcode" />
+
+      <Snackbar open={offlineMsg} autoHideDuration={4000} onClose={() => setOfflineMsg(false)}
+        message="Sale saved offline — will sync when back online" />
+
+      <Snackbar open={!!syncMsg} autoHideDuration={4000} onClose={() => setSyncMsg('')}
+        message={syncMsg} />
 
       <Dialog open={managerOpen} onClose={() => setManagerOpen(false)}>
         <DialogTitle>Manager approval</DialogTitle>

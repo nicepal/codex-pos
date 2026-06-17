@@ -22,9 +22,12 @@ class PaymentsController {
   });
 
   webhook = asyncHandler(async (req, res) => {
-    const secret = req.headers['x-webhook-secret'] || req.headers['x-payment-webhook-secret'];
-    const result = await paymentsService.handleWebhook(req.body, secret);
+    const result = await paymentsService.handleWebhook(req.body, req.headers, req.rawBody);
     return success(res, result);
+  });
+
+  publicConfig = asyncHandler(async (req, res) => {
+    return success(res, paymentsService.getPublicConfig());
   });
 }
 

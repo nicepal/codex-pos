@@ -1,0 +1,38 @@
+---
+description: Use Recharts for all React data charts
+globs: frontend/src/**/*.jsx
+alwaysApply: false
+---
+
+# Charts: use Recharts
+
+`recharts` is the standard charting library for this frontend. Use it for any
+data visualization (line, area, bar, pie/donut, composed, scatter).
+
+- Do NOT add other chart libraries (chart.js, react-chartjs-2, ApexCharts, nivo, victory, d3 for charts).
+- Always wrap charts in `<ResponsiveContainer>` and give the parent a fixed height.
+- Format value axes/tooltips with the tenant currency via `formatMoney`.
+- Use theme colors (`useTheme().palette.*`) for strokes/fills where possible.
+- A single-value progress/gauge can stay as MUI `LinearProgress`; multi-point
+  series and category comparisons should be Recharts.
+
+```jsx
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
+
+<Box sx={{ width: '100%', height: 300 }}>
+  <ResponsiveContainer>
+    <AreaChart data={data}>
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="period" />
+      <YAxis tickFormatter={(v) => formatMoney(v)} />
+      <Tooltip formatter={(v) => formatMoney(v)} />
+      <Area type="monotone" dataKey="revenue" strokeWidth={2} />
+    </AreaChart>
+  </ResponsiveContainer>
+</Box>
+```
+
+Reference implementations: `frontend/src/pages/business/dashboard/components/SalesAnalyticsSection.jsx`,
+`frontend/src/pages/business/expenses/components/ExpenseCharts.jsx`.

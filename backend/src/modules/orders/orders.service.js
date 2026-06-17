@@ -247,8 +247,23 @@ class OrderService {
   }
 
   async createPOSOrder(tenantId, data, userId) {
-    const client = await db.getClient();
+    // Idempotency: if this offline order was already synced, return the existing one
+    if (data.client_order_id) {
+      const existing = await db.query(
+        'SELECT id FROM orders WHERE tenant_id = $1 AND client_order_id = $2',
+        [tenantId, data.client_order_id]
+      );
+      if (existing.rows[0]) return this.getById(tenantId, existing.rows[0].id);
+    }
+
     const status = data.status || 'paid';
+    // Enforce monthly transaction quota for completed sales (held orders excluded)
+    if (status !== 'on_hold') {
+      const { checkTransactionLimit } = require('../../shared/plan-limits');
+      await checkTransactionLimit(tenantId);
+    }
+
+    const client = await db.getClient();
     const skipStockCheck = status === 'on_hold';
     const features = await resolveTenantFeatures(tenantId);
     const allowNegativeStock = isFeatureEnabled(features, 'allow_negative_stock');
@@ -289,17 +304,19 @@ class OrderService {
 
       const fulfillmentStatus = data.fulfillment_type === 'pickup' ? 'awaiting_pickup' : (data.fulfillment_type ? 'none' : 'none');
 
+      const tipAmount = Math.max(0, parseFloat(data.tip_amount) || 0);
+
       const orderResult = await client.query(
         `INSERT INTO orders (tenant_id, order_number, customer_id, employee_id, branch_id, order_type, status,
          subtotal, tax_amount, discount_amount, total_amount, payment_method, payment_status, notes, created_by,
-         fulfillment_status, pickup_branch_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 0, $8, 0, $9, $10, $11, $12, $13, $14) RETURNING *`,
+         fulfillment_status, pickup_branch_id, tip_amount, payment_intent_id, client_order_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 0, $8, 0, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
         [
           tenantId, orderNumber, data.customer_id || null, data.employee_id || null, data.branch_id || null,
           data.order_type || 'pos', status, totalDiscount, data.payment_method || null,
           data.payment_method && status !== 'on_hold' ? 'paid' : 'pending', data.notes || null, userId,
           data.fulfillment_type === 'pickup' ? fulfillmentStatus : 'none',
-          data.pickup_branch_id || null,
+          data.pickup_branch_id || null, tipAmount, data.payment_intent_id || null, data.client_order_id || null,
         ]
       );
       const order = orderResult.rows[0];
@@ -328,7 +345,7 @@ class OrderService {
         throw new ValidationError('Discount cannot exceed subtotal');
       }
 
-      const totalAmount = subtotal + taxAmount - totalDiscount;
+      const totalAmount = subtotal + taxAmount - totalDiscount + tipAmount;
 
       if (data.payments?.length && status !== 'on_hold') {
         const payTotal = data.payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
@@ -344,10 +361,19 @@ class OrderService {
       );
 
       if (data.payments?.length) {
+        const giftCardsService = require('../gift-cards/gift-cards.service');
         for (const p of data.payments) {
+          let reference = p.reference || null;
+          // Gift card / store credit tender: redeem within the same transaction.
+          if (p.method === 'gift_card' && p.code) {
+            const redemption = await giftCardsService.redeem(
+              tenantId, p.code, parseFloat(p.amount), { orderId: order.id, note: `Order ${orderNumber}` }, client
+            );
+            reference = `${p.code} (bal ${redemption.balance})`;
+          }
           await client.query(
             `INSERT INTO order_payments (tenant_id, order_id, payment_method, amount, reference) VALUES ($1, $2, $3, $4, $5)`,
-            [tenantId, order.id, p.method, p.amount, p.reference || null]
+            [tenantId, order.id, p.method, p.amount, reference]
           );
         }
       } else if (data.payment_method && status !== 'on_hold') {
@@ -377,6 +403,10 @@ class OrderService {
         setImmediate(() => {
           const webhookService = require('../webhooks/webhooks.service');
           webhookService.dispatch(tenantId, 'order.created', { id: order.id, order_number: orderNumber, total_amount: totalAmount }).catch(() => {});
+          try {
+            const { emitToTenant } = require('../../realtime/socket');
+            emitToTenant(tenantId, 'order.created', { id: order.id, order_number: orderNumber, total_amount: totalAmount });
+          } catch (_) { /* realtime optional */ }
         });
       }
 

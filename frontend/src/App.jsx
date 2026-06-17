@@ -56,6 +56,11 @@ import OnboardingPage from './pages/business/Onboarding';
 import TeamPage from './pages/business/Team';
 import DrawerPage from './pages/business/Drawer';
 import TenantCouponsPage from './pages/business/TenantCoupons';
+import GiftCardsPage from './pages/business/GiftCards';
+import AiInsightsPage from './pages/business/AiInsights';
+import DevelopersPage from './pages/business/Developers';
+import ReviewsPage from './pages/business/Reviews';
+import MarketplacePage from './pages/business/Marketplace';
 import NotFoundPage from './pages/NotFound';
 
 import StoreHome from './pages/storefront/Home';
@@ -64,6 +69,7 @@ import StoreProduct from './pages/storefront/Product';
 import StoreCart from './pages/storefront/Cart';
 import CheckoutPage from './pages/storefront/Checkout';
 import OrderConfirmationPage from './pages/storefront/OrderConfirmation';
+import StoreAccount from './pages/storefront/Account';
 
 function ProtectedRoute({ children, platformOnly = false, businessOnly = false }) {
   const { isAuthenticated, hydrating } = useSelector(selectAuth);
@@ -115,7 +121,9 @@ function AppRoutes() {
         <Route path="customers/:id" element={<CustomerDetailPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="ai-insights" element={<AiInsightsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="developers" element={<DevelopersPage />} />
         <Route path="subscription" element={<SubscriptionPage />} />
         <Route path="branches" element={<BranchesPage />} />
         <Route path="employees" element={<EmployeesPage />} />
@@ -132,6 +140,9 @@ function AppRoutes() {
         <Route path="team" element={<TeamPage />} />
         <Route path="drawer" element={<DrawerPage />} />
         <Route path="coupons" element={<TenantCouponsPage />} />
+        <Route path="gift-cards" element={<GiftCardsPage />} />
+        <Route path="reviews" element={<ReviewsPage />} />
+        <Route path="marketplace" element={<MarketplacePage />} />
         <Route path="pos" element={<POSPage />} />
       </Route>
 
@@ -143,6 +154,7 @@ function AppRoutes() {
         <Route path="cart" element={<StoreCart />} />
         <Route path="checkout" element={<CheckoutPage />} />
         <Route path="order/confirm" element={<OrderConfirmationPage />} />
+        <Route path="account" element={<StoreAccount />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

@@ -68,6 +68,33 @@ module.exports = {
   payments: {
     webhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET,
     provider: process.env.PAYMENT_PROVIDER || 'stub',
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    currency: process.env.PAYMENTS_DEFAULT_CURRENCY || 'USD',
+  },
+
+  sms: {
+    provider: process.env.SMS_PROVIDER || 'none',
+    twilioAccountSid: process.env.TWILIO_ACCOUNT_SID,
+    twilioAuthToken: process.env.TWILIO_AUTH_TOKEN,
+    twilioFrom: process.env.TWILIO_FROM,
+    whatsappFrom: process.env.TWILIO_WHATSAPP_FROM,
+  },
+
+  whatsapp: {
+    provider: process.env.WHATSAPP_PROVIDER || 'none',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
+  },
+
+  ai: {
+    provider: process.env.AI_PROVIDER || 'heuristic',
+    openaiApiKey: process.env.OPENAI_API_KEY,
+    model: process.env.AI_MODEL || 'gpt-4o-mini',
+  },
+
+  realtime: {
+    enabled: process.env.REALTIME_ENABLED !== 'false',
   },
 
   bcryptRounds: 12,

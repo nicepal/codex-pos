@@ -10,9 +10,11 @@ import { ArrowBack, MergeType, Save } from '@mui/icons-material';
 import api from '../../services/api';
 import LoadingState from '../../components/LoadingState';
 import StatCard from '../../components/StatCard';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import useTenantFeatures from '../../hooks/useTenantFeatures';
 import { formatDisplayText } from '../../utils/displayText';
+import { downloadBlob, fileNameFromDisposition } from '../../utils/fileDownload';
 
 const statusColors = { pending: 'warning', paid: 'success', completed: 'success', cancelled: 'error' };
 
@@ -27,6 +29,7 @@ export default function CustomerDetailPage() {
   const [redeemPoints, setRedeemPoints] = useState('');
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeTarget, setMergeTarget] = useState(null);
+  const [eraseOpen, setEraseOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [tagsText, setTagsText] = useState('');
   const [taxExempt, setTaxExempt] = useState(false);
@@ -85,6 +88,23 @@ export default function CustomerDetailPage() {
     onError: (err) => setProfileError(err.response?.data?.message || 'Merge failed'),
   });
 
+  const gdprExportMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.get(`/compliance/gdpr/customers/${id}/export`, { responseType: 'blob' });
+      const disposition = response.headers['content-disposition'] || response.headers['Content-Disposition'];
+      const fileName = fileNameFromDisposition(disposition, `customer-${id}.json`);
+      downloadBlob(response.data, fileName);
+    },
+  });
+
+  const gdprEraseMutation = useMutation({
+    mutationFn: () => api.post(`/compliance/gdpr/customers/${id}/erase`),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['customer', id]);
+      setEraseOpen(false);
+    },
+  });
+
   const saveProfile = () => {
     const tags = tagsText.split(',').map((t) => t.trim()).filter(Boolean);
     updateMutation.mutate({
@@ -101,13 +121,19 @@ export default function CustomerDetailPage() {
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+      <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap">
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/customers')}>Back to Customers</Button>
         {crmPro && (
           <Button startIcon={<MergeType />} variant="outlined" onClick={() => setMergeOpen(true)}>
             Merge customer
           </Button>
         )}
+        <Button variant="outlined" onClick={() => gdprExportMutation.mutate()} disabled={gdprExportMutation.isPending}>
+          Export data (GDPR)
+        </Button>
+        <Button variant="outlined" color="error" onClick={() => setEraseOpen(true)}>
+          Erase data
+        </Button>
       </Stack>
 
       <Typography variant="h5" fontWeight={700} gutterBottom>{customer.name}</Typography>
@@ -281,6 +307,17 @@ export default function CustomerDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={eraseOpen}
+        title="Erase customer data"
+        message="This anonymizes the customer's personal data (name, email, phone) to comply with a deletion request. Order/financial records are retained for accounting. This cannot be undone."
+        onConfirm={() => gdprEraseMutation.mutate()}
+        onCancel={() => setEraseOpen(false)}
+        loading={gdprEraseMutation.isPending}
+        danger
+        confirmLabel="Erase data"
+      />
     </Box>
   );
 }

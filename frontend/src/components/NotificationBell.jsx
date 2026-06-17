@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { IconButton, Badge, Menu, MenuItem, Typography, Box, Divider } from '@mui/material';
 import { Notifications } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import useRealtime from '../hooks/useRealtime';
 
 export default function NotificationBell() {
   const [anchor, setAnchor] = useState(null);
@@ -15,6 +16,11 @@ export default function NotificationBell() {
     queryFn: () => api.get('/notifications', { params: { limit: 10 } }).then((r) => r.data),
     refetchInterval: 60000,
   });
+
+  // Live push: refresh immediately when the server emits a new notification
+  useRealtime('notification', useCallback(() => {
+    queryClient.invalidateQueries(['notifications']);
+  }, [queryClient]));
 
   const markRead = useMutation({
     mutationFn: (id) => api.patch(`/notifications/${id}/read`),

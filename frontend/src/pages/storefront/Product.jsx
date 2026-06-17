@@ -13,6 +13,7 @@ import { resolveImageUrl } from '../../utils/imageUrl';
 import StoreBreadcrumbs from '../../components/storefront/StoreBreadcrumbs';
 import QuantitySelector from '../../components/storefront/QuantitySelector';
 import ProductCard from '../../components/storefront/ProductCard';
+import ProductReviews from '../../components/storefront/ProductReviews';
 import LoadingState from '../../components/LoadingState';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 
@@ -252,6 +253,8 @@ export default function StoreProduct() {
           </Stack>
         </Grid>
       </Grid>
+
+      <ProductReviews productSlug={product.slug} />
 
       {product.related?.length > 0 && (
         <Box sx={{ mt: 6, pt: 4, borderTop: '1px solid', borderColor: 'divider' }}>

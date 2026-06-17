@@ -2,6 +2,7 @@ const db = require('../../config/database');
 const config = require('../../config');
 const { NotFoundError, ValidationError, ForbiddenError } = require('../../shared/errors');
 const subscriptionService = require('../platform/platform.services').subscriptions.service;
+const { resolveProvider } = require('./providers');
 
 class PaymentsService {
   async createCheckoutSession(tenantId, planId, billingCycle = 'monthly') {
@@ -15,17 +16,33 @@ class PaymentsService {
       ? parseFloat(plan.rows[0].annual_price || plan.rows[0].monthly_price * 12)
       : parseFloat(plan.rows[0].monthly_price);
 
-    const currency = (tenant.rows[0]?.currency || 'USD').toUpperCase();
-
+    const currency = (tenant.rows[0]?.currency || config.payments.currency || 'USD').toUpperCase();
     const expiresAt = new Date(Date.now() + 3600000);
-    const externalSessionId = `chk_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+    const provider = resolveProvider();
+    const appReturn = `${config.app.url}/subscription`;
+
+    let gateway;
+    try {
+      gateway = await provider.createCheckout({
+        amount,
+        currency,
+        description: `${plan.rows[0].name} plan (${billingCycle})`,
+        successUrl: `${appReturn}?status=success`,
+        cancelUrl: `${appReturn}?status=cancelled`,
+        metadata: { tenant_id: tenantId, plan_id: planId, billing_cycle: billingCycle },
+      });
+    } catch (err) {
+      throw new ValidationError(`Payment gateway error: ${err.message}`);
+    }
 
     const result = await db.query(
       `INSERT INTO payment_checkout_sessions
-         (tenant_id, plan_id, billing_cycle, amount, currency, status, external_session_id, expires_at)
-       VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
+         (tenant_id, plan_id, billing_cycle, amount, currency, status, external_session_id, expires_at, provider, provider_payment_intent, checkout_url)
+       VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10)
        RETURNING *`,
-      [tenantId, planId, billingCycle, amount, currency, externalSessionId, expiresAt]
+      [tenantId, planId, billingCycle, amount, currency, gateway.externalSessionId, expiresAt,
+        provider.name, gateway.paymentIntent || null, gateway.checkoutUrl || null]
     );
 
     const session = result.rows[0];
@@ -37,8 +54,10 @@ class PaymentsService {
       billing_cycle: session.billing_cycle,
       plan_name: plan.rows[0].name,
       status: session.status,
+      provider: provider.name,
       expires_at: session.expires_at,
-      checkout_url: `${config.app.url}/subscription?session_id=${session.id}`,
+      // Real gateways return their hosted page; the stub returns the in-app page.
+      checkout_url: session.checkout_url || `${config.app.url}/subscription?session_id=${session.id}`,
     };
   }
 
@@ -117,10 +136,37 @@ class PaymentsService {
     }
   }
 
-  async handleWebhook(payload, secretHeader) {
+  async handleWebhook(payload, headers = {}, rawBody = null) {
+    const provider = resolveProvider();
+    const stripeSig = headers['stripe-signature'];
+    const simpleSecret = headers['x-webhook-secret'] || headers['x-payment-webhook-secret'];
+
+    // Stripe-style signed webhook
+    if (provider.name === 'stripe' && stripeSig) {
+      if (!provider.verifyWebhook(rawBody, stripeSig)) {
+        throw new ForbiddenError('Invalid webhook signature');
+      }
+      const event = payload;
+      if (event.type === 'checkout.session.completed') {
+        const externalId = event.data?.object?.id;
+        const session = await db.query(
+          `SELECT id FROM payment_checkout_sessions WHERE external_session_id = $1`,
+          [externalId]
+        );
+        if (!session.rows[0]) return { received: true, processed: false, reason: 'unknown_session' };
+        const result = await this.completeCheckoutSession(
+          session.rows[0].id,
+          event.data.object.payment_intent || `stripe_${Date.now()}`
+        );
+        return { received: true, processed: true, subscription_id: result.subscription?.id };
+      }
+      return { received: true, processed: false, reason: 'ignored_event' };
+    }
+
+    // Simple shared-secret webhook (stub / self-hosted)
     const expected = config.payments.webhookSecret;
     if (!expected) throw new ForbiddenError('Payment webhooks are not configured');
-    if (!secretHeader || secretHeader !== expected) {
+    if (!simpleSecret || simpleSecret !== expected) {
       throw new ForbiddenError('Invalid webhook signature');
     }
 
@@ -135,6 +181,15 @@ class PaymentsService {
       paymentReference || `webhook_${Date.now()}`
     );
     return { received: true, processed: true, subscription_id: result.subscription?.id };
+  }
+
+  getPublicConfig() {
+    const provider = resolveProvider();
+    return {
+      provider: provider.name,
+      publishable_key: provider.name === 'stripe' ? config.payments.stripePublishableKey : null,
+      currency: config.payments.currency,
+    };
   }
 }
 

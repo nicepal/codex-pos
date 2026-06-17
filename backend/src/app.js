@@ -39,6 +39,13 @@ const taxRulesRoutes = require('./modules/tax-rules/tax-rules.routes');
 const activityRoutes = require('./modules/activity/activity.routes');
 const domainRoutes = require('./modules/domains/domains.routes');
 const expenseRoutes = require('./modules/expenses/expenses.routes');
+const giftCardRoutes = require('./modules/gift-cards/gift-cards.routes');
+const aiRoutes = require('./modules/ai/ai.routes');
+const apiKeyRoutes = require('./modules/api-keys/api-keys.routes');
+const publicApiRoutes = require('./modules/public-api/public-api.routes');
+const reviewRoutes = require('./modules/reviews/reviews.routes');
+const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
+const complianceRoutes = require('./modules/compliance/compliance.routes');
 const crudModules = require('./modules/_crud');
 const employeeRoutes = require('./modules/employees/employees.routes');
 const platform = require('./modules/platform/platform.services');
@@ -70,10 +77,14 @@ function createApp() {
   app.use(helmet());
   app.use(cors({ origin: true, credentials: true }));
   app.use(compression());
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({
+    limit: '10mb',
+    verify: (req, res, buf) => { req.rawBody = buf; },
+  }));
   app.use(express.urlencoded({ extended: true }));
   app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
 
+  // Global abuse protection across the whole API surface
   app.use(rateLimit({
     windowMs: config.rateLimit.windowMs,
     max: config.rateLimit.max,
@@ -86,11 +97,29 @@ function createApp() {
   const api = express.Router();
   api.use(attachTenantFeatures);
 
+  // Stricter limiter for credential endpoints (brute-force protection)
+  const authLimiter = rateLimit({
+    windowMs: config.rateLimit.windowMs,
+    max: config.rateLimit.authMax,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, code: 'RATE_LIMITED', message: 'Too many attempts. Please try again later.' },
+  });
+
+  // Dedicated limiter for the public developer API (per IP)
+  const publicApiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: parseInt(process.env.PUBLIC_API_RATE_LIMIT_MAX, 10) || 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, code: 'RATE_LIMITED', message: 'API rate limit exceeded.' },
+  });
+
   api.get('/health', (req, res) => {
     res.json({ success: true, message: 'EYZ POS API is running', version: '1.0.0' });
   });
 
-  api.use('/auth', authRoutes);
+  api.use('/auth', authLimiter, authRoutes);
   api.use('/businesses', businessRoutes);
   api.use('/products', productRoutes);
   api.use('/categories', categoryRoutes);
@@ -123,6 +152,18 @@ function createApp() {
   api.use('/tax-rules', taxRulesRoutes);
   api.use('/activity', activityRoutes);
   api.use('/domains', domainRoutes);
+  api.use('/gift-cards', giftCardRoutes);
+  api.use('/ai', aiRoutes);
+  api.use('/api-keys', apiKeyRoutes);
+  api.use('/public/v1', publicApiLimiter, publicApiRoutes);
+  api.use('/reviews', reviewRoutes);
+  api.use('/marketplace', marketplaceRoutes);
+  api.use('/compliance', complianceRoutes);
+
+  api.get('/usage', authenticate, requireTenant, requireTenantAccess, asyncHandler(async (req, res) => {
+    const { getUsageSummary } = require('./shared/plan-limits');
+    return success(res, await getUsageSummary(req.tenant.id));
+  }));
 
   api.get('/plans', asyncHandler(async (req, res) => {
     const result = await platform.plans.service.list(req.query);

@@ -18,7 +18,7 @@ async function addNotificationJob(data) {
 }
 
 async function processNotification(job) {
-  const { tenantId, userId, channel, title, message, type } = job.data;
+  const { tenantId, userId, channel, title, message, type, phone } = job.data;
 
   await db.query(
     `INSERT INTO notifications (tenant_id, user_id, type, channel, title, message, status, sent_at)
@@ -41,9 +41,25 @@ async function processNotification(job) {
         html: message,
       });
     }
+  } else if (channel === 'sms') {
+    const smsService = require('../services/sms.service');
+    await smsService.sendSms(phone, `${title}\n\n${stripHtml(message)}`);
+  } else if (channel === 'whatsapp') {
+    const smsService = require('../services/sms.service');
+    await smsService.sendWhatsApp(phone, `*${title}*\n\n${stripHtml(message)}`);
   }
 
+  // Push to any connected dashboards in real time
+  try {
+    const { emitToTenant } = require('../realtime/socket');
+    emitToTenant(tenantId, 'notification', { title, message, type: type || 'general', channel: channel || 'in_app' });
+  } catch (_) { /* realtime optional */ }
+
   logger.info('Notification processed', { jobId: job.id, channel });
+}
+
+function stripHtml(html) {
+  return String(html || '').replace(/<[^>]*>/g, '').trim();
 }
 
 function startWorkers() {
