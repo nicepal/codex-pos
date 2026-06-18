@@ -97,5 +97,13 @@ module.exports = {
     enabled: process.env.REALTIME_ENABLED !== 'false',
   },
 
+  security: {
+    encryptionKey: process.env.ENCRYPTION_KEY || process.env.JWT_ACCESS_SECRET,
+  },
+
+  shopify: {
+    apiVersion: process.env.SHOPIFY_API_VERSION || '2024-10',
+  },
+
   bcryptRounds: 12,
 };

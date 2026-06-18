@@ -4,6 +4,7 @@ import {
   Dashboard, Inventory, ShoppingCart, People, Assessment, PointOfSale,
   Warehouse, Category, Settings, CreditCard, Store, Support,
   LocalShipping, Receipt, Groups, Label, ShoppingBag, Badge, Storefront, AutoAwesome, Code, Star,
+  CloudSync,
 } from '@mui/icons-material';
 import { logout, selectAuth } from '../features/auth/authSlice';
 import ResponsiveDrawer from '../components/ResponsiveDrawer';
@@ -78,6 +79,12 @@ export default function BusinessLayout() {
       items: [
         { label: 'Reports', path: '/reports', icon: <Assessment />, selected: isActive('/reports'), onClick: () => navigate('/reports') },
         { label: 'AI Insights', path: '/ai-insights', icon: <AutoAwesome />, selected: isActive('/ai-insights'), onClick: () => navigate('/ai-insights') },
+      ],
+    },
+    {
+      label: 'Integrations',
+      items: [
+        { label: 'Shopify', path: '/integrations/shopify', icon: <CloudSync />, selected: isActive('/integrations/shopify'), onClick: () => navigate('/integrations/shopify') },
       ],
     },
     {

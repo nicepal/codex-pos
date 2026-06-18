@@ -61,6 +61,7 @@ import AiInsightsPage from './pages/business/AiInsights';
 import DevelopersPage from './pages/business/Developers';
 import ReviewsPage from './pages/business/Reviews';
 import MarketplacePage from './pages/business/Marketplace';
+import ShopifyIntegrationPage from './pages/business/integrations/Shopify';
 import NotFoundPage from './pages/NotFound';
 
 import StoreHome from './pages/storefront/Home';
@@ -143,6 +144,7 @@ function AppRoutes() {
         <Route path="gift-cards" element={<GiftCardsPage />} />
         <Route path="reviews" element={<ReviewsPage />} />
         <Route path="marketplace" element={<MarketplacePage />} />
+        <Route path="integrations/shopify" element={<ShopifyIntegrationPage />} />
         <Route path="pos" element={<POSPage />} />
       </Route>
 

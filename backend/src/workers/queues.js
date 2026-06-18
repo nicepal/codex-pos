@@ -9,11 +9,20 @@ const connection = {
 };
 
 const notificationQueue = new Queue('notifications', { connection });
+const shopifyImportQueue = new Queue('shopify-import', { connection });
 
 async function addNotificationJob(data) {
   return notificationQueue.add('send', data, {
     attempts: 3,
     backoff: { type: 'exponential', delay: 2000 },
+  });
+}
+
+async function addShopifyImportJob(data) {
+  return shopifyImportQueue.add('import', data, {
+    attempts: 1, // long-running; failures are recorded on the job row, no auto-retry
+    removeOnComplete: 50,
+    removeOnFail: 50,
   });
 }
 
@@ -68,8 +77,17 @@ function startWorkers() {
   worker.on('completed', (job) => logger.debug(`Job ${job.id} completed`));
   worker.on('failed', (job, err) => logger.error(`Job ${job?.id} failed`, { error: err.message }));
 
+  const { processShopifyImport } = require('../modules/integrations/shopify/shopify.worker');
+  const shopifyWorker = new Worker('shopify-import', processShopifyImport, {
+    connection,
+    concurrency: 1,
+    lockDuration: 10 * 60 * 1000, // imports can run long; keep the lock alive
+  });
+  shopifyWorker.on('completed', (job) => logger.debug(`Shopify import job ${job.id} completed`));
+  shopifyWorker.on('failed', (job, err) => logger.error(`Shopify import job ${job?.id} failed`, { error: err.message }));
+
   logger.info('BullMQ workers started');
   return worker;
 }
 
-module.exports = { notificationQueue, addNotificationJob, startWorkers };
+module.exports = { notificationQueue, addNotificationJob, shopifyImportQueue, addShopifyImportJob, startWorkers };
