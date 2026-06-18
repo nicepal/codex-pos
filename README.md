@@ -1,4 +1,4 @@
-# EYZ POS
+# Codex POS
 
 Production-grade Multi-Tenant SaaS Point of Sale + Inventory Management + eCommerce Storefront Platform.
 

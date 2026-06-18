@@ -46,7 +46,7 @@ export default function OnboardingPage() {
 
   return (
     <Box maxWidth={640} mx="auto" py={4}>
-      <Typography variant="h4" fontWeight={700} gutterBottom>Welcome to EYZ POS</Typography>
+      <Typography variant="h4" fontWeight={700} gutterBottom>Welcome to Codex POS</Typography>
       <Typography color="text.secondary" sx={{ mb: 4 }}>Complete these steps to make your first sale.</Typography>
       <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
         {steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}

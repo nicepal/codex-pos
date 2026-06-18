@@ -1,4 +1,4 @@
-/* EYZ POS service worker — app-shell caching for offline POS.
+/* Codex POS service worker — app-shell caching for offline POS.
  * Strategy:
  *  - Navigations & static assets: network-first, fall back to cache (so the
  *    register loads when offline).

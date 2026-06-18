@@ -1,4 +1,4 @@
-# EYZ POS Deployment Guide
+# Codex POS Deployment Guide
 
 ## Prerequisites
 

@@ -1,8 +1,8 @@
-# EYZ POS — System Architecture
+# Codex POS — System Architecture
 
 ## Overview
 
-EYZ POS is a multi-tenant SaaS platform designed to serve 10,000+ businesses with strict data isolation, horizontal scalability, and enterprise security.
+Codex POS is a multi-tenant SaaS platform designed to serve 10,000+ businesses with strict data isolation, horizontal scalability, and enterprise security.
 
 ## Design Principles
 

@@ -30,7 +30,7 @@ module.exports = {
   },
 
   app: {
-    name: process.env.APP_NAME || 'EYZ POS',
+    name: process.env.APP_NAME || 'Codex POS',
     url: process.env.APP_URL || 'http://localhost:3000',
     apiUrl: process.env.API_URL || 'http://localhost:5000',
     platformDomain: process.env.PLATFORM_DOMAIN || 'poshive.store',

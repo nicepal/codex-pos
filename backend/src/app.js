@@ -117,7 +117,7 @@ function createApp() {
   });
 
   api.get('/health', (req, res) => {
-    res.json({ success: true, message: 'EYZ POS API is running', version: '1.0.0' });
+    res.json({ success: true, message: 'Codex POS API is running', version: '1.0.0' });
   });
 
   api.use('/auth', authLimiter, authRoutes);

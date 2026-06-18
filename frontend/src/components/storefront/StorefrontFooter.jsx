@@ -25,7 +25,7 @@ export default function StorefrontFooter({ storeName, basePath, primaryColor, fo
               <Typography fontWeight={800}>{storeName}</Typography>
             </Stack>
             <Typography variant="body2" color="text.secondary">
-              {footerText || 'Powered by EYZ POS'}
+              {footerText || 'Powered by Codex POS'}
             </Typography>
           </Grid>
           <Grid item xs={6} sm={4} md={2}>

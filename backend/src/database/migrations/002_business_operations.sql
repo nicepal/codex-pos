@@ -1,4 +1,4 @@
--- EYZ POS: Business operations tables (products, inventory, orders, POS)
+-- Codex POS: Business operations tables (products, inventory, orders, POS)
 -- Migration: 002_business_operations
 
 -- ============================================================

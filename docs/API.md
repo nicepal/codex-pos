@@ -1,4 +1,4 @@
-# EYZ POS API Documentation
+# Codex POS API Documentation
 
 Base URL: `http://localhost:5000/api/v1`
 

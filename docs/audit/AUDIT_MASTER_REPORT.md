@@ -1,4 +1,4 @@
-# EYZ POS — Complete Platform Audit (Master Report)
+# Codex POS — Complete Platform Audit (Master Report)
 
 **Audit date:** 2026-06-15  
 **Scope:** Full stack — backend, frontend, database, DevOps, SaaS readiness  
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-EYZ POS is a **multi-tenant SaaS POS + storefront** built on Node/Express/PostgreSQL (backend) and React/Vite/MUI (frontend). The platform has **broad feature coverage** for an MVP (POS, inventory, products, orders, subscriptions, admin, storefront, CMS, affiliates, tickets) but is **not production-ready** for a high-trust SaaS investment without significant security, validation, and test hardening.
+Codex POS is a **multi-tenant SaaS POS + storefront** built on Node/Express/PostgreSQL (backend) and React/Vite/MUI (frontend). The platform has **broad feature coverage** for an MVP (POS, inventory, products, orders, subscriptions, admin, storefront, CMS, affiliates, tickets) but is **not production-ready** for a high-trust SaaS investment without significant security, validation, and test hardening.
 
 ### Top 5 blockers before production
 

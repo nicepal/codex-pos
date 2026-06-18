@@ -102,7 +102,7 @@ export default function BusinessLayout() {
   return (
     <BusinessCurrencyProvider>
       <ResponsiveDrawer
-        title="EYZ POS"
+        title="Codex POS"
         subtitle={tenant?.name || 'My Business'}
         navGroups={navGroups}
         user={{ email: user?.email, initial: user?.first_name?.[0] }}

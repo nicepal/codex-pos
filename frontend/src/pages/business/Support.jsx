@@ -47,7 +47,7 @@ export default function SupportPage() {
 
   return (
     <>
-      <PageHeader title="Support" subtitle="Get help from the EYZ POS team" actionLabel="New Ticket" actionIcon={<Add />} onAction={() => setOpen(true)} />
+      <PageHeader title="Support" subtitle="Get help from the Codex POS team" actionLabel="New Ticket" actionIcon={<Add />} onAction={() => setOpen(true)} />
       <DataTable
         columns={columns}
         rows={data?.data || []}

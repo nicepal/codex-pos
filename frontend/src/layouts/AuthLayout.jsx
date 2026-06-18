@@ -89,7 +89,7 @@ function BrandPanel() {
             <PointOfSale sx={{ fontSize: 26 }} />
           </Box>
           <Typography variant="h5" fontWeight={800} letterSpacing="-0.02em">
-            EYZ POS
+            Codex POS
           </Typography>
         </Stack>
         <Typography variant="h3" fontWeight={800} sx={{ mt: 6, mb: 2, lineHeight: 1.15, letterSpacing: '-0.03em' }}>
@@ -203,7 +203,7 @@ export default function AuthLayout({
           >
             <PointOfSale sx={{ fontSize: 20 }} />
           </Box>
-          <Typography fontWeight={800} letterSpacing="-0.02em">EYZ POS</Typography>
+          <Typography fontWeight={800} letterSpacing="-0.02em">Codex POS</Typography>
         </Box>
 
         <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
@@ -251,7 +251,7 @@ export default function AuthLayout({
           align="center"
           sx={{ pb: 3, opacity: 0.7 }}
         >
-          © {new Date().getFullYear()} EYZ POS · Secure cloud POS platform
+          © {new Date().getFullYear()} Codex POS · Secure cloud POS platform
         </Typography>
       </Box>
     </Box>

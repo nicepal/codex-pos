@@ -1,4 +1,4 @@
--- EYZ POS: Core platform tables (users, roles, permissions, tenants)
+-- Codex POS: Core platform tables (users, roles, permissions, tenants)
 -- Migration: 001_core_platform
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

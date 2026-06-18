@@ -394,7 +394,7 @@ export default function SettingsPage() {
                       multiline
                       rows={2}
                       {...register('footer_text')}
-                      placeholder="Powered by EYZ POS"
+                      placeholder="Powered by Codex POS"
                       disabled={!storefrontEnabled}
                     />
                   </Grid>

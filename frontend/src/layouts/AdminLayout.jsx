@@ -39,7 +39,7 @@ export default function AdminLayout() {
 
   return (
     <ResponsiveDrawer
-      title="EYZ POS Admin"
+      title="Codex POS Admin"
       subtitle="Super Admin Panel"
       navGroups={navGroups}
       user={{ email: 'admin', initial: 'A' }}

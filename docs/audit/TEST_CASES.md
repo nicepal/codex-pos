@@ -1,4 +1,4 @@
-# EYZ POS — QA Test Case Catalog
+# Codex POS — QA Test Case Catalog
 
 **Total documented test cases: 650** (exceeds minimum 550)
 

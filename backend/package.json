@@ -1,7 +1,7 @@
 {
   "name": "eyz-pos-backend",
   "version": "1.0.0",
-  "description": "EYZ POS Multi-Tenant SaaS Backend API",
+  "description": "Codex POS Multi-Tenant SaaS Backend API",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

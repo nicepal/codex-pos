@@ -1,4 +1,4 @@
--- EYZ POS: Support, CMS, notifications, affiliates
+-- Codex POS: Support, CMS, notifications, affiliates
 -- Migration: 003_platform_features
 
 -- ============================================================

@@ -1,6 +1,6 @@
 {
-  "name": "EYZ POS",
-  "short_name": "EYZ POS",
+  "name": "Codex POS",
+  "short_name": "Codex POS",
   "description": "Multi-tenant point of sale that keeps selling even offline.",
   "start_url": "/pos",
   "scope": "/",

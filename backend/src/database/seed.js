@@ -177,7 +177,7 @@ async function seed() {
   }
 
   const templates = [
-    { slug: 'welcome', name: 'Welcome Email', subject: 'Welcome to {{business_name}}!', body: '<p>Hello {{owner_name}}, welcome to EYZ POS!</p>' },
+    { slug: 'welcome', name: 'Welcome Email', subject: 'Welcome to {{business_name}}!', body: '<p>Hello {{owner_name}}, welcome to Codex POS!</p>' },
     { slug: 'password_reset', name: 'Password Reset', subject: 'Reset Your Password', body: '<p>Click the link to reset your password.</p>' },
     { slug: 'invoice', name: 'Invoice Email', subject: 'Invoice {{invoice_number}}', body: '<p>Your invoice {{invoice_number}} is ready.</p>' },
     { slug: 'trial_expiry', name: 'Trial Expiry', subject: 'Your trial is ending soon', body: '<p>Hi {{owner_name}}, your trial for {{business_name}} ends soon.</p>' },

@@ -1,4 +1,4 @@
-# EYZ POS Database Schema
+# Codex POS Database Schema
 
 ## Entity Relationship Overview
 
