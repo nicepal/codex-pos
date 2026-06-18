@@ -87,7 +87,7 @@ export default function DomainsSection({ enabled, storeSlug }) {
               </Stack>
               {d.domain_type === 'custom' && d.verification_token && d.verification_status === 'pending' && (
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                  Add a TXT record: <code>eyz-verify={d.verification_token}</code> then click Mark verified.
+                  Add a TXT record: <code>poshive-verify={d.verification_token}</code> then click Mark verified.
                 </Typography>
               )}
             </Box>

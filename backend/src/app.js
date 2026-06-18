@@ -47,6 +47,7 @@ const reviewRoutes = require('./modules/reviews/reviews.routes');
 const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const complianceRoutes = require('./modules/compliance/compliance.routes');
 const shopifyRoutes = require('./modules/integrations/shopify/shopify.routes');
+const adminEmailRoutes = require('./modules/platform/email/email.routes');
 const crudModules = require('./modules/_crud');
 const employeeRoutes = require('./modules/employees/employees.routes');
 const platform = require('./modules/platform/platform.services');
@@ -161,6 +162,7 @@ function createApp() {
   api.use('/marketplace', marketplaceRoutes);
   api.use('/compliance', complianceRoutes);
   api.use('/integrations/shopify', shopifyRoutes);
+  api.use('/admin/email', adminEmailRoutes);
 
   api.get('/usage', authenticate, requireTenant, requireTenantAccess, asyncHandler(async (req, res) => {
     const { getUsageSummary } = require('./shared/plan-limits');

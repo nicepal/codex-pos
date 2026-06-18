@@ -7,7 +7,7 @@
  *  - API writes (POST/PUT/DELETE): never cached; the app's IndexedDB queue
  *    handles offline order capture.
  */
-const CACHE = 'eyz-pos-shell-v1';
+const CACHE = 'poshive-pos-shell-v2';
 const APP_SHELL = ['/', '/index.html', '/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

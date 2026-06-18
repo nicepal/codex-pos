@@ -27,6 +27,9 @@ import CmsPage from './pages/admin/Cms';
 import NotificationsAdminPage from './pages/admin/Notifications';
 import ImpersonationLogsPage from './pages/admin/ImpersonationLogs';
 import SubscriptionOverviewPage from './pages/admin/SubscriptionOverview';
+import SmtpSettingsPage from './pages/admin/email/SmtpSettings';
+import EmailLogsPage from './pages/admin/email/EmailLogs';
+import EmailTemplatesPage from './pages/admin/email/EmailTemplates';
 
 import BusinessDashboard from './pages/business/dashboard/index.jsx';
 import ProductsPage from './pages/business/Products';
@@ -108,6 +111,9 @@ function AppRoutes() {
         <Route path="cms" element={<CmsPage />} />
         <Route path="notifications" element={<NotificationsAdminPage />} />
         <Route path="subscriptions" element={<SubscriptionOverviewPage />} />
+        <Route path="settings/smtp" element={<SmtpSettingsPage />} />
+        <Route path="settings/email-logs" element={<EmailLogsPage />} />
+        <Route path="settings/email-templates" element={<EmailTemplatesPage />} />
       </Route>
 
       <Route path="/" element={<ProtectedRoute businessOnly><BusinessLayout /></ProtectedRoute>}>

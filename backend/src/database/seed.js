@@ -177,18 +177,26 @@ async function seed() {
   }
 
   const templates = [
-    { slug: 'welcome', name: 'Welcome Email', subject: 'Welcome to {{business_name}}!', body: '<p>Hello {{owner_name}}, welcome to Codex POS!</p>' },
-    { slug: 'password_reset', name: 'Password Reset', subject: 'Reset Your Password', body: '<p>Click the link to reset your password.</p>' },
-    { slug: 'invoice', name: 'Invoice Email', subject: 'Invoice {{invoice_number}}', body: '<p>Your invoice {{invoice_number}} is ready.</p>' },
-    { slug: 'trial_expiry', name: 'Trial Expiry', subject: 'Your trial is ending soon', body: '<p>Hi {{owner_name}}, your trial for {{business_name}} ends soon.</p>' },
-    { slug: 'subscription_renewal', name: 'Subscription Renewal', subject: 'Subscription Renewed', body: '<p>Your subscription has been renewed.</p>' },
+    { slug: 'welcome', name: 'Welcome Email', subject: 'Welcome to {{business_name}}!', body: '<p>Hello {{user_name}}, welcome to {{app_name}}!</p>', vars: ['business_name', 'user_name', 'app_name'] },
+    { slug: 'password_reset', name: 'Password Reset', subject: 'Reset Your Password', body: '<p>Hello {{user_name}},</p><p>Click the link to reset your password:</p><p><a href="{{reset_link}}">{{reset_link}}</a></p><p>This link expires in 1 hour.</p>', vars: ['user_name', 'reset_link'] },
+    { slug: 'email_verification', name: 'Email Verification', subject: 'Verify your email address', body: '<p>Hello {{user_name}},</p><p>Please verify your email address:</p><p><a href="{{verification_link}}">{{verification_link}}</a></p>', vars: ['user_name', 'verification_link'] },
+    { slug: 'invoice', name: 'Invoice Email', subject: 'Invoice {{invoice_number}}', body: '<p>Hello {{customer_name}},</p><p>Your invoice {{invoice_number}} for {{amount}} is ready.</p>', vars: ['customer_name', 'invoice_number', 'amount'] },
+    { slug: 'purchase_order', name: 'Purchase Order', subject: 'Purchase Order {{purchase_order_number}}', body: '<p>Hello,</p><p>Please find purchase order {{purchase_order_number}} from {{business_name}}.</p>', vars: ['purchase_order_number', 'business_name'] },
+    { slug: 'order_confirmation', name: 'Order Confirmation', subject: 'Order {{order_number}} confirmed', body: '<p>Hello {{customer_name}},</p><p>Your order {{order_number}} has been confirmed.</p>', vars: ['customer_name', 'order_number'] },
+    { slug: 'staff_invitation', name: 'Staff Invitation', subject: 'You have been invited to {{business_name}}', body: '<p>Hello {{user_name}},</p><p>You have been invited to join {{business_name}}.</p>', vars: ['user_name', 'business_name'] },
+    { slug: 'support_ticket', name: 'Support Ticket', subject: 'Support ticket update', body: '<p>Hello {{user_name}},</p><p>There is an update on your support ticket.</p>', vars: ['user_name'] },
+    { slug: 'contact_form', name: 'Contact Form', subject: 'New contact form submission', body: '<p>A new contact form submission was received from {{customer_name}}.</p>', vars: ['customer_name'] },
+    { slug: 'subscription_activated', name: 'Subscription Activated', subject: 'Your {{subscription_name}} subscription is active', body: '<p>Hello {{user_name}},</p><p>Your subscription {{subscription_name}} is now active.</p>', vars: ['user_name', 'subscription_name'] },
+    { slug: 'subscription_expired', name: 'Subscription Expired', subject: 'Your subscription has expired', body: '<p>Hello {{user_name}},</p><p>Your subscription {{subscription_name}} expired on {{expiry_date}}.</p>', vars: ['user_name', 'subscription_name', 'expiry_date'] },
+    { slug: 'trial_expiry', name: 'Trial Expiry', subject: 'Your trial is ending soon', body: '<p>Hi {{user_name}}, your trial for {{business_name}} ends soon.</p>', vars: ['user_name', 'business_name'] },
+    { slug: 'subscription_renewal', name: 'Subscription Renewal', subject: 'Subscription Renewed', body: '<p>Your subscription has been renewed.</p>', vars: ['subscription_name'] },
   ];
 
   for (const t of templates) {
     await db.query(
       `INSERT INTO email_templates (slug, name, subject, body_html, variables)
        VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
-      [t.slug, t.name, t.subject, t.body, JSON.stringify(['business_name', 'owner_name', 'invoice_number'])]
+      [t.slug, t.name, t.subject, t.body, JSON.stringify(t.vars)]
     );
   }
 

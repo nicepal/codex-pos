@@ -17,6 +17,7 @@ const {
   MfaRequiredError,
 } = require('../../shared/errors');
 const { slugify } = require('../../utils/helpers');
+const logger = require('../../utils/logger');
 
 class AuthService {
   async registerBusiness(data) {
@@ -158,6 +159,15 @@ class AuthService {
     const token = generateSecureToken();
     const expires = new Date(Date.now() + 3600000);
     await userRepo.setPasswordResetToken(user.id, token, expires);
+
+    // Send the reset email through the centralized EmailService (non-blocking).
+    try {
+      const emailService = require('../../services/email.service');
+      const resetLink = `${config.app.url}/reset-password?token=${token}`;
+      await emailService.sendPasswordReset(user, resetLink);
+    } catch (err) {
+      logger.warn('Failed to send password reset email', { error: err.message });
+    }
 
     return { message: 'If email exists, reset link sent', resetToken: config.env === 'development' ? token : undefined };
   }

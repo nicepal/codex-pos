@@ -122,6 +122,19 @@ const notificationService = {
     return notificationRepo.update(id, { read_at: new Date(), status: 'read' }, tenantId);
   },
   async send(tenantId, data) {
+    // Route email through the centralized EmailService so it is logged + uses
+    // the configured SMTP; other channels go straight to the queue.
+    if ((data.channel || 'in_app') === 'email') {
+      const emailService = require('../../services/email.service');
+      return emailService.send({
+        to: data.email,
+        subject: data.title,
+        html: data.message,
+        tenantId,
+        userId: data.userId,
+        type: data.type || 'notification',
+      });
+    }
     const { addNotificationJob } = require('../../workers/queues');
     await addNotificationJob({ tenantId, ...data });
     return { queued: true };

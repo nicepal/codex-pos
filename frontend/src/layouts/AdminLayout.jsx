@@ -2,6 +2,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
   Dashboard, Business, CreditCard, Receipt, Support, History, People, LocalOffer, Article, Notifications, Security,
+  Email, MarkEmailRead, Description,
 } from '@mui/icons-material';
 import { logout } from '../features/auth/authSlice';
 import ResponsiveDrawer from '../components/ResponsiveDrawer';
@@ -33,6 +34,15 @@ export default function AdminLayout() {
         { label: 'Affiliates', path: '/admin/affiliates', icon: <People />, selected: isActive('/admin/affiliates'), onClick: () => navigate('/admin/affiliates') },
         { label: 'CMS', path: '/admin/cms', icon: <Article />, selected: isActive('/admin/cms'), onClick: () => navigate('/admin/cms') },
         { label: 'Notifications', path: '/admin/notifications', icon: <Notifications />, selected: isActive('/admin/notifications'), onClick: () => navigate('/admin/notifications') },
+      ],
+    },
+    {
+      label: 'Settings',
+      collapsible: true,
+      items: [
+        { label: 'SMTP Configuration', path: '/admin/settings/smtp', icon: <Email />, selected: isActive('/admin/settings/smtp'), onClick: () => navigate('/admin/settings/smtp') },
+        { label: 'Email Logs', path: '/admin/settings/email-logs', icon: <MarkEmailRead />, selected: isActive('/admin/settings/email-logs'), onClick: () => navigate('/admin/settings/email-logs') },
+        { label: 'Email Templates', path: '/admin/settings/email-templates', icon: <Description />, selected: isActive('/admin/settings/email-templates'), onClick: () => navigate('/admin/settings/email-templates') },
       ],
     },
   ];

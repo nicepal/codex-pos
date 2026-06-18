@@ -27,7 +27,7 @@ async function addShopifyImportJob(data) {
 }
 
 async function processNotification(job) {
-  const { tenantId, userId, channel, title, message, type, phone } = job.data;
+  const { tenantId, userId, channel, title, message, type, phone, email, text, replyTo, emailLogId } = job.data;
 
   await db.query(
     `INSERT INTO notifications (tenant_id, user_id, type, channel, title, message, status, sent_at)
@@ -36,19 +36,22 @@ async function processNotification(job) {
   );
 
   if (channel === 'email') {
-    const nodemailer = require('nodemailer');
-    if (config.smtp.host) {
-      const transporter = nodemailer.createTransport({
-        host: config.smtp.host,
-        port: config.smtp.port,
-        auth: { user: config.smtp.user, pass: config.smtp.pass },
-      });
-      await transporter.sendMail({
-        from: config.smtp.from,
-        to: job.data.email,
-        subject: title,
-        html: message,
-      });
+    const smtpService = require('../modules/platform/email/smtp.service');
+    const { markLog } = require('../services/email.service');
+    try {
+      const cfg = await smtpService.getActiveConfig(tenantId);
+      if (!cfg) {
+        // No SMTP configured at all: record and stop (no point retrying).
+        await markLog(emailLogId, 'failed', { error: 'SMTP not configured' });
+        logger.info('Email skipped (SMTP not configured)', { to: email, subject: title });
+        return;
+      }
+      const { messageId } = await smtpService.sendNow({ to: email, subject: title, html: message, text, replyTo, tenantId });
+      await markLog(emailLogId, 'sent', { messageId });
+    } catch (err) {
+      // Record the failure reason; rethrow so BullMQ retries (attempts: 3).
+      await markLog(emailLogId, 'failed', { error: smtpService.friendlyError(err) });
+      throw err;
     }
   } else if (channel === 'sms') {
     const smsService = require('../services/sms.service');
