@@ -1,8 +1,9 @@
-import { Grid } from '@mui/material';
+import { SimpleGrid } from '@mantine/core';
 import {
   AccountBalanceWallet, ShoppingCart, People, Inventory,
   TrendingUp, Receipt, TrendingDown, MonetizationOn,
 } from '@mui/icons-material';
+import { CODEX_TOKENS } from '../../../../design-system';
 import KpiCard from './KpiCard';
 
 export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
@@ -13,7 +14,7 @@ export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
       key: 'todaySales',
       title: "Today's Sales",
       kpi: kpis.todaySales,
-      icon: <AccountBalanceWallet color="primary" />,
+      icon: <AccountBalanceWallet style={{ color: CODEX_TOKENS.primary }} />,
       path: '/reports',
       money: true,
     },
@@ -21,7 +22,7 @@ export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
       key: 'todayProfit',
       title: "Today's Profit",
       kpi: kpis.todayProfit,
-      icon: <MonetizationOn color="success" />,
+      icon: <MonetizationOn style={{ color: CODEX_TOKENS.success }} />,
       path: '/reports',
       money: true,
     },
@@ -29,7 +30,7 @@ export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
       key: 'todayOrders',
       title: "Today's Orders",
       kpi: kpis.todayOrders,
-      icon: <ShoppingCart color="warning" />,
+      icon: <ShoppingCart style={{ color: CODEX_TOKENS.warning }} />,
       path: '/orders',
       money: false,
     },
@@ -37,7 +38,7 @@ export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
       key: 'customersToday',
       title: 'Customers Today',
       kpi: kpis.customersToday,
-      icon: <People color="secondary" />,
+      icon: <People style={{ color: '#7c3aed' }} />,
       path: '/customers',
       money: false,
     },
@@ -45,7 +46,7 @@ export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
       key: 'inventoryValue',
       title: 'Inventory Value',
       kpi: kpis.inventoryValue,
-      icon: <Inventory color="info" />,
+      icon: <Inventory style={{ color: '#3b82f6' }} />,
       path: '/inventory',
       money: true,
     },
@@ -53,7 +54,7 @@ export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
       key: 'monthlyRevenue',
       title: 'Monthly Revenue',
       kpi: kpis.monthlyRevenue,
-      icon: <TrendingUp color="success" />,
+      icon: <TrendingUp style={{ color: CODEX_TOKENS.success }} />,
       path: '/reports',
       money: true,
     },
@@ -61,7 +62,7 @@ export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
       key: 'monthlyExpenses',
       title: 'Monthly Expenses',
       kpi: kpis.monthlyExpenses,
-      icon: <Receipt color="error" />,
+      icon: <Receipt style={{ color: CODEX_TOKENS.error }} />,
       path: '/expenses',
       money: true,
     },
@@ -69,27 +70,29 @@ export default function KpiGrid({ kpis, formatMoney, onNavigate }) {
       key: 'netProfit',
       title: 'Net Profit',
       kpi: kpis.netProfit,
-      icon: kpis.netProfit?.trend === 'down'
-        ? <TrendingDown color="error" />
-        : <TrendingUp color="success" />,
+      icon:
+        kpis.netProfit?.trend === 'down' ? (
+          <TrendingDown style={{ color: CODEX_TOKENS.error }} />
+        ) : (
+          <TrendingUp style={{ color: CODEX_TOKENS.success }} />
+        ),
       path: '/reports',
       money: true,
     },
   ];
 
   return (
-    <Grid container spacing={2}>
+    <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
       {items.map((item) => (
-        <Grid item xs={6} sm={6} md={3} key={item.key}>
-          <KpiCard
-            title={item.title}
-            kpi={item.kpi}
-            icon={item.icon}
-            formatValue={item.money ? formatMoney : (v) => String(Math.round(v))}
-            onClick={() => onNavigate?.(item.path)}
-          />
-        </Grid>
+        <KpiCard
+          key={item.key}
+          title={item.title}
+          kpi={item.kpi}
+          icon={item.icon}
+          formatValue={item.money ? formatMoney : (v) => String(Math.round(v))}
+          onClick={() => onNavigate?.(item.path)}
+        />
       ))}
-    </Grid>
+    </SimpleGrid>
   );
 }

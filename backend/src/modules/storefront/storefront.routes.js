@@ -4,7 +4,6 @@ const { requireTenant } = require('../../middleware/tenant');
 const { validate } = require('../../middleware/validate');
 const { checkoutSchema } = require('../orders/orders.validation');
 
-const { requireFeature } = require('../../middleware/features');
 const { asyncHandler } = require('../../middleware/errorHandler');
 const { ForbiddenError, NotFoundError } = require('../../shared/errors');
 const { success } = require('../../shared/response');
@@ -27,27 +26,44 @@ function optionalStorefrontAuth(req, res, next) {
   return authenticateStorefrontCustomer(req, res, (err) => next(err && err.statusCode === 401 ? null : err));
 }
 
-async function requireOmnichannel(req, res, next) {
+/**
+ * Public shop access is controlled by Settings → "Enable online shop"
+ * (`storefront_enabled`), not the omnichannel pack (that pack gates custom
+ * domains / webhooks / marketplace). Omnichannel still unlocks the shop when
+ * the merchant has never toggled the setting.
+ */
+async function requireStorefrontAccess(req, res, next) {
   try {
     const { isFeatureEnabled, resolveTenantFeatures } = require('../../shared/features');
+    const checkoutService = require('./storefront.checkout.service');
     const resolved = await resolveTenantFeatures(req.tenant?.id);
-    if (!isFeatureEnabled(resolved, 'omnichannel')) {
+    req.tenantFeatures = resolved;
+
+    const theme = await checkoutService.getTheme(req.tenant.id);
+    const flag = theme?.theme?.storefront_enabled;
+    const explicitlyOn = flag === true || flag === 'true';
+    const explicitlyOff = flag === false || flag === 'false';
+
+    if (explicitlyOff) {
       throw new ForbiddenError('Online storefront is not enabled for this business');
     }
-    req.tenantFeatures = resolved;
-    next();
+    if (explicitlyOn || isFeatureEnabled(resolved, 'omnichannel')) {
+      return next();
+    }
+    throw new ForbiddenError('Online storefront is not enabled for this business');
   } catch (err) {
     next(err);
   }
 }
 
-router.use(requireTenant, requireOmnichannel);
+router.use(requireTenant, requireStorefrontAccess);
 
 router.get('/', controller.storeInfo);
 router.get('/products', controller.products);
 router.get('/products/:slug', controller.product);
 router.get('/categories', controller.categories);
 router.get('/branches', controller.branches);
+router.get('/loyalty-preview', controller.loyaltyPreview);
 router.post('/checkout', validate(checkoutSchema), controller.checkout);
 router.get('/theme', controller.theme);
 router.get('/sitemap', controller.sitemap);

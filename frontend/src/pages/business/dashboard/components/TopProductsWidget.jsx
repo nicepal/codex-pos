@@ -1,12 +1,13 @@
-import { Box } from '@mui/material';
+import { Box, Paper, Text } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import DashboardSection from './DashboardSection';
 import EmptyState from '../../../../components/EmptyState';
+import { CODEX_TOKENS } from '../../../../design-system';
 
-const BAR_COLOR = '#2563eb';
+const BAR_COLOR = CODEX_TOKENS.primary;
 
 export default function TopProductsWidget({ products, formatMoney, loading, error, onRetry }) {
   const navigate = useNavigate();
@@ -18,28 +19,44 @@ export default function TopProductsWidget({ products, formatMoney, loading, erro
     productId: p.productId,
   }));
 
-  // Give each bar room to breathe; cap height so long lists stay scannable
   const chartHeight = Math.max(160, data.length * 34);
 
   const renderTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
     const row = payload[0].payload;
     return (
-      <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, boxShadow: 2 }}>
-        <Box sx={{ fontWeight: 600, fontSize: 13 }}>{row.name}</Box>
-        <Box sx={{ fontSize: 12, color: 'text.secondary' }}>{row.unitsSold} units sold</Box>
-        <Box sx={{ fontSize: 13, color: BAR_COLOR, fontWeight: 700 }}>{formatMoney(row.revenue)}</Box>
-      </Box>
+      <Paper withBorder p="xs" shadow="sm">
+        <Text fw={600} size="sm">
+          {row.name}
+        </Text>
+        <Text size="xs" c="dimmed">
+          {row.unitsSold} units sold
+        </Text>
+        <Text size="sm" fw={700} c="codex">
+          {formatMoney(row.revenue)}
+        </Text>
+      </Paper>
     );
   };
 
   return (
-    <DashboardSection title="Top Selling Products" subtitle="Top 10 by units sold" loading={loading} error={error} onRetry={onRetry}>
-      {!loading && !data.length && (
-        <EmptyState compact illustration="store" title="No product sales yet" message="Products will appear here once you start selling." />
-      )}
-      {!loading && data.length > 0 && (
-        <Box sx={{ width: '100%', height: chartHeight }} role="img" aria-label="Top selling products by revenue">
+    <DashboardSection
+      title="Top Selling Products"
+      subtitle="Top 10 by units sold"
+      loading={loading}
+      error={error}
+      onRetry={onRetry}
+    >
+      {!loading && !data.length ? (
+        <EmptyState
+          compact
+          illustration="store"
+          title="No product sales yet"
+          message="Products will appear here once you start selling."
+        />
+      ) : null}
+      {!loading && data.length > 0 ? (
+        <Box w="100%" h={chartHeight} role="img" aria-label="Top selling products by revenue">
           <ResponsiveContainer>
             <BarChart
               data={data}
@@ -62,7 +79,7 @@ export default function TopProductsWidget({ products, formatMoney, loading, erro
             </BarChart>
           </ResponsiveContainer>
         </Box>
-      )}
+      ) : null}
     </DashboardSection>
   );
 }

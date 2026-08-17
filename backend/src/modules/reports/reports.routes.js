@@ -14,6 +14,10 @@ router.get('/financial', controller.financial);
 router.get('/advanced', controller.advanced);
 router.get('/export/sales', controller.exportSales);
 router.post('/schedule', controller.scheduleReport);
+router.get('/schedules', controller.listSchedules);
+router.delete('/schedules/:id', controller.cancelSchedule);
 router.get('/export/data', controller.exportData);
+router.get('/tax', controller.taxReport);
+router.get('/payment-mix', controller.paymentMix);
 
 module.exports = router;

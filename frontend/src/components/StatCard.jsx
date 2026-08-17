@@ -1,18 +1,28 @@
-import { Card, CardContent, Typography, Box } from '@mui/material';
+import { Card, Group, Stack, Text, ThemeIcon } from '@mantine/core';
 
 export default function StatCard({ title, value, icon, subtitle, color }) {
   return (
-    <Card>
-      <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box>
-            <Typography color="text.secondary" variant="body2">{title}</Typography>
-            <Typography variant="h4" fontWeight={700} color={color}>{value}</Typography>
-            {subtitle && <Typography variant="caption" color="text.secondary">{subtitle}</Typography>}
-          </Box>
-          {icon}
-        </Box>
-      </CardContent>
+    <Card withBorder padding="lg" radius="md" shadow="sm">
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Stack gap={4} style={{ minWidth: 0 }}>
+          <Text size="sm" c="dimmed">
+            {title}
+          </Text>
+          <Text fw={700} size="xl" c={color || undefined} style={{ fontSize: '1.75rem', lineHeight: 1.2 }}>
+            {value}
+          </Text>
+          {subtitle ? (
+            <Text size="xs" c="dimmed">
+              {subtitle}
+            </Text>
+          ) : null}
+        </Stack>
+        {icon ? (
+          <ThemeIcon variant="light" color="codex" size="lg" radius="md">
+            {icon}
+          </ThemeIcon>
+        ) : null}
+      </Group>
     </Card>
   );
 }

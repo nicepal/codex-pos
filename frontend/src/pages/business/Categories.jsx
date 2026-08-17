@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Grid, TextField, MenuItem, IconButton, Chip } from '@mui/material';
+import { ActionIcon, Badge, Group, NativeSelect, Textarea, TextInput } from '@mantine/core';
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import api from '../../services/api';
@@ -34,9 +34,8 @@ export default function CategoriesPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (payload) => editing
-      ? api.put(`/categories/${editing.id}`, payload)
-      : api.post('/categories', payload),
+    mutationFn: (payload) =>
+      editing ? api.put(`/categories/${editing.id}`, payload) : api.post('/categories', payload),
     onSuccess: () => {
       queryClient.invalidateQueries(['categories']);
       queryClient.invalidateQueries(['categories-list']);
@@ -62,7 +61,12 @@ export default function CategoriesPage() {
 
   const openEdit = (cat) => {
     setEditing(cat);
-    reset({ name: cat.name, description: cat.description, parent_id: cat.parent_id || '', sort_order: cat.sort_order });
+    reset({
+      name: cat.name,
+      description: cat.description,
+      parent_id: cat.parent_id || '',
+      sort_order: cat.sort_order,
+    });
     setOpen(true);
   };
 
@@ -78,21 +82,40 @@ export default function CategoriesPage() {
     { field: 'name', label: 'Name' },
     { field: 'slug', label: 'Slug' },
     { field: 'parent_name', label: 'Parent', render: (r) => r.parent_name || '-' },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
     {
-      field: 'actions', label: 'Actions',
+      field: 'status',
+      label: 'Status',
       render: (r) => (
-        <>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); openEdit(r); }}><Edit fontSize="small" /></IconButton>
-          <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); setDeleteId(r.id); }}><Delete fontSize="small" /></IconButton>
-        </>
+        <Badge size="sm" color={r.status === 'active' ? 'green' : 'gray'}>
+          {formatDisplayText(r.status)}
+        </Badge>
+      ),
+    },
+    {
+      field: 'actions',
+      label: 'Actions',
+      render: (r) => (
+        <Group gap={4} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+          <ActionIcon size="sm" variant="subtle" onClick={() => openEdit(r)}>
+            <Edit fontSize="small" />
+          </ActionIcon>
+          <ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteId(r.id)}>
+            <Delete fontSize="small" />
+          </ActionIcon>
+        </Group>
       ),
     },
   ];
 
   return (
     <>
-      <PageHeader title="Categories" subtitle="Organize products into categories" actionLabel="Add Category" actionIcon={<Add />} onAction={openCreate} />
+      <PageHeader
+        title="Categories"
+        subtitle="Organize products into categories"
+        actionLabel="Add Category"
+        actionIcon={<Add />}
+        onAction={openCreate}
+      />
       <BulkDeleteActions
         {...bulkDelete}
         title="Delete Categories"
@@ -113,25 +136,30 @@ export default function CategoriesPage() {
         open={open}
         title={editing ? 'Edit Category' : 'Add Category'}
         onClose={() => setOpen(false)}
-        onSubmit={handleSubmit((d) => saveMutation.mutate({
-          ...d,
-          parent_id: d.parent_id || null,
-          sort_order: parseInt(d.sort_order, 10) || 0,
-        }))}
+        onSubmit={handleSubmit((d) =>
+          saveMutation.mutate({
+            ...d,
+            parent_id: d.parent_id || null,
+            sort_order: parseInt(d.sort_order, 10) || 0,
+          }),
+        )}
         loading={saveMutation.isPending}
         submitLabel={editing ? 'Update' : 'Create'}
       >
-        <Grid item xs={12}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
-        <Grid item xs={12}><TextField fullWidth label="Description" multiline rows={2} {...register('description')} /></Grid>
-        <Grid item xs={12}>
-          <TextField fullWidth select label="Parent Category" {...register('parent_id')} defaultValue="">
-            <MenuItem value="">None</MenuItem>
-            {(categoriesList || []).filter((c) => c.id !== editing?.id).map((c) => (
-              <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid item xs={12}><TextField fullWidth label="Sort Order" type="number" {...register('sort_order')} /></Grid>
+        <RHFTextField register={register} name="name" rules={{ required: true }} label="Name" />
+        <Textarea label="Description" minRows={2} w="100%" {...register('description')} />
+        <NativeSelect
+          label="Parent Category"
+          w="100%"
+          {...register('parent_id')}
+          data={[
+            { value: '', label: 'None' },
+            ...(categoriesList || [])
+              .filter((c) => c.id !== editing?.id)
+              .map((c) => ({ value: String(c.id), label: c.name })),
+          ]}
+        />
+        <TextInput label="Sort Order" type="number" w="100%" {...register('sort_order')} />
       </FormDialog>
 
       <ConfirmDialog

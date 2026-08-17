@@ -1,0 +1,62 @@
+.pt-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.pt-card {
+  padding: 1.5rem;
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pt-card.is-hot {
+  border-color: var(--color-brand);
+  box-shadow: var(--shadow-card);
+}
+
+.pt-card h3 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.pt-price {
+  margin: 0;
+  color: var(--color-ink);
+}
+
+.pt-price strong {
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+}
+
+.pt-price span {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.pt-card ul {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.1rem;
+  color: var(--color-muted);
+  flex: 1;
+}
+
+.pt-card .btn {
+  width: 100%;
+}
+
+.pt-more {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+@media (min-width: 800px) {
+  .pt-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

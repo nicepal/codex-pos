@@ -82,7 +82,116 @@ const subscriptionService = {
        RETURNING *`,
       [tenantId, planId, billingCycle, String(periodDays), require('../../config').payments.provider]
     );
+
+    setImmediate(async () => {
+      try {
+        const emailService = require('../../services/email.service');
+        const tenant = await db.query(
+          `SELECT t.name, u.email, u.first_name FROM tenants t
+           JOIN users u ON u.tenant_id = t.id
+           JOIN user_roles ur ON ur.user_id = u.id
+           JOIN roles r ON r.id = ur.role_id AND r.name = 'business_owner'
+           WHERE t.id = $1 LIMIT 1`,
+          [tenantId]
+        );
+        const row = tenant.rows[0];
+        if (row?.email) {
+          await emailService.sendSubscriptionActivated(
+            row.email,
+            { user_name: row.first_name || row.name, subscription_name: plan.name },
+            { tenantId }
+          );
+        }
+      } catch (_) { /* non-blocking */ }
+    });
+
     return result.rows[0];
+  },
+
+  async cancel(tenantId, { immediate = false } = {}) {
+    const current = await this.getCurrent(tenantId);
+    if (!current) throw new (require('../../shared/errors').NotFoundError)('No subscription found');
+    if (['cancelled', 'expired'].includes(current.status)) {
+      throw new (require('../../shared/errors').ValidationError)('Subscription already cancelled');
+    }
+    if (immediate) {
+      await db.query(
+        `UPDATE subscriptions SET status = 'cancelled', cancelled_at = NOW(), current_period_end = NOW()
+         WHERE id = $1 AND tenant_id = $2`,
+        [current.id, tenantId]
+      );
+    } else {
+      await db.query(
+        `UPDATE subscriptions SET cancel_at_period_end = true, cancelled_at = NOW()
+         WHERE id = $1 AND tenant_id = $2`,
+        [current.id, tenantId]
+      );
+    }
+    setImmediate(async () => {
+      try {
+        const emailService = require('../../services/email.service');
+        const tenant = await db.query(
+          `SELECT u.email, u.first_name, t.name FROM tenants t
+           JOIN users u ON u.tenant_id = t.id
+           WHERE t.id = $1 LIMIT 1`,
+          [tenantId]
+        );
+        const row = tenant.rows[0];
+        if (row?.email) {
+          await emailService.sendSubscriptionExpired(
+            row.email,
+            {
+              user_name: row.first_name,
+              subscription_name: current.plan_name || 'subscription',
+              expiry_date: current.current_period_end,
+            },
+            { tenantId }
+          );
+        }
+      } catch (_) { /* non-blocking */ }
+    });
+    return this.getCurrent(tenantId);
+  },
+
+  async downgrade(tenantId, planId, billingCycle = 'monthly') {
+    const { ValidationError, NotFoundError } = require('../../shared/errors');
+    const plan = await planRepo.findById(planId);
+    if (!plan) throw new NotFoundError('Plan not found');
+    const current = await this.getCurrent(tenantId);
+    if (!current) throw new NotFoundError('No subscription found');
+    const currentPrice = current.billing_cycle === 'annual'
+      ? parseFloat(current.annual_price || 0)
+      : parseFloat(current.monthly_price || 0);
+    const newPrice = billingCycle === 'annual'
+      ? parseFloat(plan.annual_price || 0)
+      : parseFloat(plan.monthly_price || 0);
+    if (newPrice > currentPrice) {
+      throw new ValidationError('Use upgrade checkout for higher plans');
+    }
+    await db.query(
+      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = NOW()
+       WHERE tenant_id = $1 AND status IN ('active', 'trialing')`,
+      [tenantId]
+    );
+    const periodDays = billingCycle === 'annual' ? 365 : 30;
+    await db.query(
+      `INSERT INTO subscriptions
+         (tenant_id, plan_id, status, billing_cycle, current_period_start, current_period_end, payment_provider)
+       VALUES ($1, $2, 'active', $3, NOW(), NOW() + ($4 || ' days')::interval, $5)`,
+      [tenantId, planId, billingCycle, String(periodDays), require('../../config').payments.provider]
+    );
+    return this.getCurrent(tenantId);
+  },
+
+  async resume(tenantId) {
+    const current = await this.getCurrent(tenantId);
+    if (!current) throw new (require('../../shared/errors').NotFoundError)('No subscription found');
+    await db.query(
+      `UPDATE subscriptions SET cancel_at_period_end = false, cancelled_at = NULL
+       WHERE id = $1 AND tenant_id = $2 AND status IN ('active', 'trialing')`,
+      [current.id, tenantId]
+    );
+    return this.getCurrent(tenantId);
   },
 };
 

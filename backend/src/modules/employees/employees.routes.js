@@ -30,7 +30,7 @@ router.post('/verify-pin', requireFeature('staff_pro'), asyncHandler(async (req,
   if (!employeeId || !pin) throw new ValidationError('employee_id and pin are required');
 
   const result = await db.query(
-    `SELECT id, pin_code, first_name, last_name FROM employees
+    `SELECT id, pin_code, name FROM employees
      WHERE id = $1 AND tenant_id = $2 AND status = 'active'`,
     [employeeId, req.tenant.id]
   );
@@ -42,7 +42,7 @@ router.post('/verify-pin', requireFeature('staff_pro'), asyncHandler(async (req,
 
   return success(res, {
     employee_id: employee.id,
-    name: `${employee.first_name} ${employee.last_name}`.trim(),
+    name: employee.name,
     verified: true,
   }, 'PIN verified');
 }));

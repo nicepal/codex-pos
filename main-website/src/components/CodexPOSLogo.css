@@ -1,0 +1,27 @@
+.codexpos-logo-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.codexpos-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--color-ink);
+}
+
+.codexpos-logo--dark {
+  color: var(--color-on-dark);
+}
+
+.codexpos-logo-mark {
+  flex-shrink: 0;
+  display: block;
+}
+
+.codexpos-logo-word {
+  display: block;
+  overflow: visible;
+}

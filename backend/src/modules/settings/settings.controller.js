@@ -12,4 +12,11 @@ module.exports = {
     const data = await settingsService.updateBusinessSettings(req.tenant.id, req.body);
     return success(res, data, 'Settings updated');
   }),
+
+  updateLocale: asyncHandler(async (req, res) => {
+    const data = await settingsService.updateBusinessSettings(req.tenant.id, {
+      profile: { locale: req.body.locale || 'en' },
+    });
+    return success(res, { locale: data.profile?.locale || req.body.locale }, 'Locale updated');
+  }),
 };

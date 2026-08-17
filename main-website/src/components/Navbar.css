@@ -1,0 +1,214 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--nav-height);
+  background: rgba(244, 247, 246, 0.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.site-header.is-scrolled {
+  border-bottom-color: var(--color-line);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.site-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--nav-height);
+  gap: 1rem;
+}
+
+.nav-desktop {
+  display: none;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  font-size: 0.925rem;
+  color: var(--color-ink-soft);
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--color-ink);
+  background: var(--color-surface-muted);
+}
+
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  font-size: 0.925rem;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+
+.nav-dropdown-trigger:hover,
+.nav-dropdown.is-open .nav-dropdown-trigger {
+  color: var(--color-ink);
+  background: var(--color-surface-muted);
+}
+
+.nav-dropdown-panel {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 0;
+  min-width: 280px;
+  padding: 0.5rem;
+  padding-top: calc(0.5rem + 2px);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  z-index: 20;
+}
+
+.nav-dropdown-panel a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-sm);
+  min-height: 44px;
+}
+
+.nav-dropdown-panel a:hover {
+  background: var(--color-brand-soft);
+}
+
+.nav-dropdown-panel strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.nav-dropdown-panel span {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  line-height: 1.35;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-signin {
+  display: none;
+}
+
+.nav-burger {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated);
+  cursor: pointer;
+}
+
+.nav-burger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--color-ink);
+  border-radius: 1px;
+}
+
+.nav-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0 1.25rem;
+  border-top: 1px solid var(--color-line);
+  background: var(--color-surface-elevated);
+  max-height: calc(100vh - var(--nav-height));
+  overflow-y: auto;
+}
+
+.nav-mobile > a {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0.75rem 0.25rem;
+  font-weight: 500;
+}
+
+.nav-mobile .btn {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.nav-mobile-acc-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0.75rem 0.25rem;
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-ink);
+}
+
+.nav-mobile-acc-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 0.5rem 0.75rem;
+  border-left: 2px solid var(--color-brand-soft);
+  margin-left: 0.25rem;
+}
+
+.nav-mobile-acc-panel a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--color-ink-soft);
+  font-size: 0.95rem;
+}
+
+@media (min-width: 960px) {
+  .nav-desktop {
+    display: flex;
+  }
+
+  .nav-signin {
+    display: inline-flex;
+  }
+
+  .nav-burger {
+    display: none;
+  }
+
+  .nav-mobile {
+    display: none !important;
+  }
+}

@@ -1,21 +1,34 @@
-import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import { Text, Button, Group } from '@mantine/core';
+import { CodexModal } from '../design-system';
 
 export default function ConfirmDialog({
-  open, title = 'Confirm', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
-  onConfirm, onCancel, loading = false, danger = false,
+  open,
+  title = 'Confirm',
+  message,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  onConfirm,
+  onCancel,
+  loading = false,
+  danger = false,
 }) {
   return (
-    <Dialog open={open} onClose={onCancel}>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <DialogContentText>{message}</DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel} disabled={loading}>{cancelLabel}</Button>
-        <Button onClick={onConfirm} color={danger ? 'error' : 'primary'} variant="contained" disabled={loading}>
+    <CodexModal opened={!!open} onClose={onCancel} title={title} size="sm">
+      <Text c="dimmed" size="sm" mb="lg">
+        {message}
+      </Text>
+      <Group justify="flex-end" gap="sm">
+        <Button variant="default" onClick={onCancel} disabled={loading}>
+          {cancelLabel}
+        </Button>
+        <Button
+          color={danger ? 'red' : 'codex'}
+          onClick={onConfirm}
+          loading={loading}
+        >
           {confirmLabel}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Group>
+    </CodexModal>
   );
 }

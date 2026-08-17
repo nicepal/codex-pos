@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import AppThemeProvider from './AppThemeProvider';
 import { store } from './store';
+import { LocaleProvider } from './contexts/LocaleContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,7 +18,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <AppThemeProvider>
-          <App />
+          <LocaleProvider>
+            <App />
+          </LocaleProvider>
         </AppThemeProvider>
       </QueryClientProvider>
     </Provider>

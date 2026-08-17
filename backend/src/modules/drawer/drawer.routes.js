@@ -8,6 +8,8 @@ router.use(authenticate, requireTenant, requireTenantAccess, requireFeature('sta
 
 router.get('/open', controller.listOpen);
 router.post('/open', controller.open);
+router.get('/:id/summary', controller.summary);
+router.post('/:id/movements', controller.addMovement);
 router.post('/:id/close', controller.close);
 
 module.exports = router;

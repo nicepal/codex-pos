@@ -1,0 +1,43 @@
+.inventory-layout {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+.inv-list {
+  margin: 1.25rem 0;
+  padding-left: 1.15rem;
+  color: var(--color-muted);
+}
+
+.inv-panel {
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem;
+  box-shadow: var(--shadow-card);
+}
+
+.inv-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.inv-row:nth-child(odd) {
+  background: var(--color-surface);
+}
+
+.inv-row--warn strong {
+  color: var(--color-warning);
+}
+
+@media (min-width: 860px) {
+  .inventory-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+  }
+}

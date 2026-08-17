@@ -56,6 +56,62 @@ function getPublicUrl(relativePath) {
   return `${config.apiPrefix}/media/${normalized}?expires=${expires}&sig=${sig}`;
 }
 
+/**
+ * Extract relative upload path from a stored media URL (signed or unsigned).
+ * Returns null for external/S3 absolute URLs that are not under /media/.
+ */
+function extractMediaRelativePath(storedUrl) {
+  if (!storedUrl || typeof storedUrl !== 'string') return null;
+  const raw = storedUrl.trim();
+  if (!raw) return null;
+
+  let pathname = raw;
+  try {
+    if (/^https?:\/\//i.test(raw)) {
+      pathname = new URL(raw).pathname;
+    } else {
+      pathname = raw.split('?')[0];
+    }
+  } catch {
+    pathname = raw.split('?')[0];
+  }
+
+  const marker = '/media/';
+  const idx = pathname.indexOf(marker);
+  if (idx === -1) {
+    // Already a relative upload path (tenants/.../products/x.png)
+    if (isPublicCatalogPath(pathname) || pathname.startsWith('tenants/')) {
+      return normalizePath(pathname.replace(/^\//, ''));
+    }
+    return null;
+  }
+  return normalizePath(pathname.slice(idx + marker.length));
+}
+
+/**
+ * Normalize stored media URLs for customer-facing responses.
+ * Public catalog (products/logo) uses durable unsigned paths; others are re-signed.
+ * External absolute URLs (e.g. S3) are returned unchanged.
+ */
+function toStorefrontMediaUrl(storedUrl) {
+  if (!storedUrl || typeof storedUrl !== 'string') return null;
+  const trimmed = storedUrl.trim();
+  if (!trimmed) return null;
+
+  const relativePath = extractMediaRelativePath(trimmed);
+  if (!relativePath) {
+    // External CDN / absolute URL without /media/
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith('/')) return trimmed.split('?')[0];
+    return trimmed;
+  }
+
+  if (isPublicCatalogPath(relativePath)) {
+    return `${config.apiPrefix}/media/${relativePath}`;
+  }
+  return getPublicUrl(relativePath);
+}
+
 async function saveLocal(file, subfolder = 'general') {
   const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
   const filename = `${uuidv4()}${ext}`;
@@ -121,6 +177,8 @@ module.exports = {
   saveFile,
   deleteFile,
   getPublicUrl,
+  toStorefrontMediaUrl,
+  extractMediaRelativePath,
   signMediaPath,
   verifySignedMediaPath,
   isPublicCatalogPath,

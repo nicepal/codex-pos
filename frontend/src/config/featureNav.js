@@ -6,8 +6,14 @@ export const NAV_FEATURE_MAP = {
   '/employees': ['staff_pro'],
   '/team': ['staff_pro'],
   '/drawer': ['staff_pro'],
+  '/shifts': ['staff_pro'],
   '/coupons': ['catalog_pro'],
   '/marketplace': ['omnichannel'],
+  '/marketing': ['marketing_pro'],
+  '/accounting': ['finance_pro'],
+  '/manufacturing': ['mfg_pro'],
+  '/restaurant': ['restaurant_pro'],
+  '/ai-insights': ['ai_pro'],
 };
 
 export const SHOP_FEATURE = 'omnichannel';

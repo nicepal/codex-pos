@@ -1,0 +1,37 @@
+.analytics-layout {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+.ana-list {
+  margin: 1.25rem 0;
+  padding-left: 1.15rem;
+  color: var(--color-muted);
+}
+
+.ana-chart-wrap {
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+
+.ana-chart-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin-bottom: 0.75rem;
+}
+
+.ana-chart {
+  height: 240px;
+}
+
+@media (min-width: 860px) {
+  .analytics-layout {
+    grid-template-columns: 1fr 1.05fr;
+    gap: 3rem;
+  }
+}

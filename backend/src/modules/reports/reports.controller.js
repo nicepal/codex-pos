@@ -50,8 +50,25 @@ module.exports = {
     return success(res, row, 'Report scheduled');
   }),
 
+  listSchedules: asyncHandler(async (req, res) => {
+    return success(res, await reportService.listSchedules(req.tenant.id));
+  }),
+
+  cancelSchedule: asyncHandler(async (req, res) => {
+    const row = await reportService.cancelSchedule(req.tenant.id, req.params.id);
+    return success(res, row, 'Schedule cancelled');
+  }),
+
   exportData: asyncHandler(async (req, res) => {
     const data = await reportService.exportTenantData(req.tenant.id);
     return success(res, data);
+  }),
+
+  taxReport: asyncHandler(async (req, res) => {
+    return success(res, await reportService.taxReport(req.tenant.id, req.query));
+  }),
+
+  paymentMix: asyncHandler(async (req, res) => {
+    return success(res, await reportService.paymentMix(req.tenant.id, req.query));
   }),
 };

@@ -1,26 +1,49 @@
 import { useState } from 'react';
 import {
-  Box, Drawer, AppBar, Toolbar, Typography, List, ListItemButton,
-  ListItemIcon, ListItemText, IconButton, Avatar, Menu, MenuItem, Divider,
-  useMediaQuery, useTheme, Collapse,
-} from '@mui/material';
-import { Menu as MenuIcon, Logout, ExpandLess, ExpandMore, Brightness4, Brightness7 } from '@mui/icons-material';
+  AppShell,
+  Avatar,
+  Burger,
+  Divider,
+  Group,
+  Menu,
+  NavLink,
+  ScrollArea,
+  Text,
+  UnstyledButton,
+  ActionIcon,
+  Collapse,
+  Box,
+  Stack,
+} from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
+import {
+  Logout,
+  ExpandLess,
+  ExpandMore,
+  Brightness4,
+  Brightness7,
+} from '@mui/icons-material';
 import { useColorMode } from '../AppThemeProvider';
 
 const DRAWER_WIDTH = 260;
 
 export default function ResponsiveDrawer({
-  title, subtitle, navGroups, user, onLogout, children, headerExtra,
+  title,
+  subtitle,
+  navGroups,
+  user,
+  onLogout,
+  children,
+  headerExtra,
 }) {
-  const theme = useTheme();
   const { mode, toggleColorMode } = useColorMode();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-
+  const isMobile = useMediaQuery('(max-width: 48em)');
+  const [mobileOpened, setMobileOpened] = useState(false);
   const [expanded, setExpanded] = useState(() => {
     const init = {};
-    navGroups.forEach((g) => { init[g.label] = true; });
+    navGroups.forEach((g) => {
+      init[g.label] = true;
+    });
     return init;
   });
 
@@ -28,115 +51,145 @@ export default function ResponsiveDrawer({
     setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
+  const handleNavClick = (item) => {
+    item.onClick();
+    if (isMobile) setMobileOpened(false);
+  };
+
   const drawerContent = (
-    <Box sx={{ pt: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Typography variant="h6" sx={{ px: 2, mb: 0.5, fontWeight: 700, color: 'primary.main' }}>
-        {title}
-      </Typography>
-      {subtitle && (
-        <Typography variant="caption" sx={{ px: 2, color: 'text.secondary', display: 'block', mb: 2 }}>
-          {subtitle}
-        </Typography>
-      )}
+    <Stack gap={0} h="100%">
+      <Box px="md" pt="md" pb="sm">
+        <Text fw={700} c="codex" size="lg">
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text size="xs" c="dimmed" mt={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </Box>
       <Divider />
-      <List sx={{ flex: 1, overflowY: 'auto' }}>
-        {navGroups.map((group) => (
-          <Box key={group.label}>
-            {group.collapsible !== false ? (
-              <>
-                <ListItemButton onClick={() => toggleGroup(group.label)} sx={{ py: 0.5 }}>
-                  <ListItemText primary={group.label} primaryTypographyProps={{ variant: 'caption', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase' }} />
-                  {expanded[group.label] ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
-                </ListItemButton>
-                <Collapse in={expanded[group.label]}>
-                  {group.items.map((item) => (
-                    <ListItemButton
-                      key={item.path}
-                      selected={item.selected}
-                      onClick={() => { item.onClick(); if (isMobile) setMobileOpen(false); }}
-                      sx={{ pl: 3 }}
-                    >
-                      <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
-                      <ListItemText primary={item.label} />
-                    </ListItemButton>
-                  ))}
-                </Collapse>
-              </>
-            ) : (
-              group.items.map((item) => (
-                <ListItemButton
-                  key={item.path}
-                  selected={item.selected}
-                  onClick={() => { item.onClick(); if (isMobile) setMobileOpen(false); }}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.label} />
-                </ListItemButton>
-              ))
-            )}
-          </Box>
-        ))}
-      </List>
-    </Box>
+      <ScrollArea flex={1} type="scroll" offsetScrollbars>
+        <Box py="xs">
+          {navGroups.map((group) => (
+            <Box key={group.label} mb={4}>
+              {group.collapsible !== false ? (
+                <>
+                  <UnstyledButton
+                    onClick={() => toggleGroup(group.label)}
+                    w="100%"
+                    px="md"
+                    py={6}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                      {group.label}
+                    </Text>
+                    {expanded[group.label] ? (
+                      <ExpandLess fontSize="small" />
+                    ) : (
+                      <ExpandMore fontSize="small" />
+                    )}
+                  </UnstyledButton>
+                  <Collapse in={expanded[group.label]}>
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.path}
+                        label={item.label}
+                        leftSection={item.icon}
+                        active={item.selected}
+                        onClick={() => handleNavClick(item)}
+                        pl="md"
+                      />
+                    ))}
+                  </Collapse>
+                </>
+              ) : (
+                group.items.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={item.icon}
+                    active={item.selected}
+                    onClick={() => handleNavClick(item)}
+                  />
+                ))
+              )}
+            </Box>
+          ))}
+        </Box>
+      </ScrollArea>
+    </Stack>
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
-        <Toolbar>
-          {isMobile && (
-            <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
-              <MenuIcon />
-            </IconButton>
-          )}
-          <Typography variant="h6" sx={{ flexGrow: 1, noWrap: true }} noWrap>
-            {subtitle || title}
-          </Typography>
-          {headerExtra}
-          <IconButton color="inherit" onClick={toggleColorMode} sx={{ mr: 1 }}>
-            {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
-          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
-            <Avatar sx={{ width: 32, height: 32 }}>{user?.initial || 'U'}</Avatar>
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
-            {user?.email && <MenuItem disabled>{user.email}</MenuItem>}
-            <Divider />
-            <MenuItem onClick={onLogout}>
-              <Logout fontSize="small" sx={{ mr: 1 }} /> Logout
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
+    <AppShell
+      header={{ height: 60 }}
+      navbar={{
+        width: DRAWER_WIDTH,
+        breakpoint: 'md',
+        collapsed: { mobile: !mobileOpened },
+      }}
+      padding={{ base: 'md', md: 'lg' }}
+    >
+      <AppShell.Header>
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+            {isMobile ? (
+              <Burger
+                opened={mobileOpened}
+                onClick={() => setMobileOpened((o) => !o)}
+                size="sm"
+                aria-label="Toggle navigation"
+              />
+            ) : null}
+            <Text fw={600} size="lg" lineClamp={1} style={{ minWidth: 0 }}>
+              {subtitle || title}
+            </Text>
+          </Group>
+          <Group gap="xs" wrap="nowrap">
+            {headerExtra}
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              onClick={toggleColorMode}
+              aria-label="Toggle color mode"
+            >
+              {mode === 'dark' ? <Brightness7 fontSize="small" /> : <Brightness4 fontSize="small" />}
+            </ActionIcon>
+            <Menu shadow="md" width={220} position="bottom-end">
+              <Menu.Target>
+                <ActionIcon variant="subtle" radius="xl" size="lg" aria-label="User menu">
+                  <Avatar size={32} radius="xl" color="codex">
+                    {user?.initial || 'U'}
+                  </Avatar>
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {user?.email ? (
+                  <Menu.Item disabled>
+                    <Text size="sm" lineClamp={1}>
+                      {user.email}
+                    </Text>
+                  </Menu.Item>
+                ) : null}
+                <Menu.Divider />
+                <Menu.Item
+                  color="red"
+                  leftSection={<Logout fontSize="small" />}
+                  onClick={onLogout}
+                >
+                  Logout
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
+        </Group>
+      </AppShell.Header>
 
-      <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
-        {isMobile ? (
-          <Drawer
-            variant="temporary"
-            open={mobileOpen}
-            onClose={() => setMobileOpen(false)}
-            ModalProps={{ keepMounted: true }}
-            sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH } }}
-          >
-            <Toolbar />
-            {drawerContent}
-          </Drawer>
-        ) : (
-          <Drawer
-            variant="permanent"
-            sx={{ width: DRAWER_WIDTH, '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' } }}
-            open
-          >
-            <Toolbar />
-            {drawerContent}
-          </Drawer>
-        )}
-      </Box>
+      <AppShell.Navbar p={0}>{drawerContent}</AppShell.Navbar>
 
-      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, width: { md: `calc(100% - ${DRAWER_WIDTH}px)` } }}>
-        <Toolbar />
-        {children}
-      </Box>
-    </Box>
+      <AppShell.Main>{children}</AppShell.Main>
+    </AppShell>
   );
 }

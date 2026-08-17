@@ -9,6 +9,11 @@ const orderItemSchema = Joi.object({
   unit_price: Joi.number().min(0).optional(),
   discount: Joi.number().min(0).optional(),
   tax: Joi.number().min(0).optional(),
+  selected_modifiers: Joi.array().items(Joi.string().uuid()).optional(),
+  item_notes: Joi.string().max(500).allow('', null).optional(),
+  order_item_id: Joi.string().uuid().optional(),
+  voided: Joi.boolean().optional(),
+  void_reason: Joi.string().max(200).allow('', null).optional(),
 }).or('product_id', 'variant_id');
 
 const createOrderSchema = Joi.object({
@@ -30,12 +35,19 @@ const createOrderSchema = Joi.object({
   notes: Joi.string().max(2000).allow('', null).optional(),
   fulfillment_type: Joi.string().valid('delivery', 'pickup').optional(),
   pickup_branch_id: Joi.string().uuid().allow(null).optional(),
+  loyalty_points_to_redeem: Joi.number().integer().min(0).optional(),
   payments: Joi.array().items(Joi.object({
-    method: Joi.string().valid('cash', 'card', 'bank', 'gift_card', 'other').required(),
+    method: Joi.string().valid('cash', 'card', 'bank', 'gift_card', 'loyalty', 'other').required(),
     amount: Joi.number().min(0).required(),
     code: Joi.string().max(40).allow('', null).optional(),
     reference: Joi.string().allow('', null).optional(),
   })).optional(),
+  dining_order_type: Joi.string().valid('dine_in', 'takeaway', 'delivery').allow(null).optional(),
+  dining_session_id: Joi.string().uuid().allow(null).optional(),
+  table_id: Joi.string().uuid().allow(null).optional(),
+  guest_count: Joi.number().integer().min(1).max(99).allow(null).optional(),
+  server_employee_id: Joi.string().uuid().allow(null).optional(),
+  send_to_kitchen: Joi.boolean().optional(),
 });
 
 const checkoutSchema = Joi.object({
@@ -44,9 +56,19 @@ const checkoutSchema = Joi.object({
   customer_email: Joi.string().email().allow('', null).optional(),
   customer_phone: Joi.string().max(50).allow('', null).optional(),
   fulfillment_type: Joi.string().valid('delivery', 'pickup').optional(),
-  pickup_branch_id: Joi.string().uuid().allow(null).optional(),
+  pickup_branch_id: Joi.when('fulfillment_type', {
+    is: 'pickup',
+    then: Joi.string().uuid().required().messages({
+      'any.required': 'Pickup location is required',
+      'string.empty': 'Pickup location is required',
+    }),
+    otherwise: Joi.string().uuid().allow(null, '').optional(),
+  }),
   payment_method: Joi.string().valid('cash', 'card', 'bank', 'other').optional(),
   notes: Joi.string().max(2000).allow('', null).optional(),
+  coupon_code: Joi.string().max(64).allow('', null).optional(),
+  gift_card_code: Joi.string().max(64).allow('', null).optional(),
+  loyalty_points_to_redeem: Joi.number().integer().min(0).optional(),
 });
 
 const resumeOrderSchema = Joi.object({
@@ -62,6 +84,8 @@ const returnOrderSchema = Joi.object({
   items: Joi.array().items(returnItemSchema).min(1).required(),
   reason: Joi.string().max(500).allow('', null).optional(),
   restock: Joi.boolean().optional(),
+  manager_employee_id: Joi.string().uuid().allow(null).optional(),
+  manager_pin: Joi.string().max(20).allow(null).optional(),
 });
 
 module.exports = {

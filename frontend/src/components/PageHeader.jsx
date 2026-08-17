@@ -1,28 +1,51 @@
-import { Box, Typography, Button, Stack } from '@mui/material';
+import { Group, Stack, Text, Title, Button } from '@mantine/core';
 
-export default function PageHeader({ title, subtitle, action, actionLabel, actionIcon, onAction, secondaryAction }) {
+export default function PageHeader({
+  title,
+  subtitle,
+  action,
+  actionLabel,
+  actionIcon,
+  onAction,
+  secondaryAction,
+}) {
   const defaultAction = actionLabel ? (
-    <Button variant="contained" startIcon={actionIcon} onClick={onAction}>{actionLabel}</Button>
+    <Button leftSection={actionIcon} onClick={onAction}>
+      {actionLabel}
+    </Button>
   ) : null;
 
-  const actions = action !== undefined ? action : (
-    <Stack direction="row" spacing={1}>
-      {secondaryAction && (
-        <Button variant="outlined" startIcon={secondaryAction.icon} onClick={secondaryAction.onClick}>
-          {secondaryAction.label}
-        </Button>
-      )}
-      {defaultAction}
-    </Stack>
-  );
+  const actions =
+    action !== undefined ? (
+      action
+    ) : (
+      <Group gap="sm">
+        {secondaryAction ? (
+          <Button
+            variant="default"
+            leftSection={secondaryAction.icon}
+            onClick={secondaryAction.onClick}
+          >
+            {secondaryAction.label}
+          </Button>
+        ) : null}
+        {defaultAction}
+      </Group>
+    );
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-      <Box>
-        <Typography variant="h5" fontWeight={700}>{title}</Typography>
-        {subtitle && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{subtitle}</Typography>}
-      </Box>
+    <Group justify="space-between" align="flex-start" mb="lg" gap="md" wrap="wrap">
+      <Stack gap={4}>
+        <Title order={2} fw={700} style={{ fontSize: '1.5rem' }}>
+          {title}
+        </Title>
+        {subtitle ? (
+          <Text size="sm" c="dimmed">
+            {subtitle}
+          </Text>
+        ) : null}
+      </Stack>
       {actions}
-    </Box>
+    </Group>
   );
 }

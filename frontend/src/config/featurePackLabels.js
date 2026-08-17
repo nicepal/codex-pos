@@ -6,6 +6,12 @@ export const FEATURE_PACKS = {
   staff_pro: { label: 'Staff Pro', description: 'PIN login, drawer sessions, unified team' },
   crm_pro: { label: 'CRM Pro', description: 'Customer accounts, loyalty rules, tags' },
   omnichannel: { label: 'Omnichannel', description: 'Custom domains, click & collect, webhooks' },
+  marketing_pro: { label: 'Marketing Pro', description: 'Campaigns, abandoned cart, SMS/email automation' },
+  finance_pro: { label: 'Finance Pro', description: 'Ledger, journals, multi-currency, tax reports' },
+  ai_pro: { label: 'AI Pro', description: 'Forecasting, content generation, AI assistant' },
+  mfg_pro: { label: 'Manufacturing Pro', description: 'BOM and production orders' },
+  restaurant_pro: { label: 'Restaurant Pro', description: 'Table management, floor plans, dining sessions, KDS' },
+  enterprise: { label: 'Enterprise', description: 'Advanced permissions (custom roles), franchise orgs; SSO/SCIM when IdP is configured' },
   allow_negative_stock: { label: 'Allow Negative Stock', description: 'Sell when stock is zero' },
   open_price_items: { label: 'Open Price Items', description: 'Cashier can set price at POS' },
 };

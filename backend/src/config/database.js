@@ -15,7 +15,7 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  logger.error('Unexpected database pool error', { error: err.message });
+  logger.error('Unexpected database pool error', logger.formatError(err));
 });
 
 pool.on('connect', () => {

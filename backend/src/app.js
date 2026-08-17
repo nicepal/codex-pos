@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const { tenantResolver } = require('./middleware/tenant');
@@ -35,6 +36,7 @@ const couponRoutes = require('./modules/coupons/coupons.routes');
 const transferRoutes = require('./modules/transfers/transfers.routes');
 const webhookRoutes = require('./modules/webhooks/webhooks.routes');
 const drawerRoutes = require('./modules/drawer/drawer.routes');
+const posRoutes = require('./modules/pos/pos.routes');
 const taxRulesRoutes = require('./modules/tax-rules/tax-rules.routes');
 const activityRoutes = require('./modules/activity/activity.routes');
 const domainRoutes = require('./modules/domains/domains.routes');
@@ -48,6 +50,18 @@ const marketplaceRoutes = require('./modules/marketplace/marketplace.routes');
 const complianceRoutes = require('./modules/compliance/compliance.routes');
 const shopifyRoutes = require('./modules/integrations/shopify/shopify.routes');
 const adminEmailRoutes = require('./modules/platform/email/email.routes');
+const shiftsRoutes = require('./modules/shifts/shifts.routes');
+const marketingRoutes = require('./modules/marketing/marketing.routes');
+const accountingRoutes = require('./modules/accounting/accounting.routes');
+const manufacturingRoutes = require('./modules/manufacturing/manufacturing.routes');
+const restaurantRoutes = require('./modules/restaurant/restaurant.routes');
+const kdsRoutes = require('./modules/kitchen/kds.routes');
+const modifiersRoutes = require('./modules/modifiers/modifiers.routes');
+const ssoRoutes = require('./modules/sso/sso.routes');
+const printRoutes = require('./modules/print/print.routes');
+const orgsRoutes = require('./modules/orgs/orgs.routes');
+const customRolesRoutes = require('./modules/custom-roles/custom-roles.routes');
+const onboardingRoutes = require('./modules/onboarding/onboarding.routes');
 const crudModules = require('./modules/_crud');
 const employeeRoutes = require('./modules/employees/employees.routes');
 const platform = require('./modules/platform/platform.services');
@@ -84,15 +98,21 @@ function createApp() {
     verify: (req, res, buf) => { req.rawBody = buf; },
   }));
   app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
   app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
 
-  // Global abuse protection across the whole API surface
-  app.use(rateLimit({
-    windowMs: config.rateLimit.windowMs,
-    max: config.rateLimit.max,
-    standardHeaders: true,
-    legacyHeaders: false,
-  }));
+  // Global abuse protection. Dev skips this — POS alone can exceed a tight
+  // budget (product browse, settings, drawer/shift polls, HMR refetches).
+  // Auth routes still use authLimiter below.
+  if (config.env === 'production') {
+    app.use(rateLimit({
+      windowMs: config.rateLimit.windowMs,
+      max: config.rateLimit.max,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { success: false, code: 'RATE_LIMITED', message: 'Too many requests, please try again later.' },
+    }));
+  }
 
   app.use(tenantResolver);
 
@@ -151,6 +171,7 @@ function createApp() {
   api.use('/transfers', transferRoutes);
   api.use('/webhooks', webhookRoutes);
   api.use('/drawer', drawerRoutes);
+  api.use('/pos', posRoutes);
   api.use('/tax-rules', taxRulesRoutes);
   api.use('/activity', activityRoutes);
   api.use('/domains', domainRoutes);
@@ -163,6 +184,18 @@ function createApp() {
   api.use('/compliance', complianceRoutes);
   api.use('/integrations/shopify', shopifyRoutes);
   api.use('/admin/email', adminEmailRoutes);
+  api.use('/shifts', shiftsRoutes);
+  api.use('/marketing', marketingRoutes);
+  api.use('/accounting', accountingRoutes);
+  api.use('/manufacturing', manufacturingRoutes);
+  api.use('/restaurant', restaurantRoutes);
+  api.use('/restaurant/kds', kdsRoutes);
+  api.use('/modifiers', modifiersRoutes);
+  api.use('/sso', ssoRoutes);
+  api.use('/print', printRoutes);
+  api.use('/admin/orgs', orgsRoutes);
+  api.use('/custom-roles', customRolesRoutes);
+  api.use('/onboarding', onboardingRoutes);
 
   api.get('/usage', authenticate, requireTenant, requireTenantAccess, asyncHandler(async (req, res) => {
     const { getUsageSummary } = require('./shared/plan-limits');
@@ -194,6 +227,27 @@ function createApp() {
       req.body.checkout_session_id
     );
     return success(res, sub, 'Subscription upgraded');
+  }));
+
+  api.post('/subscriptions/cancel', authenticate, requireTenant, requireTenantAccess, asyncHandler(async (req, res) => {
+    const sub = await platform.subscriptions.service.cancel(req.tenant.id, {
+      immediate: Boolean(req.body.immediate),
+    });
+    return success(res, sub, 'Subscription cancelled');
+  }));
+
+  api.post('/subscriptions/downgrade', authenticate, requireTenant, requireTenantAccess, asyncHandler(async (req, res) => {
+    const sub = await platform.subscriptions.service.downgrade(
+      req.tenant.id,
+      req.body.plan_id,
+      req.body.billing_cycle || 'monthly'
+    );
+    return success(res, sub, 'Subscription downgraded');
+  }));
+
+  api.post('/subscriptions/resume', authenticate, requireTenant, requireTenantAccess, asyncHandler(async (req, res) => {
+    const sub = await platform.subscriptions.service.resume(req.tenant.id);
+    return success(res, sub, 'Subscription resumed');
   }));
 
   api.post('/subscriptions/checkout', authenticate, requireTenant, requireTenantAccess, asyncHandler(async (req, res) => {

@@ -1,65 +1,87 @@
-import { Box, Typography, Button, Divider, LinearProgress, alpha } from '@mui/material';
+import { Box, Typography, Button, Divider, Stack, alpha } from '@mui/material';
 import { Lock } from '@mui/icons-material';
-import { calcOrderTotals, FREE_SHIPPING_THRESHOLD } from '../../utils/storefrontPricing';
-import { STOREFRONT_COLORS } from './storefrontTheme';
+import { calcOrderTotals } from '../../utils/storefrontPricing';
+import { ProductThumb } from './ProductImage';
+import { SF } from './storefrontTheme';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 
 export default function OrderSummary({
   subtotal,
+  items = null,
   onCheckout,
   checkoutLabel,
   checkoutDisabled = false,
   checkoutLoading = false,
-  showShippingProgress = true,
+  primaryColor,
+  note,
 }) {
   const { formatMoney } = useStoreCurrency();
-  const { shipping, tax, total, freeShippingRemaining } = calcOrderTotals(subtotal);
-  const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
-  const resolvedCheckoutLabel = checkoutLabel || `Checkout — ${formatMoney(total)}`;
+  const { total } = calcOrderTotals(subtotal);
+  const resolvedCheckoutLabel = checkoutLabel || `Place order — ${formatMoney(total)}`;
+  const accent = primaryColor || undefined;
 
   return (
     <Box
       sx={{
-        p: 3,
-        borderRadius: 2,
-        bgcolor: STOREFRONT_COLORS.paper,
+        p: { xs: 2, md: 2.5 },
+        borderRadius: `${SF.radius.md}px`,
+        bgcolor: SF.colors.paper,
         border: '1px solid',
-        borderColor: 'divider',
+        borderColor: SF.colors.border,
+        boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
         position: { md: 'sticky' },
         top: 88,
       }}
     >
-      <Typography variant="h6" fontWeight={700} gutterBottom>Order Summary</Typography>
+      <Typography fontWeight={750} sx={{ fontSize: 16, letterSpacing: '-0.02em', mb: 1.5 }}>
+        Order summary
+      </Typography>
 
-      {showShippingProgress && subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD && (
-        <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: alpha('#2563eb', 0.08), border: '1px solid', borderColor: alpha('#2563eb', 0.2) }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            You&apos;re <strong>{formatMoney(freeShippingRemaining)}</strong> away from free shipping!
-          </Typography>
-          <LinearProgress variant="determinate" value={progress} sx={{ height: 6, borderRadius: 3 }} />
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-            {formatMoney(subtotal)} / {formatMoney(FREE_SHIPPING_THRESHOLD)}
-          </Typography>
-        </Box>
+      {Array.isArray(items) && items.length > 0 && (
+        <Stack spacing={1.25} sx={{ mb: 2 }}>
+          {items.map((item, idx) => (
+            <Stack
+              key={`${item.product_id}-${item.variant_id || idx}`}
+              direction="row"
+              spacing={1.25}
+              alignItems="center"
+            >
+              <ProductThumb src={item.image_url} alt={item.name} size={48} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography noWrap fontWeight={600} sx={{ fontSize: 13.5, lineHeight: 1.3 }}>
+                  {item.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Qty {item.quantity}
+                </Typography>
+              </Box>
+              <Typography fontWeight={700} sx={{ fontSize: 13.5, flexShrink: 0 }}>
+                {formatMoney(item.sale_price * item.quantity)}
+              </Typography>
+            </Stack>
+          ))}
+          <Divider sx={{ borderColor: SF.colors.borderSubtle }} />
+        </Stack>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-        <Typography color="text.secondary">Subtotal</Typography>
-        <Typography fontWeight={500}>{formatMoney(subtotal)}</Typography>
-      </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-        <Typography color="text.secondary">Shipping</Typography>
-        <Typography fontWeight={500}>{shipping === 0 ? 'Free' : formatMoney(shipping)}</Typography>
-      </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography color="text.secondary">Tax</Typography>
-        <Typography fontWeight={500}>{formatMoney(tax)}</Typography>
-      </Box>
-      <Divider sx={{ mb: 2 }} />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h6" fontWeight={700}>Total</Typography>
-        <Typography variant="h6" fontWeight={700}>{formatMoney(total)}</Typography>
-      </Box>
+      <Stack spacing={0.85} sx={{ mb: 1.5 }}>
+        <Stack direction="row" justifyContent="space-between">
+          <Typography color="text.secondary" sx={{ fontSize: 14 }}>Subtotal</Typography>
+          <Typography fontWeight={600} sx={{ fontSize: 14 }}>{formatMoney(subtotal)}</Typography>
+        </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4 }}>
+          {note || 'Final tax (if any) is calculated when your order is placed.'}
+        </Typography>
+      </Stack>
+
+      <Divider sx={{ mb: 1.5, borderColor: SF.colors.borderSubtle }} />
+
+      <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 2.25 }}>
+        <Typography fontWeight={750} sx={{ fontSize: 16 }}>Total</Typography>
+        <Typography fontWeight={800} sx={{ fontSize: 20, letterSpacing: '-0.03em' }}>
+          {formatMoney(total)}
+        </Typography>
+      </Stack>
 
       {onCheckout && (
         <>
@@ -67,16 +89,27 @@ export default function OrderSummary({
             fullWidth
             variant="contained"
             size="large"
-            startIcon={<Lock />}
+            startIcon={<Lock sx={{ fontSize: '18px !important' }} />}
             onClick={onCheckout}
             disabled={checkoutDisabled || checkoutLoading}
-            sx={{ py: 1.5, fontWeight: 700 }}
+            sx={{
+              py: 1.4,
+              fontWeight: 750,
+              borderRadius: `${SF.radius.sm}px`,
+              bgcolor: accent,
+              '&:hover': accent ? { bgcolor: alpha(accent, 0.9) } : undefined,
+            }}
           >
-            {checkoutLoading ? 'Processing…' : resolvedCheckoutLabel}
+            {checkoutLoading ? 'Placing order…' : resolvedCheckoutLabel}
           </Button>
-          <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mt: 1.5 }}>
-            <Lock sx={{ fontSize: 12, verticalAlign: 'middle', mr: 0.5 }} />
-            Secure checkout
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            align="center"
+            display="block"
+            sx={{ mt: 1.25 }}
+          >
+            By placing this order you agree to the store’s order terms.
           </Typography>
         </>
       )}

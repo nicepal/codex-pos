@@ -1,0 +1,19 @@
+.announcement-bar {
+  background: var(--color-ink);
+  color: rgba(244, 247, 246, 0.9);
+  text-align: center;
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+}
+
+.announcement-bar p {
+  margin: 0;
+  color: inherit;
+}
+
+.announcement-bar a {
+  color: var(--color-brand-bright);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

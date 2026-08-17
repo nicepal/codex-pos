@@ -48,9 +48,40 @@ class DomainsService {
       [id, tenantId]
     );
     if (!row.rows[0]) throw new NotFoundError('Domain not found');
-    if (row.rows[0].domain_type !== 'custom') {
+    const domain = row.rows[0];
+    if (domain.domain_type !== 'custom') {
       throw new ValidationError('Only custom domains can be verified');
     }
+
+    const expected = `codexpos-verify=${domain.verification_token}`;
+    let found = false;
+    let dnsError = null;
+    try {
+      const dns = require('dns').promises;
+      const records = await dns.resolveTxt(domain.domain);
+      const flat = records.map((parts) => (Array.isArray(parts) ? parts.join('') : String(parts)));
+      found = flat.some((txt) => txt.includes(expected) || txt.includes(domain.verification_token));
+    } catch (err) {
+      dnsError = err.message;
+      // Fallback: also check _codexpos subdomain common for TXT
+      try {
+        const dns = require('dns').promises;
+        const records = await dns.resolveTxt(`_codexpos.${domain.domain}`);
+        const flat = records.map((parts) => (Array.isArray(parts) ? parts.join('') : String(parts)));
+        found = flat.some((txt) => txt.includes(expected) || txt.includes(domain.verification_token));
+        dnsError = null;
+      } catch (err2) {
+        dnsError = err2.message || dnsError;
+      }
+    }
+
+    if (!found) {
+      throw new ValidationError(
+        `TXT record not found. Add a DNS TXT record with value "${expected}"` +
+          (dnsError ? ` (DNS lookup: ${dnsError})` : '')
+      );
+    }
+
     const result = await db.query(
       `UPDATE tenant_domains SET verification_status = 'verified', updated_at = NOW()
        WHERE id = $1 AND tenant_id = $2 RETURNING *`,

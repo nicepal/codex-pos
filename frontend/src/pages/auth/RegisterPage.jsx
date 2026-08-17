@@ -10,6 +10,7 @@ import { register as registerAction } from '../../features/auth/authSlice';
 import RHFTextField from '../../components/RHFTextField';
 import AuthPasswordField from '../../components/AuthPasswordField';
 import AuthLayout, { AuthLink } from '../../layouts/AuthLayout';
+import { needsOnboarding } from '../../services/onboardingService';
 
 const TRIAL_PERKS = ['14-day free trial', 'No credit card', 'Cancel anytime'];
 
@@ -29,12 +30,14 @@ export default function RegisterPage() {
       password: data.password,
       firstName: data.firstName,
       lastName: data.lastName,
-      phone: data.phone,
+      ...(data.phone?.trim() ? { phone: data.phone.trim() } : {}),
     }));
     setLoading(false);
     if (registerAction.fulfilled.match(result)) {
       localStorage.setItem('tenantSlug', result.payload.tenant?.slug);
-      navigate('/dashboard');
+      const goOnboarding = result.payload.onboarding_required
+        || needsOnboarding(result.payload.tenant);
+      navigate(goOnboarding ? '/onboarding' : '/dashboard');
     } else {
       setError(result.payload || 'Registration failed');
     }

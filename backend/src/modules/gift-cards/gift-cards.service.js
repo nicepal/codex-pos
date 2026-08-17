@@ -127,6 +127,49 @@ class GiftCardsService {
     return { applied, balance: newBalance, gift_card_id: card.id };
   }
 
+  /**
+   * Restore balance to a gift card (returns/refunds). Amount capped at initial_balance.
+   */
+  async credit(tenantId, code, amount, options = {}, client = null) {
+    const runner = client || db;
+    const normalizedCode = (code || '').trim().toUpperCase();
+    const cardRes = await runner.query(
+      `SELECT * FROM gift_cards WHERE tenant_id = $1 AND code = $2 ${client ? 'FOR UPDATE' : ''}`,
+      [tenantId, normalizedCode]
+    );
+    const card = cardRes.rows[0];
+    if (!card) throw new NotFoundError('Gift card not found');
+
+    const creditAmount = Math.max(0, parseFloat(amount) || 0);
+    if (creditAmount <= 0) return { credited: 0, balance: parseFloat(card.balance), gift_card_id: card.id };
+
+    const balance = parseFloat(card.balance);
+    const initial = parseFloat(card.initial_balance);
+    const newBalance = Math.min(initial, +(balance + creditAmount).toFixed(2));
+
+    await runner.query(
+      `UPDATE gift_cards SET balance = $1, status = $2, updated_at = NOW() WHERE id = $3`,
+      [newBalance, newBalance > 0 ? 'active' : card.status, card.id]
+    );
+    await runner.query(
+      `INSERT INTO gift_card_transactions (tenant_id, gift_card_id, type, amount, balance_after, order_id, note)
+       VALUES ($1, $2, 'refund', $3, $4, $5, $6)`,
+      [
+        tenantId, card.id, creditAmount, newBalance,
+        options.orderId || null,
+        options.note || options.returnId ? `Return ${options.returnId || ''}`.trim() : 'Return credit',
+      ]
+    );
+    return { credited: creditAmount, balance: newBalance, gift_card_id: card.id };
+  }
+
+  /** Parse gift card code from order_payments.reference (e.g. "GC-XXXX (bal 12.00)"). */
+  parseCodeFromReference(reference) {
+    if (!reference) return null;
+    const m = String(reference).trim().match(/^([A-Z0-9][A-Z0-9-]*)/i);
+    return m ? m[1].toUpperCase() : null;
+  }
+
   async transactions(tenantId, giftCardId) {
     const result = await db.query(
       `SELECT * FROM gift_card_transactions WHERE tenant_id = $1 AND gift_card_id = $2 ORDER BY created_at DESC`,

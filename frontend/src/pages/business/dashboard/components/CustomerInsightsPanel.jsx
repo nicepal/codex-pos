@@ -1,13 +1,24 @@
-import { Grid, Box, Typography, List, ListItem, ListItemText } from '@mui/material';
+import { Box, Text, SimpleGrid, Stack, Group } from '@mantine/core';
 import DashboardSection from './DashboardSection';
 import TrendBadge from './TrendBadge';
 import EmptyState from '../../../../components/EmptyState';
 
 function MiniStat({ label, value }) {
   return (
-    <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 2, textAlign: 'center' }}>
-      <Typography variant="h5" fontWeight={700}>{value}</Typography>
-      <Typography variant="caption" color="text.secondary">{label}</Typography>
+    <Box
+      p="sm"
+      ta="center"
+      style={{
+        background: 'var(--mantine-color-default-hover)',
+        borderRadius: 8,
+      }}
+    >
+      <Text fw={700} style={{ fontSize: '1.35rem' }}>
+        {value}
+      </Text>
+      <Text size="xs" c="dimmed">
+        {label}
+      </Text>
     </Box>
   );
 }
@@ -15,54 +26,67 @@ function MiniStat({ label, value }) {
 export default function CustomerInsightsPanel({ customers, formatMoney, loading, error, onRetry }) {
   return (
     <DashboardSection title="Customer Insights" loading={loading} error={error} onRetry={onRetry}>
-      {!loading && !customers && (
+      {!loading && !customers ? (
         <EmptyState compact illustration="store" title="No customer data" message="Add customers to see insights." />
-      )}
-      {!loading && customers && (
+      ) : null}
+      {!loading && customers ? (
         <Box>
-          <Grid container spacing={1.5} sx={{ mb: 2 }}>
-            <Grid item xs={6}>
-              <MiniStat label="New Today" value={customers.newToday} />
-            </Grid>
-            <Grid item xs={6}>
-              <MiniStat label="Returning Today" value={customers.returningToday} />
-            </Grid>
-            <Grid item xs={6}>
-              <MiniStat label="New This Month" value={customers.newThisMonth} />
-            </Grid>
-            <Grid item xs={6}>
-              <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 2, textAlign: 'center' }}>
-                <TrendBadge
-                  changePercent={customers.growthPercent}
-                  comparisonLabel="growth"
-                  trend={customers.growthPercent > 0 ? 'up' : customers.growthPercent < 0 ? 'down' : 'flat'}
-                />
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                  Customer Growth
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
+          <SimpleGrid cols={2} spacing="sm" mb="md">
+            <MiniStat label="New Today" value={customers.newToday} />
+            <MiniStat label="Returning Today" value={customers.returningToday} />
+            <MiniStat label="New This Month" value={customers.newThisMonth} />
+            <Box
+              p="sm"
+              ta="center"
+              style={{
+                background: 'var(--mantine-color-default-hover)',
+                borderRadius: 8,
+              }}
+            >
+              <TrendBadge
+                changePercent={customers.growthPercent}
+                comparisonLabel="growth"
+                trend={
+                  customers.growthPercent > 0
+                    ? 'up'
+                    : customers.growthPercent < 0
+                      ? 'down'
+                      : 'flat'
+                }
+              />
+              <Text size="xs" c="dimmed" mt={4}>
+                Customer Growth
+              </Text>
+            </Box>
+          </SimpleGrid>
 
-          <Typography variant="subtitle2" fontWeight={700} gutterBottom>Top Customers</Typography>
-          {!customers.topCustomers?.length && (
-            <Typography variant="body2" color="text.secondary">No customer purchases yet.</Typography>
-          )}
-          <List disablePadding dense>
+          <Text fw={700} size="sm" mb="xs">
+            Top Customers
+          </Text>
+          {!customers.topCustomers?.length ? (
+            <Text size="sm" c="dimmed">
+              No customer purchases yet.
+            </Text>
+          ) : null}
+          <Stack gap="xs">
             {customers.topCustomers?.map((c) => (
-              <ListItem key={c.id} disablePadding sx={{ py: 0.75 }}>
-                <ListItemText
-                  primary={c.name}
-                  secondary={`${c.orderCount} orders`}
-                />
-                <Typography variant="body2" fontWeight={700} color="primary.main">
+              <Group key={c.id} justify="space-between" wrap="nowrap">
+                <Stack gap={0} style={{ minWidth: 0 }}>
+                  <Text size="sm" fw={500} lineClamp={1}>
+                    {c.name}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {c.orderCount} orders
+                  </Text>
+                </Stack>
+                <Text size="sm" fw={700} c="codex">
                   {formatMoney(c.totalSpent)}
-                </Typography>
-              </ListItem>
+                </Text>
+              </Group>
             ))}
-          </List>
+          </Stack>
         </Box>
-      )}
+      ) : null}
     </DashboardSection>
   );
 }

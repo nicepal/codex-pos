@@ -1,69 +1,73 @@
+import { Box, Typography, Stack } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { Box, Container, Grid, Typography, Stack, IconButton } from '@mui/material';
-import { Storefront, Facebook, Twitter, Instagram } from '@mui/icons-material';
+import { SF, storefrontContainerSx } from './storefrontTheme';
 
-export default function StorefrontFooter({ storeName, basePath, primaryColor, footerText }) {
-  const linkSx = { color: 'text.secondary', textDecoration: 'none', fontSize: 14, '&:hover': { color: 'primary.main' } };
-
+/**
+ * Minimal store footer — merchant name + subtle Powered by CodexPOS.
+ */
+export default function StorefrontFooter({ storeName, basePath, footerText }) {
   return (
     <Box
       component="footer"
       sx={{
         mt: 'auto',
-        pt: 6,
+        pt: 4,
         pb: 3,
         borderTop: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
+        borderColor: SF.colors.borderSubtle,
+        bgcolor: SF.colors.paper,
       }}
     >
-      <Container maxWidth="lg">
-        <Grid container spacing={4} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={4}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-              <Storefront sx={{ color: primaryColor }} />
-              <Typography fontWeight={800}>{storeName}</Typography>
+      <Box sx={storefrontContainerSx()}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          alignItems={{ sm: 'center' }}
+          justifyContent="space-between"
+          spacing={1.5}
+        >
+          <Box>
+            <Typography fontWeight={700} sx={{ fontSize: 14 }}>{storeName}</Typography>
+            {footerText ? (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 420 }}>
+                {footerText}
+              </Typography>
+            ) : null}
+            <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+              <Typography
+                component={Link}
+                to={basePath}
+                variant="caption"
+                sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+              >
+                Order
+              </Typography>
+              <Typography
+                component={Link}
+                to={`${basePath}/shop`}
+                variant="caption"
+                sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+              >
+                All products
+              </Typography>
+              <Typography
+                component={Link}
+                to={`${basePath}/account`}
+                variant="caption"
+                sx={{ color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+              >
+                Account
+              </Typography>
             </Stack>
-            <Typography variant="body2" color="text.secondary">
-              {footerText || 'Powered by Codex POS'}
-            </Typography>
-          </Grid>
-          <Grid item xs={6} sm={4} md={2}>
-            <Typography variant="subtitle2" fontWeight={700} gutterBottom>Shop</Typography>
-            <Stack spacing={1}>
-              <Box component={Link} to={`${basePath}/shop`} sx={linkSx}>All Products</Box>
-              <Box component={Link} to={basePath} sx={linkSx}>Home</Box>
-            </Stack>
-          </Grid>
-          <Grid item xs={6} sm={4} md={2}>
-            <Typography variant="subtitle2" fontWeight={700} gutterBottom>Company</Typography>
-            <Stack spacing={1}>
-              <Typography variant="body2" color="text.secondary">About Us</Typography>
-              <Typography variant="body2" color="text.secondary">Contact</Typography>
-            </Stack>
-          </Grid>
-          <Grid item xs={6} sm={4} md={2}>
-            <Typography variant="subtitle2" fontWeight={700} gutterBottom>Help</Typography>
-            <Stack spacing={1}>
-              <Typography variant="body2" color="text.secondary">Shipping</Typography>
-              <Typography variant="body2" color="text.secondary">Returns</Typography>
-            </Stack>
-          </Grid>
-          <Grid item xs={6} sm={4} md={2}>
-            <Typography variant="subtitle2" fontWeight={700} gutterBottom>Follow Us</Typography>
-            <Stack direction="row" spacing={0.5}>
-              {[Facebook, Twitter, Instagram].map((Icon, i) => (
-                <IconButton key={i} size="small" sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
-                  <Icon fontSize="small" />
-                </IconButton>
-              ))}
-            </Stack>
-          </Grid>
-        </Grid>
-        <Typography variant="caption" color="text.secondary" align="center" display="block">
-          © {new Date().getFullYear()} {storeName}. All rights reserved.
-        </Typography>
-      </Container>
+          </Box>
+          <Typography
+            variant="caption"
+            color="text.disabled"
+            sx={{ fontSize: 11, letterSpacing: '0.02em' }}
+          >
+            Powered by CodexPOS
+          </Typography>
+        </Stack>
+      </Box>
     </Box>
   );
 }

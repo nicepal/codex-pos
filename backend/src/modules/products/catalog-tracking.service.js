@@ -88,6 +88,71 @@ class CatalogTrackingService {
     return { deleted: true };
   }
 
+  async markSerialsSold(tenantId, productId, serialNumbers, orderItemId, client = db) {
+    const serials = (serialNumbers || []).map((s) => String(s).trim()).filter(Boolean);
+    if (!serials.length) return;
+    for (const serial of serials) {
+      const result = await client.query(
+        `UPDATE product_serials
+         SET status = 'sold', order_item_id = $1, updated_at = NOW()
+         WHERE tenant_id = $2 AND product_id = $3 AND serial_number = $4 AND status = 'in_stock'
+         RETURNING id`,
+        [orderItemId || null, tenantId, productId, serial]
+      );
+      if (!result.rows[0]) {
+        throw new ValidationError(`Serial ${serial} is not available for sale`);
+      }
+    }
+  }
+
+  async markSerialsReturned(tenantId, productId, serialNumbers, client = db) {
+    const serials = (serialNumbers || []).map((s) => String(s).trim()).filter(Boolean);
+    if (!serials.length) return;
+    for (const serial of serials) {
+      // Restocked serials become sellable again (in_stock), not stuck as "returned".
+      await client.query(
+        `UPDATE product_serials
+         SET status = 'in_stock', order_item_id = NULL, updated_at = NOW()
+         WHERE tenant_id = $1 AND product_id = $2 AND serial_number = $3 AND status IN ('sold', 'returned')`,
+        [tenantId, productId, serial]
+      );
+    }
+  }
+
+  async consumeBatch(tenantId, batchId, quantity, client = db) {
+    if (!batchId || !quantity) return;
+    const result = await client.query(
+      `UPDATE product_batches SET quantity = quantity - $1
+       WHERE id = $2 AND tenant_id = $3 AND quantity >= $1
+       RETURNING *`,
+      [quantity, batchId, tenantId]
+    );
+    if (!result.rows[0]) throw new ValidationError('Insufficient batch quantity or invalid batch');
+    return result.rows[0];
+  }
+
+  async restoreBatch(tenantId, batchId, quantity, client = db) {
+    if (!batchId || !quantity) return;
+    await client.query(
+      `UPDATE product_batches SET quantity = quantity + $1 WHERE id = $2 AND tenant_id = $3`,
+      [quantity, batchId, tenantId]
+    );
+  }
+
+  async listExpiringBatches(tenantId, days = 30) {
+    const result = await db.query(
+      `SELECT pb.*, p.name AS product_name, p.sku
+       FROM product_batches pb
+       JOIN products p ON p.id = pb.product_id
+       WHERE pb.tenant_id = $1 AND pb.quantity > 0
+         AND pb.expiry_date IS NOT NULL
+         AND pb.expiry_date <= CURRENT_DATE + ($2 || ' days')::interval
+       ORDER BY pb.expiry_date ASC`,
+      [tenantId, String(days)]
+    );
+    return result.rows;
+  }
+
   async _ensureProduct(tenantId, productId) {
     const p = await db.query('SELECT id FROM products WHERE id = $1 AND tenant_id = $2', [productId, tenantId]);
     if (!p.rows[0]) throw new NotFoundError('Product not found');

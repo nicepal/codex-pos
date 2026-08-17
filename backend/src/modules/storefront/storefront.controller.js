@@ -40,6 +40,11 @@ module.exports = {
     return success(res, order, 'Order placed');
   }),
 
+  loyaltyPreview: asyncHandler(async (req, res) => {
+    const data = await checkoutService.loyaltyPreview(req.tenant.id, req.query.email);
+    return success(res, data);
+  }),
+
   theme: asyncHandler(async (req, res) => {
     const theme = await checkoutService.getTheme(req.tenant.id);
     return success(res, theme);

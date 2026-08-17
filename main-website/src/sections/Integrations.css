@@ -1,0 +1,43 @@
+.integrations-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  grid-template-columns: 1fr;
+}
+
+.integration-card {
+  display: block;
+  padding: 1.25rem 1.35rem;
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  min-height: 110px;
+  transition: border-color 0.2s ease;
+}
+
+.integration-card:hover {
+  border-color: var(--color-brand);
+}
+
+.integration-card strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 1rem;
+}
+
+.integration-card p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+@media (min-width: 700px) {
+  .integrations-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1000px) {
+  .integrations-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

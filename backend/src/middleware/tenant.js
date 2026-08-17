@@ -12,10 +12,15 @@ async function resolveTenantFromHost(host) {
   if (cached) return JSON.parse(cached);
 
   const result = await db.query(
-    `SELECT t.*, td.domain, td.domain_type
+    `SELECT t.*, td.domain, td.domain_type, td.verification_status
      FROM tenant_domains td
      JOIN tenants t ON t.id = td.tenant_id
-     WHERE td.domain = $1 AND t.status NOT IN ('deleted')
+     WHERE td.domain = $1
+       AND t.status NOT IN ('deleted')
+       AND (
+         td.domain_type = 'subdomain'
+         OR td.verification_status = 'verified'
+       )
      LIMIT 1`,
     [cleanHost]
   );
@@ -77,8 +82,21 @@ async function tenantResolver(req, res, next) {
 
 async function requireTenant(req, res, next) {
   try {
-    // Authenticated business users always use their own tenant (ignore stale X-Tenant-Slug)
-    if (req.user?.tenant_id) {
+    const slugHeader = req.headers['x-tenant-slug'];
+    const isStorefront = Boolean(
+      req.baseUrl?.includes('/storefront')
+      || req.originalUrl?.includes('/api/v1/storefront')
+      || req.path?.includes('/storefront')
+    );
+
+    // Public storefront must stay on the slug/domain tenant — never swap to the
+    // logged-in staff user's business (would leak or empty another shop).
+    if (isStorefront && (slugHeader || req.tenant)) {
+      if (!req.tenant) {
+        return next(new TenantError('Tenant context required'));
+      }
+    } else if (req.user?.tenant_id) {
+      // Authenticated business users use their own tenant (ignore stale X-Tenant-Slug)
       const result = await db.query(
         `SELECT * FROM tenants WHERE id = $1 AND status NOT IN ('deleted') LIMIT 1`,
         [req.user.tenant_id]

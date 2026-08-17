@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Chip, TextField, MenuItem, Alert } from '@mui/material';
+import { Alert, Badge, Box, NativeSelect } from '@mantine/core';
 import api from '../../services/api';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
@@ -11,7 +11,13 @@ import { formatDisplayText } from '../../utils/displayText';
 
 const empty = emptyPresetProps('orders');
 
-const statusColors = { pending: 'warning', paid: 'success', completed: 'success', cancelled: 'error', on_hold: 'info' };
+const statusColors = {
+  pending: 'yellow',
+  paid: 'green',
+  completed: 'green',
+  cancelled: 'red',
+  on_hold: 'blue',
+};
 
 export default function OrdersPage() {
   const { formatMoney } = useBusinessCurrency();
@@ -27,19 +33,30 @@ export default function OrdersPage() {
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['orders', branchFilter, page, limit],
-    queryFn: () => api.get('/orders', {
-      params: {
-        branch_id: branchFilter || undefined,
-        page,
-        limit,
-      },
-    }).then((r) => r.data),
+    queryFn: () =>
+      api
+        .get('/orders', {
+          params: {
+            branch_id: branchFilter || undefined,
+            page,
+            limit,
+          },
+        })
+        .then((r) => r.data),
   });
 
   const columns = [
     { field: 'order_number', label: 'Order #' },
     { field: 'order_type', label: 'Type', render: (r) => formatDisplayText(r.order_type) || '—' },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={statusColors[r.status] || 'default'} /> },
+    {
+      field: 'status',
+      label: 'Status',
+      render: (r) => (
+        <Badge size="sm" color={statusColors[r.status] || 'gray'}>
+          {formatDisplayText(r.status)}
+        </Badge>
+      ),
+    },
     { field: 'payment_method', label: 'Payment', render: (r) => formatDisplayText(r.payment_method) || '-' },
     { field: 'total_amount', label: 'Total', align: 'right', render: (r) => formatMoney(r.total_amount) },
     { field: 'created_at', label: 'Date', render: (r) => new Date(r.created_at).toLocaleString() },
@@ -48,16 +65,24 @@ export default function OrdersPage() {
   return (
     <>
       <PageHeader title="Orders" subtitle="View and manage sales orders" />
-      {isError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => refetch()}>
+      {isError ? (
+        <Alert color="red" mb="md" withCloseButton onClose={() => refetch()}>
           {error?.response?.data?.message || 'Failed to load orders'}
         </Alert>
-      )}
-      <Box sx={{ mb: 2 }}>
-        <TextField select size="small" label="Branch" value={branchFilter} onChange={(e) => { setBranchFilter(e.target.value); setPage(1); }} sx={{ minWidth: 180 }}>
-          <MenuItem value="">All branches</MenuItem>
-          {(branches || []).map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
-        </TextField>
+      ) : null}
+      <Box mb="md" maw={220}>
+        <NativeSelect
+          label="Branch"
+          value={branchFilter}
+          onChange={(e) => {
+            setBranchFilter(e.currentTarget.value);
+            setPage(1);
+          }}
+          data={[
+            { value: '', label: 'All branches' },
+            ...(branches || []).map((b) => ({ value: String(b.id), label: b.name })),
+          ]}
+        />
       </Box>
       <DataTable
         columns={columns}
@@ -67,7 +92,10 @@ export default function OrdersPage() {
         {...empty}
         pagination={data?.pagination}
         onPageChange={setPage}
-        onRowsPerPageChange={(value) => { setLimit(value); setPage(1); }}
+        onRowsPerPageChange={(value) => {
+          setLimit(value);
+          setPage(1);
+        }}
       />
     </>
   );

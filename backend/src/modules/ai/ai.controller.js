@@ -17,4 +17,16 @@ module.exports = {
     if (!question) throw new ValidationError('A question is required');
     return success(res, await service.ask(req.tenant.id, question));
   }),
+  forecast: asyncHandler(async (req, res) => {
+    return success(res, await service.forecastSales(req.tenant.id, req.body || req.query, req.user?.id));
+  }),
+  productDescription: asyncHandler(async (req, res) => {
+    return success(res, await service.generateProductDescription(req.tenant.id, req.body, req.user?.id));
+  }),
+  generateEmail: asyncHandler(async (req, res) => {
+    return success(res, await service.generateEmail(req.tenant.id, req.body, req.user?.id));
+  }),
+  chatSupport: asyncHandler(async (req, res) => {
+    return success(res, await service.chatSupport(req.tenant.id, req.body, req.user?.id));
+  }),
 };

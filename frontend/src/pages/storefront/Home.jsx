@@ -1,196 +1,346 @@
-import { Link, useOutletContext } from 'react-router-dom';
+import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useDispatch } from 'react-redux';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import {
-  Box, Typography, Grid, Button, Container, Stack, Chip, alpha,
+  Box, Typography, Skeleton, Button, Stack, Alert,
 } from '@mui/material';
-import { ArrowForward, Storefront, ShoppingBag } from '@mui/icons-material';
 import api from '../../services/api';
-import { resolveImageUrl } from '../../utils/imageUrl';
 import ProductCard from '../../components/storefront/ProductCard';
-import StoreInfoPanel from '../../components/storefront/StoreInfoPanel';
-import HowToOrder from '../../components/storefront/HowToOrder';
-import { addToCart } from '../../features/storefront/cartSlice';
+import StoreHero from '../../components/storefront/StoreHero';
+import CategoryNavigation from '../../components/storefront/CategoryNavigation';
+import { SF, productGridSx, storefrontStickyTop } from '../../components/storefront/storefrontTheme';
+
+function ProductSkeleton() {
+  return (
+    <Box
+      sx={{
+        borderRadius: `${SF.radius.lg}px`,
+        overflow: 'hidden',
+        bgcolor: 'background.paper',
+        border: '1px solid',
+        borderColor: SF.colors.border,
+      }}
+    >
+      <Skeleton variant="rectangular" animation="wave" sx={{ aspectRatio: SF.imageRatio }} />
+      <Box sx={{ p: 1.25 }}>
+        <Skeleton width="88%" height={14} />
+        <Skeleton width="42%" height={14} sx={{ mt: 1 }} />
+        <Skeleton height={32} sx={{ mt: 1.1, borderRadius: 1 }} />
+      </Box>
+    </Box>
+  );
+}
 
 export default function StoreHome() {
-  const { basePath, primaryColor, storeName, showStock, currency: contextCurrency } = useOutletContext();
-  const dispatch = useDispatch();
+  const {
+    slug, primaryColor, storeName, showStock,
+    logoUrl, store, themeSettings, categories: ctxCategories, openProductDetails,
+    searchQuery = '', clearSearch,
+    hasPickup, hasDelivery, fulfillmentType, onFulfillmentChange,
+  } = useOutletContext();
 
-  const { data: store } = useQuery({
-    queryKey: ['store-info'],
-    queryFn: () => api.get('/storefront').then((r) => r.data.data),
-  });
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
 
-  const { data: theme } = useQuery({
-    queryKey: ['storefront-theme'],
-    queryFn: () => api.get('/storefront/theme').then((r) => r.data.data),
-  });
+  const [activeCategory, setActiveCategory] = useState('');
+  const sectionRefs = useRef({});
+  const spyLockUntil = useRef(0);
+  const q = (searchQuery || '').trim().toLowerCase();
+  const searching = q.length > 0;
 
-  const { data: categories } = useQuery({
-    queryKey: ['storefront-categories-home'],
+  const categorySeed = Array.isArray(ctxCategories) && ctxCategories.length > 0
+    ? ctxCategories
+    : undefined;
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ['storefront-categories', slug],
     queryFn: () => api.get('/storefront/categories').then((r) => r.data.data),
+    ...(categorySeed ? { initialData: categorySeed } : {}),
   });
 
-  const { data: productsData } = useQuery({
-    queryKey: ['storefront-products'],
-    queryFn: () => api.get('/storefront/products', { params: { limit: 8 } }).then((r) => r.data),
+  const {
+    data: productsData,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ['storefront-products-menu', slug],
+    queryFn: () => api.get('/storefront/products', { params: { limit: 100 } }).then((r) => r.data),
   });
 
-  const bannerText = theme?.theme?.banner_text
-    || 'Order online — inventory and pricing synced with our store in real time.';
-  const tagline = theme?.theme?.tagline;
-  const featured = productsData?.data || [];
-  const logoUrl = resolveImageUrl(theme?.logo_url || store?.logo_url);
-  const currency = contextCurrency || store?.currency || 'USD';
+  const products = productsData?.data || [];
+  const categories = (
+    (Array.isArray(categoriesData) && categoriesData.length > 0 && categoriesData)
+    || (Array.isArray(ctxCategories) && ctxCategories.length > 0 && ctxCategories)
+    || []
+  );
 
-  const handleAddToCart = (product) => {
-    dispatch(addToCart({
-      product_id: product.id,
-      name: product.name,
-      slug: product.slug,
-      sale_price: parseFloat(product.sale_price),
-      category_name: product.category_name,
-      image_url: product.image_url,
-      sku: product.sku,
-    }));
-  };
+  const filteredProducts = useMemo(() => {
+    if (!searching) return products;
+    return products.filter((p) => {
+      const name = String(p.name || '').toLowerCase();
+      const cat = String(p.category_name || '').toLowerCase();
+      const desc = String(p.description || '').toLowerCase();
+      const sku = String(p.sku || '').toLowerCase();
+      return name.includes(q) || cat.includes(q) || desc.includes(q) || sku.includes(q);
+    });
+  }, [products, searching, q]);
+
+  const productsByCategory = useMemo(() => {
+    const map = new Map();
+    filteredProducts.forEach((p) => {
+      const key = p.category_slug || '__uncategorized';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(p);
+    });
+    return map;
+  }, [filteredProducts]);
+
+  const sections = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+
+    categories.forEach((c) => {
+      const items = productsByCategory.get(c.slug) || [];
+      if (!items.length) return;
+      list.push({ slug: c.slug, name: c.name, products: items });
+      seen.add(c.slug);
+    });
+
+    productsByCategory.forEach((items, key) => {
+      if (key === '__uncategorized' || seen.has(key) || !items.length) return;
+      list.push({
+        slug: key,
+        name: items[0]?.category_name || 'More',
+        products: items,
+      });
+      seen.add(key);
+    });
+
+    const uncategorized = productsByCategory.get('__uncategorized') || [];
+    if (uncategorized.length) {
+      list.push({ slug: '__uncategorized', name: 'More', products: uncategorized });
+    }
+    return list;
+  }, [categories, productsByCategory]);
+
+  const visibleCategories = useMemo(
+    () => sections
+      .filter((s) => s.slug !== '__uncategorized')
+      .map((s) => ({ id: s.slug, slug: s.slug, name: s.name })),
+    [sections],
+  );
+
+  const showAnnouncement = themeSettings?.show_announcement !== false;
+  const stickyTop = storefrontStickyTop({ isMobile, hasAnnouncement: showAnnouncement });
+  const stickyOffset = stickyTop + 44;
+
+  const handleCategorySelect = useCallback((catSlug) => {
+    setActiveCategory(catSlug);
+    spyLockUntil.current = Date.now() + 800;
+    if (!catSlug) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    requestAnimationFrame(() => {
+      const el = sectionRefs.current[catSlug];
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY - stickyOffset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    });
+  }, [stickyOffset]);
+
+  useEffect(() => {
+    if (!sections.length || searching) return undefined;
+
+    const updateActive = () => {
+      if (Date.now() < spyLockUntil.current) return;
+      const probe = stickyOffset + 8;
+      let best = '';
+      let bestDist = Infinity;
+      sections.forEach((s) => {
+        const el = sectionRefs.current[s.slug];
+        if (!el) return;
+        const top = el.getBoundingClientRect().top;
+        const dist = Math.abs(top - probe);
+        if (top - probe <= 24 && dist < bestDist) {
+          bestDist = dist;
+          best = s.slug;
+        }
+      });
+      if (window.scrollY < 80) {
+        setActiveCategory('');
+        return;
+      }
+      if (best) setActiveCategory(best);
+    };
+
+    updateActive();
+    window.addEventListener('scroll', updateActive, { passive: true });
+    window.addEventListener('resize', updateActive);
+    return () => {
+      window.removeEventListener('scroll', updateActive);
+      window.removeEventListener('resize', updateActive);
+    };
+  }, [sections, searching, stickyOffset]);
+
+  const description = themeSettings?.banner_text || '';
+  const tagline = themeSettings?.tagline || '';
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
-      {/* Store header */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          alignItems: { md: 'center' },
-          gap: 3,
-          p: { xs: 3, md: 4 },
-          mb: 4,
-          borderRadius: 2,
-          bgcolor: 'background.paper',
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
+    <Box>
+      <StoreHero
+        storeName={storeName}
+        logoUrl={logoUrl || store?.logo_url}
+        description={description}
+        tagline={tagline}
+        primaryColor={primaryColor}
+        phone={store?.phone}
+        address={store?.address}
+        hasPickup={hasPickup}
+        hasDelivery={hasDelivery}
+        fulfillmentType={fulfillmentType}
+        onFulfillmentChange={onFulfillmentChange}
+      />
+
+      {!searching && visibleCategories.length > 0 && (
+        <CategoryNavigation
+          categories={visibleCategories}
+          activeSlug={activeCategory}
+          onSelect={handleCategorySelect}
+          primaryColor={primaryColor}
+          sticky
+          stickyTop={stickyTop}
+          allLabel="All"
+        />
+      )}
+
+      {searching && (
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ mt: 1, mb: 0.5, gap: 1 }}
+        >
+          <Typography fontWeight={650} sx={{ fontSize: 14 }}>
+            Results for “{searchQuery.trim()}”
+          </Typography>
+          {clearSearch && (
+            <Button size="small" onClick={clearSearch} sx={{ fontWeight: 600 }}>
+              Clear
+            </Button>
+          )}
+        </Stack>
+      )}
+
+      {isError && (
+        <Alert
+          severity="error"
+          sx={{ mt: 2, borderRadius: `${SF.radius.sm}px` }}
+          action={<Button color="inherit" size="small" onClick={() => refetch()}>Try again</Button>}
+        >
+          Couldn’t load products. Please try again.
+        </Alert>
+      )}
+
+      {isLoading ? (
+        <Box sx={[productGridSx(), { mt: 1 }]}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ProductSkeleton key={i} />
+          ))}
+        </Box>
+      ) : products.length === 0 ? (
         <Box
           sx={{
-            width: 72,
-            height: 72,
-            borderRadius: 2,
-            bgcolor: alpha(primaryColor, 0.08),
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            overflow: 'hidden',
-            border: '1px solid',
-            borderColor: alpha(primaryColor, 0.15),
+            py: 6,
+            px: 2,
+            textAlign: 'center',
+            borderRadius: `${SF.radius.md}px`,
+            bgcolor: SF.colors.paper,
+            border: '1px dashed',
+            borderColor: SF.colors.border,
+            mt: 2,
           }}
         >
-          {logoUrl ? (
-            <Box component="img" src={logoUrl} alt={storeName} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <Storefront sx={{ fontSize: 36, color: primaryColor }} />
-          )}
-        </Box>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h4" fontWeight={800}>{storeName}</Typography>
-          {tagline && (
-            <Typography variant="subtitle1" color="primary.main" fontWeight={600} sx={{ mt: 0.5 }}>
-              {tagline}
-            </Typography>
-          )}
-          <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 560, lineHeight: 1.6 }}>
-            {bannerText}
+          <Typography fontWeight={700} sx={{ letterSpacing: '-0.02em' }} gutterBottom>
+            No products yet
           </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2, gap: 1 }}>
-            <Chip size="small" label="Live inventory" color="success" variant="outlined" />
-            <Chip size="small" label={`Prices in ${currency}`} variant="outlined" />
-            <Chip size="small" label="POS-connected orders" variant="outlined" />
-          </Stack>
+          <Typography color="text.secondary" sx={{ fontSize: 14, maxWidth: 320, mx: 'auto' }}>
+            This store hasn’t published products yet. Check back shortly.
+          </Typography>
         </Box>
-        <Stack direction={{ xs: 'row', md: 'column' }} spacing={1} sx={{ flexShrink: 0 }}>
-          <Button
-            component={Link}
-            to={`${basePath}/shop`}
-            variant="contained"
-            size="large"
-            startIcon={<ShoppingBag />}
-            sx={{ px: 3 }}
-          >
-            Browse catalog
-          </Button>
-          <Button component={Link} to={`${basePath}/cart`} variant="outlined" size="large">
-            View cart
-          </Button>
-        </Stack>
-      </Box>
-
-      {/* Categories */}
-      {(categories?.length > 0) && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="subtitle1" fontWeight={700} gutterBottom>Shop by category</Typography>
-          <Stack direction="row" flexWrap="wrap" gap={1}>
-            <Chip
-              component={Link}
-              to={`${basePath}/shop`}
-              label="All products"
-              clickable
-              color="primary"
-              variant="filled"
-            />
-            {categories.map((c) => (
-              <Chip
-                key={c.id}
-                component={Link}
-                to={`${basePath}/shop?category=${c.slug}`}
-                label={c.name}
-                clickable
-                variant="outlined"
-              />
-            ))}
-          </Stack>
+      ) : searching && filteredProducts.length === 0 ? (
+        <Box
+          sx={{
+            py: 6,
+            px: 2,
+            textAlign: 'center',
+            borderRadius: `${SF.radius.md}px`,
+            bgcolor: SF.colors.paper,
+            border: '1px dashed',
+            borderColor: SF.colors.border,
+            mt: 1.5,
+          }}
+        >
+          <Typography fontWeight={700} gutterBottom>
+            No products found
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 2, fontSize: 14 }}>
+            Try a different search term.
+          </Typography>
+          {clearSearch && (
+            <Button variant="outlined" onClick={clearSearch}>Clear search</Button>
+          )}
         </Box>
-      )}
-
-      {/* Products */}
-      {featured.length > 0 && (
-        <Box sx={{ mb: 5 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-            <Box>
-              <Typography variant="h6" fontWeight={700}>Available now</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Stock levels update automatically from our POS
-              </Typography>
+      ) : (
+        <Stack spacing={{ xs: 2.5, md: 3 }} sx={{ mt: 1.5 }}>
+          {sections.map((section) => (
+            <Box
+              key={section.slug}
+              ref={(el) => { sectionRefs.current[section.slug] = el; }}
+              id={`cat-${section.slug}`}
+              data-cat-slug={section.slug}
+              component="section"
+              aria-label={section.name}
+            >
+              <Stack
+                direction="row"
+                alignItems="baseline"
+                justifyContent="space-between"
+                sx={{ mb: 1.25, scrollMarginTop: stickyOffset + 8 }}
+              >
+                <Typography
+                  component="h2"
+                  fontWeight={750}
+                  sx={{
+                    fontSize: { xs: 16, md: 18 },
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  {section.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: 12 }}>
+                  {section.products.length} item{section.products.length === 1 ? '' : 's'}
+                </Typography>
+              </Stack>
+              <Box sx={productGridSx()}>
+                {section.products.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    primaryColor={primaryColor}
+                    showStock={showStock}
+                    onOpenDetails={openProductDetails}
+                  />
+                ))}
+              </Box>
             </Box>
-            <Button component={Link} to={`${basePath}/shop`} endIcon={<ArrowForward />} size="small">
-              View all
-            </Button>
-          </Stack>
-          <Grid container spacing={2}>
-            {featured.map((p) => (
-              <Grid item xs={6} sm={4} md={3} key={p.id}>
-                <ProductCard
-                  product={p}
-                  basePath={basePath}
-                  primaryColor={primaryColor}
-                  onAddToCart={handleAddToCart}
-                  showStock={showStock}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
+          ))}
+        </Stack>
       )}
-
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={7}>
-          <HowToOrder primaryColor={primaryColor} />
-        </Grid>
-        <Grid item xs={12} md={5}>
-          <StoreInfoPanel store={store} primaryColor={primaryColor} />
-        </Grid>
-      </Grid>
-    </Container>
+    </Box>
   );
 }

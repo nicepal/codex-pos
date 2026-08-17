@@ -10,7 +10,11 @@ import ForgotPasswordPage from './pages/auth/ForgotPassword';
 import ResetPasswordPage from './pages/auth/ResetPassword';
 import AdminLayout from './layouts/AdminLayout';
 import BusinessLayout from './layouts/BusinessLayout';
+import POSLayout from './layouts/POSLayout';
+import OnboardingLayout from './layouts/OnboardingLayout';
 import StorefrontLayout from './layouts/StorefrontLayout';
+import OnboardingGate from './components/OnboardingGate';
+import OnboardingWizard from './pages/onboarding/OnboardingWizard';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import BusinessesPage from './pages/admin/Businesses';
@@ -43,6 +47,7 @@ import InventoryPage from './pages/business/Inventory';
 import ReportsPage from './pages/business/Reports';
 import SettingsPage from './pages/business/Settings';
 import POSPage from './pages/business/POS';
+import CustomerDisplay from './pages/pos/CustomerDisplay';
 import SubscriptionPage from './pages/business/Subscription';
 import BranchesPage from './pages/business/Branches';
 import EmployeesPage from './pages/business/Employees';
@@ -55,7 +60,6 @@ import PurchaseOrdersPage from './pages/business/PurchaseOrders';
 import PurchaseOrderDetailPage from './pages/business/PurchaseOrderDetail';
 import TransfersPage from './pages/business/Transfers';
 import StockTakePage from './pages/business/StockTake';
-import OnboardingPage from './pages/business/Onboarding';
 import TeamPage from './pages/business/Team';
 import DrawerPage from './pages/business/Drawer';
 import TenantCouponsPage from './pages/business/TenantCoupons';
@@ -65,6 +69,15 @@ import DevelopersPage from './pages/business/Developers';
 import ReviewsPage from './pages/business/Reviews';
 import MarketplacePage from './pages/business/Marketplace';
 import ShopifyIntegrationPage from './pages/business/integrations/Shopify';
+import ShiftsPage from './pages/business/Shifts';
+import MarketingPage from './pages/business/Marketing';
+import AccountingPage from './pages/business/Accounting';
+import ManufacturingPage from './pages/business/Manufacturing';
+import RestaurantDashboard from './pages/business/RestaurantDashboard';
+import RestaurantTables from './pages/business/RestaurantTables';
+import RestaurantSettings from './pages/business/RestaurantSettings';
+import KDSLayout from './layouts/KDSLayout';
+import KDSPage from './pages/kds/KDSPage';
 import NotFoundPage from './pages/NotFound';
 
 import StoreHome from './pages/storefront/Home';
@@ -116,7 +129,11 @@ function AppRoutes() {
         <Route path="settings/email-templates" element={<EmailTemplatesPage />} />
       </Route>
 
-      <Route path="/" element={<ProtectedRoute businessOnly><BusinessLayout /></ProtectedRoute>}>
+      <Route path="/onboarding" element={<ProtectedRoute businessOnly><OnboardingGate><OnboardingLayout /></OnboardingGate></ProtectedRoute>}>
+        <Route index element={<OnboardingWizard />} />
+      </Route>
+
+      <Route path="/" element={<ProtectedRoute businessOnly><OnboardingGate><BusinessLayout /></OnboardingGate></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<BusinessDashboard />} />
         <Route path="products" element={<ProductsPage />} />
@@ -143,7 +160,6 @@ function AppRoutes() {
         <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
         <Route path="transfers" element={<TransfersPage />} />
         <Route path="stock-take" element={<StockTakePage />} />
-        <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="team" element={<TeamPage />} />
         <Route path="drawer" element={<DrawerPage />} />
         <Route path="coupons" element={<TenantCouponsPage />} />
@@ -151,7 +167,22 @@ function AppRoutes() {
         <Route path="reviews" element={<ReviewsPage />} />
         <Route path="marketplace" element={<MarketplacePage />} />
         <Route path="integrations/shopify" element={<ShopifyIntegrationPage />} />
-        <Route path="pos" element={<POSPage />} />
+        <Route path="shifts" element={<ShiftsPage />} />
+        <Route path="marketing" element={<MarketingPage />} />
+        <Route path="accounting" element={<AccountingPage />} />
+        <Route path="manufacturing" element={<ManufacturingPage />} />
+        <Route path="restaurant" element={<RestaurantDashboard />} />
+        <Route path="restaurant/tables" element={<RestaurantTables />} />
+        <Route path="restaurant/settings" element={<RestaurantSettings />} />
+      </Route>
+
+      <Route path="/pos" element={<ProtectedRoute businessOnly><OnboardingGate><POSLayout /></OnboardingGate></ProtectedRoute>}>
+        <Route index element={<POSPage />} />
+      </Route>
+      <Route path="/pos/display" element={<ProtectedRoute businessOnly><CustomerDisplay /></ProtectedRoute>} />
+
+      <Route path="/kds" element={<ProtectedRoute businessOnly><KDSLayout /></ProtectedRoute>}>
+        <Route index element={<KDSPage />} />
       </Route>
 
       <Route path="/store" element={<Navigate to="/store/demo" replace />} />

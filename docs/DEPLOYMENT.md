@@ -4,7 +4,7 @@
 
 - Ubuntu 22.04+ server
 - Docker & Docker Compose
-- Domain with wildcard DNS (`*.poshive.store`)
+- Domain with wildcard DNS (`*.codexpos.store`)
 - SSL certificate (Let's Encrypt recommended)
 
 ## Production Deployment
@@ -47,12 +47,12 @@ nano backend/.env
 
 | Record | Type | Value |
 |--------|------|-------|
-| poshive.store | A | YOUR_SERVER_IP |
-| *.poshive.store | A | YOUR_SERVER_IP |
-| api.poshive.store | A | YOUR_SERVER_IP |
+| codexpos.store | A | YOUR_SERVER_IP |
+| *.codexpos.store | A | YOUR_SERVER_IP |
+| api.codexpos.store | A | YOUR_SERVER_IP |
 
 **Custom domains (per tenant):**
-- CNAME `www.store.com` → `poshive.store`
+- CNAME `www.store.com` → `codexpos.store`
 - TXT `_eyz-verify.store.com` → verification token from admin panel
 
 ### 4. Launch Stack
@@ -60,16 +60,18 @@ nano backend/.env
 ```bash
 docker compose up -d
 
-# Verify services
+# Verify services (API + BullMQ worker are required for notifications, billing lifecycle, scheduled reports)
 docker compose ps
-docker compose logs -f api
+docker compose logs -f api worker
 ```
+
+**Worker service:** `docker-compose.yml` defines `eyz-worker` (`npm run worker`), which loads `backend/src/workers/index.js` and starts BullMQ consumers plus hourly billing/scheduled-report ticks. Container names still use the legacy `eyz-*` prefix for deploy continuity — do not rename without a migration guide.
 
 ### 5. SSL with Certbot
 
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d poshive.store -d www.poshive.store -d '*.poshive.store'
+sudo certbot --nginx -d codexpos.store -d www.codexpos.store -d '*.codexpos.store'
 ```
 
 ### 6. Database Backups
@@ -132,6 +134,19 @@ npm run migrate && npm run seed && npm run dev
 cd frontend && npm install && cp .env.example .env
 npm run dev
 
-# Worker (optional)
+# Worker (optional for local dev; required in production for queues + scheduled jobs)
 cd backend && npm run worker
 ```
+
+### Printing
+
+- **Browser receipts:** POS uses the browser print dialog (`SaleSuccessDialog` / `window.print`) — no local install required.
+- **Queued ESC/POS:** `POST /print/jobs/claim` is for an external print-agent process; the web UI does not drain the queue itself (`HardwareDialog` documents this).
+
+### Auth tokens (local dev)
+
+Access/refresh tokens are stored in `localStorage` on the SPA by default. Logout revokes the refresh token server-side when online.
+
+**Phase A cookie mode:** Set `AUTH_COOKIE_MODE=true` on the API to also issue an `httpOnly` `refresh_token` cookie on login/register (path `/api/v1/auth`). Refresh/logout accept `req.cookies.refresh_token` as a dual-mode fallback alongside `body.refreshToken`. Frontend still stores tokens in `localStorage` until Phase B.
+
+**Reference print agent:** `tools/print-agent/index.js` — polls `POST /print/jobs/claim` with `API_KEY` and `API_URL`.

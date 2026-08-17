@@ -1,0 +1,72 @@
+.hero {
+  position: relative;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 0 clamp(3rem, 7vw, 5.5rem);
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 100% 0%, rgba(20, 184, 166, 0.12), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(245, 185, 66, 0.08), transparent 50%),
+    var(--color-surface);
+}
+
+.hero-grid {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.hero-brand {
+  font-size: clamp(1.65rem, 3.2vw, 2.15rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-brand);
+  margin: 0 0 0.75rem;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 4.5vw, 3.15rem);
+  max-width: 16ch;
+  margin-bottom: 1rem;
+}
+
+.hero-lead {
+  font-size: 1.1rem;
+  max-width: 40ch;
+  margin-bottom: 1.75rem;
+}
+
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hero-inline {
+  font-weight: 600;
+  color: var(--color-brand);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.25rem;
+}
+
+.hero-inline:hover {
+  color: var(--color-brand-deep);
+}
+
+.hero-visual {
+  position: relative;
+}
+
+@media (min-width: 960px) {
+  .hero-grid {
+    grid-template-columns: 1fr 1.05fr;
+    gap: 3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero {
+    background: var(--color-surface);
+  }
+}

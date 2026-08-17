@@ -1,34 +1,73 @@
 import { Box, IconButton, Typography, alpha } from '@mui/material';
 import { Add, Remove } from '@mui/icons-material';
+import { SF } from './storefrontTheme';
 
-export default function QuantitySelector({ value, onChange, min = 1, max = 99 }) {
+export default function QuantitySelector({
+  value,
+  onChange,
+  min = 1,
+  max = 99,
+  allowZero = false,
+  size = 'medium',
+  primaryColor,
+}) {
+  const effectiveMin = allowZero ? 0 : min;
+  const compact = size === 'small';
+  // Compact card steppers stay tight; cart drawer keeps larger touch targets
+  const btnSize = compact ? 30 : 40;
+
   return (
     <Box
       sx={{
         display: 'inline-flex',
         alignItems: 'center',
         border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 2,
-        bgcolor: alpha('#fff', 0.04),
+        borderColor: SF.colors.border,
+        borderRadius: SF.radius.sm,
+        bgcolor: SF.colors.paper,
+        overflow: 'hidden',
       }}
     >
       <IconButton
         size="small"
-        onClick={() => onChange(Math.max(min, value - 1))}
-        disabled={value <= min}
-        sx={{ borderRadius: '8px 0 0 8px' }}
+        aria-label="Decrease quantity"
+        onClick={() => onChange(Math.max(effectiveMin, value - 1))}
+        disabled={value <= effectiveMin}
+        sx={{
+          width: btnSize,
+          height: btnSize,
+          borderRadius: 0,
+          color: primaryColor || 'text.primary',
+        }}
       >
-        <Remove fontSize="small" />
+        <Remove sx={{ fontSize: compact ? 17 : 18 }} />
       </IconButton>
-      <Typography sx={{ minWidth: 36, textAlign: 'center', fontWeight: 600 }}>{value}</Typography>
+      <Typography
+        sx={{
+          minWidth: compact ? 28 : 36,
+          textAlign: 'center',
+          fontWeight: 750,
+          fontSize: compact ? 13.5 : 14.5,
+          lineHeight: 1,
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {value}
+      </Typography>
       <IconButton
         size="small"
+        aria-label="Increase quantity"
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
-        sx={{ borderRadius: '0 8px 8px 0' }}
+        sx={{
+          width: btnSize,
+          height: btnSize,
+          borderRadius: 0,
+          color: primaryColor || 'text.primary',
+          bgcolor: primaryColor ? alpha(primaryColor, 0.07) : 'transparent',
+        }}
       >
-        <Add fontSize="small" />
+        <Add sx={{ fontSize: compact ? 17 : 18 }} />
       </IconButton>
     </Box>
   );

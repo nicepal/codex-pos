@@ -1,0 +1,221 @@
+/* Sale receipt — screen preview + thermal / browser print */
+
+.sale-receipt {
+  --receipt-ink: #111;
+  --receipt-muted: #444;
+  --receipt-rule: #222;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--receipt-ink);
+  background: #fff;
+  padding: 14px 12px 16px;
+  box-sizing: border-box;
+}
+
+.sale-receipt.receipt--80 {
+  width: 80mm;
+  max-width: 100%;
+}
+
+.sale-receipt.receipt--58 {
+  width: 58mm;
+  max-width: 100%;
+  font-size: 11px;
+  padding: 10px 8px 12px;
+}
+
+.sale-receipt__header {
+  text-align: center;
+}
+
+.sale-receipt__logo {
+  display: block;
+  max-width: 72px;
+  max-height: 48px;
+  margin: 0 auto 8px;
+  object-fit: contain;
+}
+
+.sale-receipt__biz {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.sale-receipt.receipt--58 .sale-receipt__biz {
+  font-size: 13px;
+}
+
+.sale-receipt__branch {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.sale-receipt__contact {
+  margin: 1px 0 0;
+  color: var(--receipt-muted);
+  font-size: 11px;
+}
+
+.sale-receipt__rule {
+  border: 0;
+  border-top: 1px dashed var(--receipt-rule);
+  margin: 10px 0;
+  height: 0;
+}
+
+.sale-receipt__title {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.sale-receipt__meta,
+.sale-receipt__summary,
+.sale-receipt__payment,
+.sale-receipt__customer {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sale-receipt__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sale-receipt__row > span:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sale-receipt__items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sale-receipt__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.sale-receipt__item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sale-receipt__item-name {
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.sale-receipt__item-variant {
+  color: var(--receipt-muted);
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+.sale-receipt__item-qty {
+  color: var(--receipt-muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.sale-receipt__item-total {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sale-receipt__total {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.sale-receipt.receipt--58 .sale-receipt__total {
+  font-size: 13px;
+}
+
+.sale-receipt__customer-label {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.sale-receipt__footer {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.sale-receipt__footer p {
+  margin: 0;
+}
+
+.sale-receipt__powered {
+  margin-top: 8px !important;
+  font-size: 10px;
+  color: var(--receipt-muted);
+  letter-spacing: 0.02em;
+}
+
+/* Preview chrome (screen only) */
+.sale-receipt-preview {
+  background: #e8e8e8;
+  border-radius: 8px;
+  padding: 20px 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.sale-receipt-preview .sale-receipt {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .no-print,
+  .MuiDialogActions-root,
+  .sale-receipt-actions {
+    display: none !important;
+  }
+
+  .sale-receipt-preview {
+    background: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .sale-receipt-preview .sale-receipt {
+    box-shadow: none !important;
+  }
+
+  .sale-receipt,
+  .sale-receipt * {
+    color: #000 !important;
+    background: #fff !important;
+    animation: none !important;
+    transition: none !important;
+    box-shadow: none !important;
+  }
+
+  .sale-receipt__rule {
+    border-top-color: #000 !important;
+  }
+}

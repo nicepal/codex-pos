@@ -1,4 +1,4 @@
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Button, Text, Group, Stack } from '@mantine/core';
 import {
   PointOfSale, AddBox, LocalShipping, PersonAdd, Business,
   ShoppingBag, Assessment,
@@ -6,59 +6,50 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 const ACTIONS = [
-  { label: 'New Sale', icon: PointOfSale, path: '/pos', color: 'primary' },
-  { label: 'Add Product', icon: AddBox, path: '/products?action=create', color: 'primary' },
-  { label: 'Purchase Stock', icon: LocalShipping, path: '/purchase-orders?action=create', color: 'secondary' },
-  { label: 'Add Customer', icon: PersonAdd, path: '/customers?action=create', color: 'secondary' },
-  { label: 'Add Supplier', icon: Business, path: '/suppliers?action=create', color: 'inherit' },
-  { label: 'Create PO', icon: ShoppingBag, path: '/purchase-orders', color: 'inherit' },
-  { label: 'View Reports', icon: Assessment, path: '/reports', color: 'inherit' },
+  { label: 'New Sale', icon: PointOfSale, path: '/pos' },
+  { label: 'Add Product', icon: AddBox, path: '/products?action=create' },
+  { label: 'Purchase Stock', icon: LocalShipping, path: '/purchase-orders?action=create' },
+  { label: 'Add Customer', icon: PersonAdd, path: '/customers?action=create' },
+  { label: 'Add Supplier', icon: Business, path: '/suppliers?action=create' },
+  { label: 'Create PO', icon: ShoppingBag, path: '/purchase-orders' },
+  { label: 'View Reports', icon: Assessment, path: '/reports' },
 ];
 
 export default function QuickActionsBar() {
   const navigate = useNavigate();
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 1 }}>
+    <Box mb="md">
+      <Text size="sm" fw={700} c="dimmed" mb="sm">
         Quick Actions
-      </Typography>
-      <Box
-        sx={{
-          display: 'flex',
-          gap: 1.5,
-          overflowX: 'auto',
-          pb: 0.5,
-          mx: { xs: -1, sm: 0 },
-          px: { xs: 1, sm: 0 },
-          '&::-webkit-scrollbar': { height: 4 },
-        }}
+      </Text>
+      <Group
+        gap="sm"
+        wrap="nowrap"
+        style={{ overflowX: 'auto', paddingBottom: 4 }}
       >
         {ACTIONS.map((action) => (
           <Button
             key={action.label}
-            variant="outlined"
-            startIcon={<action.icon />}
+            variant="default"
             onClick={() => navigate(action.path)}
-            color={action.color}
-            sx={{
+            style={{
               minHeight: 72,
-              minWidth: { xs: 140, sm: 160 },
+              minWidth: 140,
               flexShrink: 0,
               flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              py: 1.5,
-              px: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              '& .MuiButton-startIcon': { m: 0, mb: 0.5 },
+              height: 'auto',
+              paddingTop: 12,
+              paddingBottom: 12,
             }}
           >
-            {action.label}
+            <Stack gap={4} align="center">
+              <action.icon fontSize="small" />
+              <span>{action.label}</span>
+            </Stack>
           </Button>
         ))}
-      </Box>
+      </Group>
     </Box>
   );
 }

@@ -11,13 +11,13 @@ const SAMPLE_VARS = {
   invoice_number: 'INV-20260618-AB12',
   order_number: 'ORD-20260618-XY99',
   purchase_order_number: 'PO-20260618-7788',
-  reset_link: 'https://app.poshive.store/reset-password?token=sample',
-  verification_link: 'https://app.poshive.store/verify-email?token=sample',
+  reset_link: 'https://app.codexpos.store/reset-password?token=sample',
+  verification_link: 'https://app.codexpos.store/verify-email?token=sample',
   subscription_name: 'Pro Plan',
   expiry_date: '2026-12-31',
   amount: '$129.00',
   app_name: 'POSHive',
-  app_url: 'https://poshive.store',
+  app_url: 'https://codexpos.store',
 };
 
 class EmailAdminService {

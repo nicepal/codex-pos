@@ -1,9 +1,10 @@
-import { Box, Typography, Button, Grid, alpha, useTheme } from '@mui/material';
+import { Box, Button, SimpleGrid, Stack, Text, Title, Paper } from '@mantine/core';
 import { Add } from '@mui/icons-material';
 import {
   LocalOffer, TrendingUp, Groups, Inventory2, SupportAgent,
 } from '@mui/icons-material';
 import EmptyStateIllustration from './EmptyStateIllustration';
+import { CODEX_TOKENS } from '../design-system';
 
 const BENEFIT_ICONS = {
   tag: LocalOffer,
@@ -13,40 +14,49 @@ const BENEFIT_ICONS = {
   support: SupportAgent,
 };
 
+function withAlpha(hex, alpha) {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function BenefitItem({ icon, title, description }) {
-  const theme = useTheme();
   const Icon = BENEFIT_ICONS[icon] || LocalOffer;
+  const primary = CODEX_TOKENS.primary;
 
   return (
     <Box
-      sx={{
-        p: { xs: 2.5, md: 3 },
-        textAlign: { xs: 'center', md: 'left' },
-        borderTop: { xs: '1px solid', md: 'none' },
-        borderColor: 'divider',
-        borderRight: { md: '1px solid' },
-        '&:last-child': { borderRight: { md: 'none' } },
+      p={{ base: 'md', md: 'lg' }}
+      ta={{ base: 'center', md: 'left' }}
+      style={{
+        borderTop: '1px solid var(--mantine-color-default-border)',
       }}
     >
       <Box
-        sx={{
-          width: 40,
-          height: 40,
-          borderRadius: 2,
+        w={40}
+        h={40}
+        mb="sm"
+        mx={{ base: 'auto', md: 0 }}
+        style={{
+          borderRadius: 8,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: alpha(theme.palette.primary.main, 0.1),
-          mb: 1.5,
-          mx: { xs: 'auto', md: 0 },
+          background: withAlpha(primary, 0.1),
         }}
       >
-        <Icon sx={{ fontSize: 20, color: 'primary.main' }} />
+        <Icon style={{ fontSize: 20, color: primary }} />
       </Box>
-      <Typography variant="subtitle2" fontWeight={700} gutterBottom>{title}</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+      <Text fw={700} size="sm" mb={4}>
+        {title}
+      </Text>
+      <Text size="sm" c="dimmed" style={{ lineHeight: 1.6 }}>
         {description}
-      </Typography>
+      </Text>
     </Box>
   );
 }
@@ -62,63 +72,52 @@ export default function EmptyState({
   benefits,
   compact = false,
 }) {
-  const theme = useTheme();
   const illusSize = compact ? 72 : 120;
 
   return (
-    <Box
-      sx={{
-        borderRadius: compact ? 2 : 3,
-        overflow: 'hidden',
-        bgcolor: 'background.paper',
-        border: '1px solid',
-        borderColor: 'divider',
-      }}
-    >
-      <Box sx={{ textAlign: 'center', py: compact ? 3 : { xs: 5, md: 7 }, px: compact ? 2 : 3 }}>
+    <Paper withBorder radius={compact ? 'md' : 'lg'} style={{ overflow: 'hidden' }}>
+      <Stack align="center" gap="sm" py={compact ? 'lg' : { base: 40, md: 56 }} px={compact ? 'md' : 'lg'}>
         {icon || <EmptyStateIllustration type={illustration || 'store'} size={illusSize} />}
-        <Typography variant={compact ? 'subtitle1' : 'h5'} fontWeight={700} gutterBottom>
+        <Title order={compact ? 5 : 3} ta="center" fw={700}>
           {title}
-        </Typography>
-        {message && (
-          <Typography
-            variant={compact ? 'body2' : 'body1'}
-            color="text.secondary"
-            sx={{ maxWidth: compact ? 320 : 440, mx: 'auto', lineHeight: 1.6 }}
+        </Title>
+        {message ? (
+          <Text
+            size={compact ? 'sm' : 'md'}
+            c="dimmed"
+            ta="center"
+            maw={compact ? 320 : 440}
+            style={{ lineHeight: 1.6 }}
           >
             {message}
-          </Typography>
-        )}
-        {actionLabel && onAction && (
+          </Text>
+        ) : null}
+        {actionLabel && onAction ? (
           <Button
-            variant="contained"
-            size={compact ? 'medium' : 'large'}
-            startIcon={actionIcon || <Add />}
+            size={compact ? 'sm' : 'md'}
+            leftSection={actionIcon || <Add />}
             onClick={onAction}
-            sx={{ mt: compact ? 2 : 3, px: compact ? 2 : 3 }}
+            mt={compact ? 'xs' : 'sm'}
           >
             {actionLabel}
           </Button>
-        )}
-      </Box>
+        ) : null}
+      </Stack>
 
-      {benefits?.length > 0 && !compact && (
+      {benefits?.length > 0 && !compact ? (
         <Box
-          sx={{
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            bgcolor: alpha(theme.palette.primary.main, 0.02),
+          style={{
+            borderTop: '1px solid var(--mantine-color-default-border)',
+            background: withAlpha(CODEX_TOKENS.primary, 0.02),
           }}
         >
-          <Grid container>
+          <SimpleGrid cols={{ base: 1, md: benefits.length > 2 ? 3 : benefits.length }} spacing={0}>
             {benefits.map((item) => (
-              <Grid item xs={12} md={4} key={item.title}>
-                <BenefitItem {...item} />
-              </Grid>
+              <BenefitItem key={item.title} {...item} />
             ))}
-          </Grid>
+          </SimpleGrid>
         </Box>
-      )}
-    </Box>
+      ) : null}
+    </Paper>
   );
 }

@@ -1,15 +1,35 @@
 import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Skeleton, Box,
-  TablePagination, Checkbox,
-} from '@mui/material';
+  Table,
+  Paper,
+  Checkbox,
+  Center,
+  Skeleton,
+  Group,
+  Text,
+  Select,
+  Pagination,
+  Box,
+} from '@mantine/core';
 import EmptyState from './EmptyState';
 import LoadingState from './LoadingState';
 
 export default function DataTable({
-  columns, rows, loading, emptyTitle, emptyMessage, emptyActionLabel, onEmptyAction,
-  emptyBenefits, emptyIllustration, emptyActionIcon,
-  onRowClick, getRowKey = (row) => row.id, stickyHeader = true,
-  pagination, onPageChange, onRowsPerPageChange,
+  columns,
+  rows,
+  loading,
+  emptyTitle,
+  emptyMessage,
+  emptyActionLabel,
+  onEmptyAction,
+  emptyBenefits,
+  emptyIllustration,
+  emptyActionIcon,
+  onRowClick,
+  getRowKey = (row) => row.id,
+  stickyHeader = true,
+  pagination,
+  onPageChange,
+  onRowsPerPageChange,
   selectable = false,
   selectedIds = [],
   onSelectionChange,
@@ -38,28 +58,34 @@ export default function DataTable({
 
   if (loading && !rows?.length) {
     return (
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-        <Table stickyHeader={stickyHeader}>
-          <TableHead>
-            <TableRow>
-              {selectable && <TableCell padding="checkbox" />}
+      <Paper withBorder radius="md" style={{ overflowX: 'auto' }}>
+        <Table stickyHeader={stickyHeader} highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              {selectable ? <Table.Th w={40} /> : null}
               {columns.map((col) => (
-                <TableCell key={col.id || col.field}>{col.label}</TableCell>
+                <Table.Th key={col.id || col.field}>{col.label}</Table.Th>
               ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
             {[1, 2, 3, 4, 5].map((i) => (
-              <TableRow key={i}>
-                {selectable && <TableCell padding="checkbox"><Skeleton width={24} /></TableCell>}
+              <Table.Tr key={i}>
+                {selectable ? (
+                  <Table.Td>
+                    <Skeleton height={18} width={18} />
+                  </Table.Td>
+                ) : null}
                 {columns.map((col) => (
-                  <TableCell key={col.id || col.field}><Skeleton /></TableCell>
+                  <Table.Td key={col.id || col.field}>
+                    <Skeleton height={16} />
+                  </Table.Td>
                 ))}
-              </TableRow>
+              </Table.Tr>
             ))}
-          </TableBody>
+          </Table.Tbody>
         </Table>
-      </TableContainer>
+      </Paper>
     );
   }
 
@@ -77,70 +103,110 @@ export default function DataTable({
     );
   }
 
+  const total = pagination?.total || 0;
+  const limit = pagination?.limit || 20;
+  const page = pagination?.page || 1;
+  const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
+
   return (
-    <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-      <Table stickyHeader={stickyHeader}>
-        <TableHead>
-          <TableRow>
-            {selectable && (
-              <TableCell padding="checkbox">
+    <Paper withBorder radius="md" style={{ overflowX: 'auto' }}>
+      <Table stickyHeader={stickyHeader} highlightOnHover verticalSpacing="sm">
+        <Table.Thead>
+          <Table.Tr>
+            {selectable ? (
+              <Table.Th w={40}>
                 <Checkbox
-                  indeterminate={someSelected && !allSelected}
                   checked={allSelected}
+                  indeterminate={someSelected && !allSelected}
                   onChange={toggleAll}
+                  aria-label="Select all"
                 />
-              </TableCell>
-            )}
+              </Table.Th>
+            ) : null}
             {columns.map((col) => (
-              <TableCell key={col.id || col.field} align={col.align || 'left'} sx={{ fontWeight: 600 }}>
+              <Table.Th
+                key={col.id || col.field}
+                style={{
+                  fontWeight: 600,
+                  textAlign: col.align === 'right' ? 'right' : col.align === 'center' ? 'center' : 'left',
+                }}
+              >
                 {col.label}
-              </TableCell>
+              </Table.Th>
             ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
           {rows.map((row) => {
             const rowKey = getRowKey(row);
             const isSelected = selectedIds.includes(rowKey);
             return (
-              <TableRow
+              <Table.Tr
                 key={rowKey}
-                hover={!!onRowClick}
-                selected={isSelected}
-                sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                bg={isSelected ? 'var(--mantine-color-codex-light)' : undefined}
+                style={{ cursor: onRowClick ? 'pointer' : 'default' }}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
-                {selectable && (
-                  <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox checked={isSelected} onChange={() => toggleOne(rowKey)} />
-                  </TableCell>
-                )}
+                {selectable ? (
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onChange={() => toggleOne(rowKey)}
+                      aria-label={`Select row ${rowKey}`}
+                    />
+                  </Table.Td>
+                ) : null}
                 {columns.map((col) => (
-                  <TableCell key={col.id || col.field} align={col.align || 'left'}>
+                  <Table.Td
+                    key={col.id || col.field}
+                    style={{
+                      textAlign: col.align === 'right' ? 'right' : col.align === 'center' ? 'center' : 'left',
+                    }}
+                  >
                     {col.render ? col.render(row) : row[col.field]}
-                  </TableCell>
+                  </Table.Td>
                 ))}
-              </TableRow>
+              </Table.Tr>
             );
           })}
-        </TableBody>
+        </Table.Tbody>
       </Table>
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+
+      {loading ? (
+        <Center py="md">
           <LoadingState />
-        </Box>
-      )}
-      {pagination && (
-        <TablePagination
-          component="div"
-          count={pagination.total || 0}
-          page={Math.max(0, (pagination.page || 1) - 1)}
-          onPageChange={(_, p) => onPageChange?.(p + 1)}
-          rowsPerPage={pagination.limit || 20}
-          onRowsPerPageChange={(e) => onRowsPerPageChange?.(parseInt(e.target.value, 10))}
-          rowsPerPageOptions={[10, 20, 50, 100]}
-        />
-      )}
-    </TableContainer>
+        </Center>
+      ) : null}
+
+      {pagination ? (
+        <Group justify="space-between" px="md" py="sm" wrap="wrap" gap="sm">
+          <Group gap="xs">
+            <Text size="sm" c="dimmed">
+              Rows per page
+            </Text>
+            <Select
+              size="xs"
+              w={80}
+              allowDeselect={false}
+              data={['10', '20', '50', '100']}
+              value={String(limit)}
+              onChange={(v) => onRowsPerPageChange?.(parseInt(v, 10))}
+            />
+            <Text size="sm" c="dimmed">
+              {total === 0
+                ? '0 rows'
+                : `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`}
+            </Text>
+          </Group>
+          <Pagination
+            size="sm"
+            total={totalPages}
+            value={page}
+            onChange={(p) => onPageChange?.(p)}
+          />
+        </Group>
+      ) : null}
+      {!pagination ? <Box h={4} /> : null}
+    </Paper>
   );
 }

@@ -1,0 +1,29 @@
+.developer-grid {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+.code-panel {
+  margin: 0;
+  padding: 1.25rem 1.35rem;
+  border-radius: var(--radius-lg);
+  background: #061018;
+  border: 1px solid rgba(244, 247, 246, 0.12);
+  overflow-x: auto;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #9ef0e0;
+}
+
+.code-panel code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre;
+}
+
+@media (min-width: 860px) {
+  .developer-grid {
+    grid-template-columns: 1fr 1.1fr;
+    gap: 3rem;
+  }
+}

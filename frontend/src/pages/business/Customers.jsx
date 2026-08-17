@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Grid, TextField } from '@mui/material';
+import { TextInput } from '@mantine/core';
 import { Add } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import api from '../../services/api';
@@ -28,7 +28,11 @@ export default function CustomersPage() {
 
   const createMutation = useMutation({
     mutationFn: (payload) => api.post('/customers', payload),
-    onSuccess: () => { queryClient.invalidateQueries(['customers']); setOpen(false); reset(); },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['customers']);
+      setOpen(false);
+      reset();
+    },
   });
 
   const rows = data?.data || [];
@@ -43,7 +47,13 @@ export default function CustomersPage() {
 
   return (
     <>
-      <PageHeader title="Customers" subtitle="Manage customer profiles and loyalty" actionLabel="Add Customer" actionIcon={<Add />} onAction={() => setOpen(true)} />
+      <PageHeader
+        title="Customers"
+        subtitle="Manage customer profiles and loyalty"
+        actionLabel="Add Customer"
+        actionIcon={<Add />}
+        onAction={() => setOpen(true)}
+      />
       <DataTable
         columns={columns}
         rows={rows}
@@ -62,10 +72,10 @@ export default function CustomersPage() {
         loading={createMutation.isPending}
         submitLabel="Add"
       >
-        <Grid item xs={12}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
-        <Grid item xs={12}><TextField fullWidth label="Email" type="email" {...register('email')} /></Grid>
-        <Grid item xs={12}><TextField fullWidth label="Phone" {...register('phone')} /></Grid>
-        <Grid item xs={12}><TextField fullWidth label="Address" {...register('address')} /></Grid>
+        <RHFTextField register={register} name="name" rules={{ required: true }} label="Name" />
+        <TextInput label="Email" type="email" w="100%" {...register('email')} />
+        <TextInput label="Phone" w="100%" {...register('phone')} />
+        <TextInput label="Address" w="100%" {...register('address')} />
       </FormDialog>
     </>
   );

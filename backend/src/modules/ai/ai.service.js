@@ -177,6 +177,197 @@ class AiService {
     ];
     return lines.join(' ');
   }
+
+  async _logGeneration(tenantId, kind, input, output, tokensUsed, userId) {
+    try {
+      await db.query(
+        `INSERT INTO ai_generations (tenant_id, kind, input, output, tokens_used, created_by)
+         VALUES ($1, $2, $3::jsonb, $4::jsonb, $5, $6)`,
+        [tenantId, kind, JSON.stringify(input || {}), JSON.stringify(output || {}), tokensUsed || 0, userId || null]
+      );
+    } catch (err) {
+      logger.warn('Failed to log ai_generation', { error: err.message });
+    }
+  }
+
+  async forecastSales(tenantId, { days = 30 } = {}, userId = null) {
+    const lookback = Math.max(14, parseInt(days, 10) || 30);
+    const history = await db.query(
+      `SELECT created_at::date AS day,
+              COALESCE(SUM(total_amount), 0)::numeric AS revenue,
+              COUNT(*)::int AS orders
+       FROM orders
+       WHERE tenant_id = $1 AND status IN ('paid', 'completed')
+         AND created_at >= NOW() - ($2 || ' days')::interval
+       GROUP BY 1 ORDER BY 1`,
+      [tenantId, String(lookback)]
+    );
+
+    const rows = history.rows;
+    const avgRevenue = rows.length
+      ? rows.reduce((s, r) => s + Number(r.revenue), 0) / rows.length
+      : 0;
+    const avgOrders = rows.length
+      ? rows.reduce((s, r) => s + Number(r.orders), 0) / rows.length
+      : 0;
+
+    // Simple linear trend on daily revenue
+    let slope = 0;
+    if (rows.length >= 2) {
+      const n = rows.length;
+      let sumX = 0;
+      let sumY = 0;
+      let sumXY = 0;
+      let sumXX = 0;
+      rows.forEach((r, i) => {
+        const y = Number(r.revenue);
+        sumX += i;
+        sumY += y;
+        sumXY += i * y;
+        sumXX += i * i;
+      });
+      const denom = n * sumXX - sumX * sumX;
+      slope = denom ? (n * sumXY - sumX * sumY) / denom : 0;
+    }
+
+    const horizon = 7;
+    const forecast = [];
+    for (let i = 1; i <= horizon; i += 1) {
+      const projected = Math.max(0, avgRevenue + slope * (rows.length + i - 1));
+      forecast.push({
+        day_offset: i,
+        projected_revenue: +projected.toFixed(2),
+        projected_orders: Math.max(0, Math.round(avgOrders)),
+      });
+    }
+
+    const output = {
+      lookback_days: lookback,
+      avg_daily_revenue: +avgRevenue.toFixed(2),
+      trend_slope: +slope.toFixed(4),
+      forecast,
+      source: 'heuristic',
+    };
+
+    if (config.ai.provider === 'openai' && config.ai.openaiApiKey) {
+      try {
+        const answer = await this._askOpenAI(
+          `Forecast next ${horizon} days of sales from this history JSON. Return brief narrative only.`,
+          { history: rows.slice(-14), forecast }
+        );
+        output.narrative = answer;
+        output.source = 'openai';
+      } catch (err) {
+        logger.warn('forecastSales OpenAI failed', { error: err.message });
+        output.narrative = `Based on the last ${lookback} days, expect ~${avgRevenue.toFixed(0)}/day with a ${slope >= 0 ? 'rising' : 'softening'} trend.`;
+      }
+    } else {
+      output.narrative = `Based on the last ${lookback} days, expect ~${avgRevenue.toFixed(0)}/day with a ${slope >= 0 ? 'rising' : 'softening'} trend.`;
+    }
+
+    await this._logGeneration(tenantId, 'forecast_sales', { days: lookback }, output, 0, userId);
+    return output;
+  }
+
+  async generateProductDescription(tenantId, data = {}, userId = null) {
+    const name = data.name || data.product_name || 'Product';
+    const attrs = data.attributes || data.features || [];
+    const category = data.category || '';
+
+    let description;
+    let source = 'heuristic';
+    if (config.ai.provider === 'openai' && config.ai.openaiApiKey) {
+      try {
+        description = await this._askOpenAI(
+          `Write a compelling 2-3 sentence retail product description for "${name}"` +
+            (category ? ` in category ${category}` : '') +
+            (attrs.length ? `. Features: ${JSON.stringify(attrs)}` : '') +
+            '. No markdown.',
+          { name, category, attrs }
+        );
+        source = 'openai';
+      } catch (err) {
+        logger.warn('generateProductDescription OpenAI failed', { error: err.message });
+      }
+    }
+    if (!description) {
+      const featureText = Array.isArray(attrs) && attrs.length
+        ? ` Highlights: ${attrs.slice(0, 4).join(', ')}.`
+        : '';
+      description = `${name}${category ? ` (${category})` : ''} is a customer favorite, crafted for everyday use.${featureText} Add it to your cart today.`;
+    }
+
+    const output = { description, source };
+    await this._logGeneration(tenantId, 'product_description', { name, category, attrs }, output, 0, userId);
+    return output;
+  }
+
+  async generateEmail(tenantId, data = {}, userId = null) {
+    const purpose = data.purpose || data.type || 'promo';
+    const audience = data.audience || 'customers';
+    const product = data.product_name || data.offer || '';
+
+    let subject;
+    let body;
+    let source = 'heuristic';
+
+    if (config.ai.provider === 'openai' && config.ai.openaiApiKey) {
+      try {
+        const answer = await this._askOpenAI(
+          `Write a short marketing email (subject + body HTML paragraph) for purpose="${purpose}", audience="${audience}", offer="${product}". Format as SUBJECT: ... then BODY: ...`,
+          { purpose, audience, product }
+        );
+        const subjMatch = answer.match(/SUBJECT:\s*(.+)/i);
+        const bodyMatch = answer.match(/BODY:\s*([\s\S]+)/i);
+        subject = subjMatch?.[1]?.trim() || `${purpose} update`;
+        body = bodyMatch?.[1]?.trim() || `<p>${answer}</p>`;
+        source = 'openai';
+      } catch (err) {
+        logger.warn('generateEmail OpenAI failed', { error: err.message });
+      }
+    }
+
+    if (!subject) {
+      subject = product ? `Don't miss ${product}` : `A special ${purpose} just for you`;
+      body = `<p>Hi there,</p><p>We wanted to share a quick ${purpose} with our ${audience}${product ? `: <strong>${product}</strong>` : ''}.</p><p>Shop now before it ends!</p>`;
+    }
+
+    const output = { subject, body, source };
+    await this._logGeneration(tenantId, 'email', { purpose, audience, product }, output, 0, userId);
+    return output;
+  }
+
+  async chatSupport(tenantId, { message, history = [] } = {}, userId = null) {
+    if (!message) {
+      const { ValidationError } = require('../../shared/errors');
+      throw new ValidationError('message is required');
+    }
+    const context = await this._gatherBusinessContext(tenantId);
+    let answer;
+    let source = 'heuristic';
+
+    if (config.ai.provider === 'openai' && config.ai.openaiApiKey) {
+      try {
+        answer = await this._askOpenAI(
+          `Customer support question: ${message}. Recent chat: ${JSON.stringify(history.slice(-4))}`,
+          context
+        );
+        source = 'openai';
+      } catch (err) {
+        logger.warn('chatSupport OpenAI failed', { error: err.message });
+      }
+    }
+
+    if (!answer) {
+      answer = `Thanks for reaching out. Over the last 30 days this store processed ${context.orders} orders` +
+        (context.top_products[0] ? ` and top sellers include "${context.top_products[0].name}"` : '') +
+        `. For order-specific help, share your order number and our team can assist.`;
+    }
+
+    const output = { answer, source };
+    await this._logGeneration(tenantId, 'chat_support', { message, history }, output, 0, userId);
+    return output;
+  }
 }
 
 module.exports = new AiService();

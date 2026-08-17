@@ -8,6 +8,10 @@ function tenantRoom(tenantId) {
   return `tenant:${tenantId}`;
 }
 
+function branchRoom(tenantId, branchId) {
+  return `branch:${tenantId}:${branchId}`;
+}
+
 /**
  * Attaches a Socket.IO server to the given HTTP server. Clients authenticate
  * with their JWT access token and join a per-tenant room so the server can push
@@ -50,6 +54,10 @@ function initRealtime(httpServer) {
     socket.on('join-tenant', (tenantId) => {
       if (tenantId) socket.join(tenantRoom(tenantId));
     });
+    socket.on('join-branch', ({ tenantId, branchId }) => {
+      const tid = tenantId || socket.tenantId;
+      if (tid && branchId) socket.join(branchRoom(tid, branchId));
+    });
   });
 
   logger.info('Realtime (Socket.IO) initialized');
@@ -61,4 +69,9 @@ function emitToTenant(tenantId, event, payload) {
   io.to(tenantRoom(tenantId)).emit(event, payload);
 }
 
-module.exports = { initRealtime, emitToTenant, tenantRoom };
+function emitToBranch(tenantId, branchId, event, payload) {
+  if (!io || !tenantId || !branchId) return;
+  io.to(branchRoom(tenantId, branchId)).emit(event, payload);
+}
+
+module.exports = { initRealtime, emitToTenant, emitToBranch, tenantRoom, branchRoom };

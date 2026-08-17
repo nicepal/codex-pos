@@ -1,4 +1,4 @@
-import { Box, Button, Typography } from '@mui/material';
+import { Group, Button, Text, Paper } from '@mantine/core';
 import { Delete } from '@mui/icons-material';
 
 export default function BulkDeleteToolbar({
@@ -11,33 +11,30 @@ export default function BulkDeleteToolbar({
   if (!count) return null;
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        mb: 2,
-        px: 2,
-        py: 1.25,
-        borderRadius: 1,
-        bgcolor: 'action.selected',
-        border: '1px solid',
-        borderColor: 'divider',
-      }}
+    <Paper
+      withBorder
+      radius="md"
+      px="md"
+      py="sm"
+      mb="md"
+      style={{ background: 'var(--mantine-color-default-hover)' }}
     >
-      <Typography variant="body2" fontWeight={600}>
-        {count} {label}
-      </Typography>
-      <Button size="small" onClick={onClear}>Clear</Button>
-      <Button
-        size="small"
-        color="error"
-        variant="contained"
-        startIcon={<Delete />}
-        onClick={onDelete}
-      >
-        {deleteLabel}
-      </Button>
-    </Box>
+      <Group gap="md">
+        <Text size="sm" fw={600}>
+          {count} {label}
+        </Text>
+        <Button size="compact-sm" variant="subtle" onClick={onClear}>
+          Clear
+        </Button>
+        <Button
+          size="compact-sm"
+          color="red"
+          leftSection={<Delete fontSize="small" />}
+          onClick={onDelete}
+        >
+          {deleteLabel}
+        </Button>
+      </Group>
+    </Paper>
   );
 }

@@ -1,32 +1,109 @@
-import { useMemo, useState } from 'react';
-import { Outlet, Link, useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Outlet, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Box, AppBar, Toolbar, Typography, Container, Button, Badge,
-  ThemeProvider, Stack, TextField, InputAdornment, Menu, MenuItem,
+  Box, ThemeProvider, Drawer, useMediaQuery, CssBaseline,
 } from '@mui/material';
-import { ShoppingCart, Search, KeyboardArrowDown } from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
 import { useSelector } from 'react-redux';
 import api from '../services/api';
-import { resolveImageUrl } from '../utils/imageUrl';
+import { resolveProductImageSrc } from '../utils/imageUrl';
 import { resolveCurrency } from '../utils/currency';
-import { createStorefrontTheme } from '../components/storefront/storefrontTheme';
+import { customerFacingAnnouncement } from '../utils/storefrontContent';
+import { createStorefrontTheme, SF, storefrontContainerSx, storefrontCssVars } from '../components/storefront/storefrontTheme';
 import StorefrontFooter from '../components/storefront/StorefrontFooter';
-import TrustBar from '../components/storefront/TrustBar';
 import AnnouncementBar from '../components/storefront/AnnouncementBar';
+import StoreHeader from '../components/storefront/StoreHeader';
+import CartDrawer from '../components/storefront/CartDrawer';
+import MobileCartBar from '../components/storefront/MobileCartBar';
+import ProductDetails from '../components/storefront/ProductDetails';
+import {
+  selectStoreCartCount, selectStoreCartTotal,
+} from '../features/storefront/cartSlice';
+import useStorefrontCartPersistence from '../hooks/useStorefrontCartPersistence';
+import useDebounce from '../hooks/useDebounce';
+import { StorefrontUIContext } from '../contexts/StorefrontUIContext';
+
+export { useStorefrontUI } from '../contexts/StorefrontUIContext';
+
+const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap';
+
+function fulfillmentStorageKey(slug) {
+  return `storefront-fulfillment-${slug}`;
+}
+
+function loadFulfillmentPref(slug, hasPickup) {
+  if (!slug || typeof window === 'undefined') return hasPickup ? 'pickup' : 'delivery';
+  try {
+    const stored = localStorage.getItem(fulfillmentStorageKey(slug));
+    if (stored === 'pickup' && hasPickup) return 'pickup';
+    if (stored === 'delivery') return 'delivery';
+  } catch { /* ignore */ }
+  return hasPickup ? 'pickup' : 'delivery';
+}
+
+function useStorefrontFont() {
+  useEffect(() => {
+    const id = 'storefront-font-jakarta';
+    if (document.getElementById(id)) return undefined;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = FONT_HREF;
+    document.head.appendChild(link);
+    return undefined;
+  }, []);
+}
+
+function useStoreSeo({ storeName, description }) {
+  useEffect(() => {
+    if (!storeName) return undefined;
+    const prevTitle = document.title;
+    document.title = `${storeName} — Order Online`;
+
+    let meta = document.querySelector('meta[name="description"]');
+    const prevDesc = meta?.getAttribute('content');
+    if (description) {
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'description';
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', description.slice(0, 160));
+    }
+
+    return () => {
+      document.title = prevTitle;
+      if (meta && prevDesc != null) meta.setAttribute('content', prevDesc);
+    };
+  }, [storeName, description]);
+}
 
 function StorefrontShell() {
+  useStorefrontFont();
   const { slug } = useParams();
+  useStorefrontCartPersistence(slug);
   const location = useLocation();
   const navigate = useNavigate();
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const basePath = `/store/${slug}`;
-  const cartCount = useSelector((s) => s.storefrontCart.items.reduce((n, i) => n + i.quantity, 0));
+  const cartCount = useSelector(selectStoreCartCount);
+  const cartTotal = useSelector(selectStoreCartTotal);
+
   const [headerSearch, setHeaderSearch] = useState('');
-  const [catAnchor, setCatAnchor] = useState(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [detailSlug, setDetailSlug] = useState(null);
+  const debouncedHeaderSearch = useDebounce(headerSearch, 280);
 
   const { data: theme } = useQuery({
     queryKey: ['storefront-theme', slug],
     queryFn: () => api.get('/storefront/theme').then((r) => r.data.data),
+  });
+
+  const { data: store } = useQuery({
+    queryKey: ['store-info', slug],
+    queryFn: () => api.get('/storefront').then((r) => r.data.data),
   });
 
   const { data: categories } = useQuery({
@@ -34,173 +111,248 @@ function StorefrontShell() {
     queryFn: () => api.get('/storefront/categories').then((r) => r.data.data),
   });
 
+  const {
+    data: detailProduct,
+    isLoading: detailLoading,
+    isError: detailError,
+    refetch: refetchDetail,
+  } = useQuery({
+    queryKey: ['storefront-product', slug, detailSlug],
+    queryFn: () => api.get(`/storefront/products/${detailSlug}`).then((r) => r.data.data),
+    enabled: Boolean(detailSlug),
+  });
+
+  const searchQ = debouncedHeaderSearch.trim();
+  const {
+    data: searchSuggestData,
+    isFetching: searchSuggestLoading,
+  } = useQuery({
+    queryKey: ['storefront-search-suggest', slug, searchQ],
+    queryFn: () => api.get('/storefront/products', {
+      params: { search: searchQ, limit: 8 },
+    }).then((r) => r.data),
+    enabled: searchQ.length >= 2,
+    staleTime: 20_000,
+  });
+  const searchResults = searchSuggestData?.data || [];
+
+  const { data: branches } = useQuery({
+    queryKey: ['storefront-branches', slug],
+    queryFn: () => api.get('/storefront/branches').then((r) => r.data.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const hasPickup = Array.isArray(branches) && branches.length > 0;
+  const hasDelivery = true;
+
+  const [fulfillmentType, setFulfillmentType] = useState(() => loadFulfillmentPref(slug, false));
+
+  useEffect(() => {
+    setFulfillmentType(loadFulfillmentPref(slug, hasPickup));
+  }, [slug, hasPickup]);
+
+  const handleFulfillmentChange = useCallback((next) => {
+    setFulfillmentType(next);
+    if (slug) {
+      try {
+        localStorage.setItem(fulfillmentStorageKey(slug), next);
+      } catch { /* ignore */ }
+    }
+  }, [slug]);
+
   const themeSettings = theme?.theme || {};
   const primaryColor = themeSettings.primary_color || '#2563eb';
-  const backgroundColor = themeSettings.background_color || '#f4f6f9';
+  const backgroundColor = themeSettings.background_color || SF.colors.bg;
   const announcementColor = themeSettings.announcement_color || primaryColor;
-  const storeName = theme?.name || 'Store';
-  const logoUrl = resolveImageUrl(theme?.logo_url);
-  const currency = resolveCurrency(theme?.currency);
+  const storeName = theme?.name || store?.name || 'Store';
+  const logoUrl = resolveProductImageSrc(theme?.logo_url || store?.logo_url);
+  const currency = resolveCurrency(theme?.currency || store?.currency);
   const showAnnouncement = themeSettings.show_announcement !== false;
-  const announcement = themeSettings.announcement_text
-    || 'Order online · Inventory synced with our POS · Pickup & delivery available';
+  const announcement = customerFacingAnnouncement(themeSettings.announcement_text);
+
+  const seoDescription = customerFacingAnnouncement(themeSettings.banner_text)
+    || customerFacingAnnouncement(themeSettings.tagline)
+    || store?.address
+    || `Order online from ${storeName}`;
+
+  useStoreSeo({ storeName, description: seoDescription });
 
   const storefrontTheme = useMemo(
     () => createStorefrontTheme({ primaryColor, backgroundColor }),
     [primaryColor, backgroundColor],
   );
 
-  const handleHeaderSearch = (e) => {
-    if (e.key === 'Enter' && headerSearch.trim()) {
-      navigate(`${basePath}/shop?q=${encodeURIComponent(headerSearch.trim())}`);
+  const openCart = useCallback(() => setCartOpen(true), []);
+  const closeCart = useCallback(() => setCartOpen(false), []);
+  const clearSearch = useCallback(() => setHeaderSearch(''), []);
+
+  const openProductDetails = useCallback((productOrSlug) => {
+    const s = typeof productOrSlug === 'string' ? productOrSlug : productOrSlug?.slug;
+    if (!s) return;
+    if (isMobile) {
+      navigate(`${basePath}/product/${s}`);
+      return;
     }
-  };
+    setDetailSlug(s);
+  }, [isMobile, navigate, basePath]);
 
-  const navActive = (path) => {
-    if (path === basePath) return location.pathname === basePath;
-    return location.pathname.startsWith(path);
-  };
+  const closeProductDetails = useCallback(() => setDetailSlug(null), []);
 
-  const outletContext = {
-    basePath, slug, primaryColor, storeName, currency,
-    showStock: themeSettings.show_stock !== false,
-  };
   const isHome = location.pathname === basePath || location.pathname === `${basePath}/`;
+
+  const handleSearchSubmit = () => {
+    const q = headerSearch.trim();
+    // On home, in-page filter already handles search — keep user on menu.
+    if (isHome) return;
+    if (q) navigate(`${basePath}/shop?q=${encodeURIComponent(q)}`);
+    else navigate(`${basePath}/shop`);
+  };
+
+  const handleSearchSelect = useCallback((product) => {
+    if (!product?.slug) return;
+    setHeaderSearch('');
+    openProductDetails(product);
+  }, [openProductDetails]);
+
+  // Prefill search from URL on shop
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (location.pathname.includes('/shop') && params.get('q')) {
+      setHeaderSearch(params.get('q'));
+    }
+  }, [location.pathname, location.search]);
+
+  const outletContext = useMemo(() => ({
+    basePath,
+    slug,
+    primaryColor,
+    storeName,
+    currency,
+    showStock: themeSettings.show_stock !== false,
+    logoUrl,
+    store,
+    themeSettings,
+    // Pass through undefined while loading — never seed child queries with []
+    categories,
+    openCart,
+    openProductDetails,
+    searchQuery: debouncedHeaderSearch,
+    clearSearch,
+    hasPickup,
+    hasDelivery,
+    fulfillmentType,
+    onFulfillmentChange: handleFulfillmentChange,
+  }), [
+    basePath, slug, primaryColor, storeName, currency, themeSettings,
+    logoUrl, store, categories, openCart, openProductDetails,
+    debouncedHeaderSearch, clearSearch, hasPickup, hasDelivery,
+    fulfillmentType, handleFulfillmentChange,
+  ]);
+
+  const uiValue = useMemo(() => ({
+    openCart, closeCart, cartOpen, openProductDetails, closeProductDetails, currency,
+  }), [openCart, closeCart, cartOpen, openProductDetails, closeProductDetails, currency]);
+
+  const hideMobileBar = location.pathname.includes('/checkout')
+    || location.pathname.includes('/cart')
+    || location.pathname.includes('/order/');
 
   return (
     <ThemeProvider theme={storefrontTheme}>
-      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-        {showAnnouncement && (
-          <AnnouncementBar message={announcement} primaryColor={announcementColor} />
-        )}
-        <AppBar
-          position="sticky"
-          elevation={0}
+      <CssBaseline />
+      <StorefrontUIContext.Provider value={uiValue}>
+        <Box
           sx={{
-            bgcolor: 'background.paper',
-            borderBottom: '1px solid',
-            borderColor: 'divider',
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            bgcolor: 'var(--store-background, ' + backgroundColor + ')',
+            ...storefrontCssVars({ primaryColor, backgroundColor }),
           }}
         >
-          <Container maxWidth="lg">
-            <Toolbar disableGutters sx={{ gap: 2, py: 1, minHeight: { xs: 64, md: 72 } }}>
-              <Box
-                component={Link}
-                to={basePath}
-                sx={{ display: 'flex', alignItems: 'center', gap: 1, textDecoration: 'none', color: 'inherit', flexShrink: 0 }}
-              >
-                {logoUrl ? (
-                  <Box
-                    component="img"
-                    src={logoUrl}
-                    alt={storeName}
-                    sx={{ height: 36, maxWidth: 180, objectFit: 'contain' }}
-                  />
-                ) : (
-                  <Typography variant="h6" fontWeight={800}>
-                    {storeName}
-                  </Typography>
-                )}
-              </Box>
+          {showAnnouncement && announcement && (
+            <AnnouncementBar message={announcement} primaryColor={announcementColor} />
+          )}
 
-              <Stack direction="row" spacing={0.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
-                <Button
-                  component={Link}
-                  to={basePath}
-                  sx={{ color: navActive(basePath) ? 'primary.main' : 'text.secondary', fontWeight: navActive(basePath) ? 700 : 500 }}
-                >
-                  Home
-                </Button>
-                <Button
-                  component={Link}
-                  to={`${basePath}/shop`}
-                  sx={{ color: navActive(`${basePath}/shop`) ? 'primary.main' : 'text.secondary', fontWeight: navActive(`${basePath}/shop`) ? 700 : 500 }}
-                >
-                  Shop
-                </Button>
-                <Button
-                  endIcon={<KeyboardArrowDown />}
-                  onClick={(e) => setCatAnchor(e.currentTarget)}
-                  sx={{ color: 'text.secondary', fontWeight: 500 }}
-                >
-                  Categories
-                </Button>
-                <Menu anchorEl={catAnchor} open={!!catAnchor} onClose={() => setCatAnchor(null)}>
-                  <MenuItem component={Link} to={`${basePath}/shop`} onClick={() => setCatAnchor(null)}>All Products</MenuItem>
-                  {(categories || []).map((c) => (
-                    <MenuItem
-                      key={c.id}
-                      component={Link}
-                      to={`${basePath}/shop?category=${c.slug}`}
-                      onClick={() => setCatAnchor(null)}
-                    >
-                      {c.name}
-                    </MenuItem>
-                  ))}
-                </Menu>
-              </Stack>
+          <StoreHeader
+            storeName={storeName}
+            logoUrl={logoUrl}
+            basePath={basePath}
+            primaryColor={primaryColor}
+            cartCount={cartCount}
+            categories={categories ?? []}
+            searchValue={headerSearch}
+            onSearchChange={setHeaderSearch}
+            onSearchSubmit={handleSearchSubmit}
+            onSearchSelect={handleSearchSelect}
+            searchResults={searchResults}
+            searchLoading={searchSuggestLoading}
+            onCartOpen={openCart}
+            hasDelivery={hasDelivery}
+            hasPickup={hasPickup}
+            fulfillmentType={fulfillmentType}
+            onFulfillmentChange={handleFulfillmentChange}
+          />
 
-              <TextField
-                size="small"
-                placeholder="Search products..."
-                value={headerSearch}
-                onChange={(e) => setHeaderSearch(e.target.value)}
-                onKeyDown={handleHeaderSearch}
-                sx={{
-                  flexGrow: 1,
-                  maxWidth: 360,
-                  display: { xs: 'none', sm: 'block' },
-                  '& .MuiOutlinedInput-root': {
-                    bgcolor: '#f8fafc',
-                    borderRadius: 2,
-                    '& fieldset': { borderColor: 'divider' },
-                  },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search sx={{ fontSize: 20, color: 'text.disabled' }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
-              <Button
-                component={Link}
-                to={`${basePath}/cart`}
-                sx={{ minWidth: 'auto', color: 'text.primary', p: 1 }}
-              >
-                <Badge badgeContent={cartCount} color="error" max={99}>
-                  <ShoppingCart />
-                </Badge>
-              </Button>
-            </Toolbar>
-          </Container>
-        </AppBar>
-
-        {isHome ? (
-          <Box sx={{ flexGrow: 1 }}>
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              ...storefrontContainerSx({
+                pb: cartCount > 0 && !hideMobileBar ? `${SF.mobileCartPad}px` : { xs: 3, md: 4 },
+                pt: { xs: 0.5, md: 0.75 },
+              }),
+            }}
+          >
             <Outlet context={outletContext} />
           </Box>
-        ) : (
-          <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 }, flexGrow: 1 }}>
-            <Outlet context={outletContext} />
-          </Container>
-        )}
 
-        <Box sx={{ px: 2, pb: 2, bgcolor: 'background.default' }}>
-          <Container maxWidth="lg">
-            <TrustBar />
-          </Container>
+          <StorefrontFooter
+            storeName={storeName}
+            basePath={basePath}
+            footerText={themeSettings.footer_text}
+          />
+
+          <CartDrawer
+            open={cartOpen}
+            onClose={closeCart}
+            basePath={basePath}
+            primaryColor={primaryColor}
+          />
+
+          <MobileCartBar
+            visible={!hideMobileBar}
+            itemCount={cartCount}
+            subtotal={cartTotal}
+            primaryColor={primaryColor}
+            onOpen={openCart}
+          />
+
+          {/* Desktop product detail drawer */}
+          <Drawer
+            anchor="right"
+            open={Boolean(detailSlug)}
+            onClose={closeProductDetails}
+            PaperProps={{
+              sx: {
+                width: { sm: 440, md: 480 },
+                maxWidth: '100%',
+              },
+            }}
+          >
+            <ProductDetails
+              product={detailProduct}
+              loading={detailLoading}
+              error={detailError ? 'Could not load this product.' : null}
+              onRetry={() => refetchDetail()}
+              onClose={closeProductDetails}
+              primaryColor={primaryColor}
+              showStock={themeSettings.show_stock !== false}
+              basePath={basePath}
+            />
+          </Drawer>
         </Box>
-
-        <StorefrontFooter
-          storeName={storeName}
-          basePath={basePath}
-          primaryColor={primaryColor}
-          footerText={themeSettings.footer_text}
-        />
-      </Box>
+      </StorefrontUIContext.Provider>
     </ThemeProvider>
   );
 }

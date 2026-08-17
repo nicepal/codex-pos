@@ -21,7 +21,9 @@ const logger = require('../../utils/logger');
 
 class AuthService {
   async registerBusiness(data) {
-    const { businessName, slug, email, password, firstName, lastName, phone, address, timezone, currency } = data;
+    const { businessName, slug, email, password, firstName, lastName, timezone, currency } = data;
+    const phone = data.phone || null;
+    const address = data.address || null;
     const businessSlug = slug || slugify(businessName);
 
     const existingSlug = await db.query('SELECT id FROM tenants WHERE slug = $1', [businessSlug]);
@@ -35,8 +37,8 @@ class AuthService {
       await client.query('BEGIN');
 
       const tenantResult = await client.query(
-        `INSERT INTO tenants (name, slug, email, phone, address, timezone, currency, status, trial_ends_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'trial', NOW() + INTERVAL '14 days')
+        `INSERT INTO tenants (name, slug, email, phone, address, timezone, currency, status, trial_ends_at, onboarding_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'trial', NOW() + INTERVAL '14 days', 'not_started')
          RETURNING *`,
         [businessName, businessSlug, email, phone, address, timezone || 'UTC', currency || 'USD']
       );
@@ -46,6 +48,13 @@ class AuthService {
         `INSERT INTO tenant_domains (tenant_id, domain, domain_type, is_primary, verification_status)
          VALUES ($1, $2, 'subdomain', true, 'verified')`,
         [tenant.id, `${businessSlug}.${config.app.platformDomain}`]
+      );
+
+      // Default branch so POS / inventory work immediately after onboarding
+      await client.query(
+        `INSERT INTO branches (tenant_id, name, code, is_primary, status)
+         VALUES ($1, $2, 'MAIN', true, 'active')`,
+        [tenant.id, businessName || 'Main Store']
       );
 
       const starterPlan = await client.query(`SELECT id FROM plans WHERE slug = 'starter' LIMIT 1`);
@@ -83,7 +92,13 @@ class AuthService {
         emailService.sendWelcomeEmail(user, tenant).catch(() => {});
       });
 
-      return { user: this._sanitizeUser(user), tenant, ...tokens };
+      const onboardingRequired = this._needsOnboarding(tenant.onboarding_status);
+      return {
+        user: this._sanitizeUser(user),
+        tenant: this._sanitizeTenant(tenant),
+        onboarding_required: onboardingRequired,
+        ...tokens,
+      };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -125,9 +140,11 @@ class AuthService {
       tenant = tenant.rows[0];
     }
 
+    const safeTenant = tenant ? this._sanitizeTenant(tenant) : null;
     return {
       user: this._sanitizeUser({ ...userWithRoles, roles: userWithRoles.roles?.filter(Boolean) }),
-      tenant,
+      tenant: safeTenant,
+      onboarding_required: safeTenant ? this._needsOnboarding(safeTenant.onboarding_status) : false,
       ...tokens,
     };
   }
@@ -158,7 +175,7 @@ class AuthService {
 
     const token = generateSecureToken();
     const expires = new Date(Date.now() + 3600000);
-    await userRepo.setPasswordResetToken(user.id, token, expires);
+    await userRepo.setPasswordResetToken(user.id, hashToken(token), expires);
 
     // Send the reset email through the centralized EmailService (non-blocking).
     try {
@@ -173,7 +190,7 @@ class AuthService {
   }
 
   async resetPassword(token, newPassword) {
-    const user = await userRepo.findByResetToken(token);
+    const user = await userRepo.findByResetToken(hashToken(token));
     if (!user) throw new ValidationError('Invalid or expired reset token');
 
     const passwordHash = await hashPassword(newPassword);
@@ -218,7 +235,7 @@ class AuthService {
   async setupMfa(userId) {
     const speakeasy = require('speakeasy');
     const user = await userRepo.findById(userId);
-    const secret = speakeasy.generateSecret({ name: `EYZPOS:${user?.email || userId}` });
+    const secret = speakeasy.generateSecret({ name: `CodexPOS:${user?.email || userId}` });
     await userRepo.update(userId, { mfa_secret: secret.base32 });
     return { secret: secret.base32, otpauth: secret.otpauth_url };
   }
@@ -233,11 +250,13 @@ class AuthService {
     return { enabled: true };
   }
 
-  async pinLogin(employeeId, pin, tenantId) {
+  async pinLogin(employeeId, pin, tenantId, ip, userAgent) {
     const bcrypt = require('bcryptjs');
     const result = await db.query(
-      `SELECT e.*, t.slug AS tenant_slug FROM employees e
+      `SELECT e.*, t.slug AS tenant_slug, u.id AS linked_user_id, u.email, u.status AS user_status
+       FROM employees e
        JOIN tenants t ON t.id = e.tenant_id
+       LEFT JOIN users u ON u.id = e.user_id AND u.tenant_id = e.tenant_id
        WHERE e.id = $1 AND e.tenant_id = $2 AND e.status = 'active'`,
       [employeeId, tenantId]
     );
@@ -245,11 +264,25 @@ class AuthService {
     if (!employee?.pin_code) throw new UnauthorizedError('PIN not configured');
     const valid = await bcrypt.compare(String(pin), employee.pin_code);
     if (!valid) throw new UnauthorizedError('Invalid PIN');
+
+    if (!employee.linked_user_id || employee.user_status !== 'active') {
+      throw new UnauthorizedError(
+        'Employee must be linked to an active user account before PIN login can issue a session'
+      );
+    }
+
+    const user = await userRepo.findById(employee.linked_user_id);
+    if (!user) throw new UnauthorizedError('Linked user not found');
+
+    const tokens = await this._generateTokens(user, ip, userAgent || 'pin-login');
     return {
       employee_id: employee.id,
-      name: `${employee.first_name} ${employee.last_name}`.trim(),
+      name: employee.name,
       tenant_id: employee.tenant_id,
       tenant_slug: employee.tenant_slug,
+      user_id: employee.linked_user_id,
+      ...tokens,
+      user: this._sanitizeUser(user),
     };
   }
 
@@ -290,6 +323,26 @@ class AuthService {
   _sanitizeUser(user) {
     const { password_hash, password_reset_token, mfa_secret, email_verification_token, ...safe } = user;
     return safe;
+  }
+
+  _sanitizeTenant(tenant) {
+    if (!tenant) return null;
+    return {
+      id: tenant.id,
+      name: tenant.name,
+      slug: tenant.slug,
+      status: tenant.status,
+      currency: tenant.currency,
+      timezone: tenant.timezone,
+      business_type: tenant.business_type || null,
+      onboarding_status: tenant.onboarding_status || 'completed',
+      logo_url: tenant.logo_url || null,
+    };
+  }
+
+  _needsOnboarding(status) {
+    if (!status) return false;
+    return status === 'not_started' || status === 'in_progress' || status === 'failed';
   }
 }
 

@@ -36,6 +36,20 @@ class BranchStockService {
     return result.rows[0]?.quantity ?? 0;
   }
 
+  /** Lock branch_stock row and return quantity (use inside order transaction). */
+  async lockQuantity(tenantId, branchId, productId, variantId = null, client = db) {
+    const bid = await this.resolveBranchId(tenantId, branchId, client);
+    await this.ensureRow(tenantId, bid, productId, variantId, client);
+    const result = await client.query(
+      `SELECT quantity FROM branch_stock
+       WHERE tenant_id = $1 AND branch_id = $2 AND product_id = $3
+         AND COALESCE(variant_id, $4::uuid) = COALESCE($5::uuid, $4::uuid)
+       FOR UPDATE`,
+      [tenantId, bid, productId, NIL_UUID, variantId]
+    );
+    return result.rows[0]?.quantity ?? 0;
+  }
+
   async ensureRow(tenantId, branchId, productId, variantId, client) {
     const bid = await this.resolveBranchId(tenantId, branchId, client);
     const existing = await client.query(
@@ -55,32 +69,47 @@ class BranchStockService {
   }
 
   async _syncAggregate(tenantId, productId, variantId, client) {
-    const sum = await client.query(
-      `SELECT COALESCE(SUM(quantity), 0)::int AS total FROM branch_stock
-       WHERE tenant_id = $1 AND product_id = $2
-         AND COALESCE(variant_id, $3::uuid) = COALESCE($4::uuid, $3::uuid)`,
-      [tenantId, productId, NIL_UUID, variantId]
-    );
-    const total = sum.rows[0].total;
     if (variantId) {
+      const variantSum = await client.query(
+        `SELECT COALESCE(SUM(quantity), 0)::int AS total FROM branch_stock
+         WHERE tenant_id = $1 AND product_id = $2
+           AND COALESCE(variant_id, $3::uuid) = COALESCE($4::uuid, $3::uuid)`,
+        [tenantId, productId, NIL_UUID, variantId]
+      );
       await client.query(
         'UPDATE product_variants SET stock_quantity = $1 WHERE id = $2 AND tenant_id = $3',
-        [total, variantId, tenantId]
-      );
-    } else {
-      await client.query(
-        'UPDATE products SET stock_quantity = $1 WHERE id = $2 AND tenant_id = $3',
-        [total, productId, tenantId]
+        [variantSum.rows[0].total, variantId, tenantId]
       );
     }
+
+    // Product-level aggregate = all branch_stock for this product (base + variants)
+    const productSum = await client.query(
+      `SELECT COALESCE(SUM(quantity), 0)::int AS total FROM branch_stock
+       WHERE tenant_id = $1 AND product_id = $2`,
+      [tenantId, productId]
+    );
+    const total = productSum.rows[0].total;
+    await client.query(
+      'UPDATE products SET stock_quantity = $1 WHERE id = $2 AND tenant_id = $3',
+      [total, productId, tenantId]
+    );
     return total;
+  }
+
+  _isDecrement(type, data = {}) {
+    if (type === 'stock_out' || type === 'sale' || type === 'transfer') return true;
+    if (type === 'adjustment') {
+      if (data.deduct === true) return true;
+      const signed = Number(data.quantity);
+      if (Number.isFinite(signed) && signed < 0) return true;
+    }
+    return false;
   }
 
   async _recordTransaction(client, tenantId, data, type, userId) {
     const prevQty = await this.getQuantity(tenantId, data.branch_id, data.product_id, data.variant_id, client);
-    const delta = type === 'stock_out' || type === 'sale' || type === 'transfer'
-      ? -Math.abs(data.quantity)
-      : Math.abs(data.quantity);
+    const absQty = Math.abs(parseInt(data.quantity, 10) || 0);
+    const delta = this._isDecrement(type, data) ? -absQty : absQty;
     const newQty = prevQty + delta;
     await client.query(
       `INSERT INTO inventory_transactions
@@ -88,7 +117,7 @@ class BranchStockService {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         tenantId, data.product_id, data.variant_id || null, data.branch_id || null,
-        type, Math.abs(data.quantity), prevQty, newQty,
+        type, absQty, prevQty, newQty,
         data.reference_type || null, data.reference_id || null, data.notes || null, userId,
       ]
     );
@@ -100,10 +129,14 @@ class BranchStockService {
     try {
       if (ownTx) await useClient.query('BEGIN');
       const branchId = await this.ensureRow(tenantId, data.branch_id, data.product_id, data.variant_id, useClient);
-      const qty = parseInt(data.quantity, 10);
-      if (!qty || qty < 1) throw new ValidationError('Invalid quantity');
+      const qty = Math.abs(parseInt(data.quantity, 10) || 0);
+      if (!qty) throw new ValidationError('Invalid quantity');
 
-      if (type === 'stock_out' || type === 'sale') {
+      const decrement = this._isDecrement(type, data);
+      if (decrement) {
+        if (client && client !== db) {
+          await this.lockQuantity(tenantId, branchId, data.product_id, data.variant_id, useClient);
+        }
         const dec = await useClient.query(
           `UPDATE branch_stock SET quantity = quantity - $1, updated_at = NOW()
            WHERE tenant_id = $2 AND branch_id = $3 AND product_id = $4
@@ -133,9 +166,9 @@ class BranchStockService {
       }
 
       await this._syncAggregate(tenantId, data.product_id, data.variant_id, useClient);
-      await this._recordTransaction(useClient, tenantId, { ...data, branch_id: branchId }, type, userId);
+      await this._recordTransaction(useClient, tenantId, { ...data, branch_id: branchId, quantity: qty }, type, userId);
       if (ownTx) await useClient.query('COMMIT');
-      return { branch_id: branchId, quantity: qty };
+      return { branch_id: branchId, quantity: qty, direction: decrement ? 'out' : 'in' };
     } catch (err) {
       if (ownTx) await useClient.query('ROLLBACK');
       throw err;

@@ -150,6 +150,27 @@ class ReportService {
     return result.rows[0];
   }
 
+  async listSchedules(tenantId) {
+    const result = await db.query(
+      `SELECT * FROM scheduled_reports WHERE tenant_id = $1 ORDER BY created_at DESC`,
+      [tenantId]
+    );
+    return result.rows;
+  }
+
+  async cancelSchedule(tenantId, id) {
+    const result = await db.query(
+      `UPDATE scheduled_reports SET status = 'cancelled', updated_at = NOW()
+       WHERE id = $1 AND tenant_id = $2 RETURNING *`,
+      [id, tenantId]
+    );
+    if (!result.rows[0]) {
+      const { NotFoundError } = require('../../shared/errors');
+      throw new NotFoundError('Scheduled report not found');
+    }
+    return result.rows[0];
+  }
+
   async exportTenantData(tenantId) {
     const [products, customers, orders] = await Promise.all([
       db.query('SELECT id, name, sku, sale_price, stock_quantity FROM products WHERE tenant_id = $1', [tenantId]),
@@ -676,6 +697,53 @@ class ReportService {
     ]);
     const cur = current.rows[0];
     return buildFinancialPeriod(cur.revenue, cur.expenses, previous.rows[0].revenue);
+  }
+
+  async taxReport(tenantId, { from, to } = {}) {
+    const result = await db.query(
+      `SELECT created_at::date AS day,
+              COUNT(*)::int AS order_count,
+              COALESCE(SUM(tax_amount), 0)::numeric AS tax_collected,
+              COALESCE(SUM(total_amount), 0)::numeric AS sales
+       FROM orders
+       WHERE tenant_id = $1 AND status IN ('paid', 'completed', 'refunded')
+         AND created_at BETWEEN COALESCE($2::timestamptz, NOW() - INTERVAL '30 days')
+                            AND COALESCE($3::timestamptz, NOW())
+       GROUP BY 1
+       ORDER BY 1`,
+      [tenantId, from || null, to || null]
+    );
+    const totalTax = result.rows.reduce((s, r) => s + Number(r.tax_collected), 0);
+    return {
+      rows: result.rows,
+      total_tax: +totalTax.toFixed(2),
+      from: from || null,
+      to: to || null,
+    };
+  }
+
+  async paymentMix(tenantId, { from, to } = {}) {
+    const byMethod = await db.query(
+      `SELECT COALESCE(op.payment_method, o.payment_method, 'unknown') AS method,
+              COUNT(*)::int AS payment_count,
+              COALESCE(SUM(COALESCE(op.amount, o.total_amount)), 0)::numeric AS amount
+       FROM orders o
+       LEFT JOIN order_payments op ON op.order_id = o.id
+       WHERE o.tenant_id = $1 AND o.status IN ('paid', 'completed')
+         AND o.created_at BETWEEN COALESCE($2::timestamptz, NOW() - INTERVAL '30 days')
+                              AND COALESCE($3::timestamptz, NOW())
+       GROUP BY 1
+       ORDER BY amount DESC`,
+      [tenantId, from || null, to || null]
+    );
+    const total = byMethod.rows.reduce((s, r) => s + Number(r.amount), 0);
+    return {
+      methods: byMethod.rows.map((r) => ({
+        ...r,
+        share_pct: total > 0 ? +((Number(r.amount) / total) * 100).toFixed(1) : 0,
+      })),
+      total_amount: +total.toFixed(2),
+    };
   }
 }
 

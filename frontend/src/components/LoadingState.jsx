@@ -1,10 +1,16 @@
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Center, Loader, Stack, Text } from '@mantine/core';
 
 export default function LoadingState({ message }) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8, gap: 2 }}>
-      <CircularProgress />
-      {message && <Typography color="text.secondary">{message}</Typography>}
-    </Box>
+    <Center py={64}>
+      <Stack align="center" gap="md">
+        <Loader color="codex" />
+        {message ? (
+          <Text c="dimmed" size="sm">
+            {message}
+          </Text>
+        ) : null}
+      </Stack>
+    </Center>
   );
 }

@@ -31,6 +31,29 @@ export const fetchMe = createAsyncThunk('auth/me', async (_, { rejectWithValue }
   }
 });
 
+export const logout = createAsyncThunk('auth/logout', async (_, { getState }) => {
+  const refreshToken = getState().auth.refreshToken || localStorage.getItem('refreshToken');
+  if (refreshToken) {
+    try {
+      await api.post('/auth/logout', { refreshToken });
+    } catch {
+      // Clear local session even when revoke fails (network/offline).
+    }
+  }
+});
+
+function clearAuthState(state) {
+  state.user = null;
+  state.tenant = null;
+  state.accessToken = null;
+  state.refreshToken = null;
+  state.isAuthenticated = false;
+  state.hydrating = false;
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('tenantSlug');
+}
+
 function syncTenantSlug(tenant) {
   if (tenant?.slug) {
     localStorage.setItem('tenantSlug', tenant.slug);
@@ -50,17 +73,6 @@ const authSlice = createSlice({
     hydrating: !!localStorage.getItem('accessToken'),
   },
   reducers: {
-    logout(state) {
-      state.user = null;
-      state.tenant = null;
-      state.accessToken = null;
-      state.refreshToken = null;
-      state.isAuthenticated = false;
-      state.hydrating = false;
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('tenantSlug');
-    },
     setTokens(state, action) {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
@@ -113,11 +125,17 @@ const authSlice = createSlice({
       })
       .addCase(fetchMe.rejected, (state) => {
         state.hydrating = false;
+      })
+      .addCase(logout.fulfilled, (state) => {
+        clearAuthState(state);
+      })
+      .addCase(logout.rejected, (state) => {
+        clearAuthState(state);
       });
   },
 });
 
-export const { logout, setTokens, setTenantProfile } = authSlice.actions;
+export const { setTokens, setTenantProfile } = authSlice.actions;
 export const selectAuth = (state) => state.auth;
 export const selectIsPlatformAdmin = (state) =>
   state.auth.user?.roles?.some((r) => ['super_admin', 'support_agent', 'billing_manager'].includes(r));

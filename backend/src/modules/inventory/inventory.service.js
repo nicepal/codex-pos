@@ -1,6 +1,7 @@
 const db = require('../../config/database');
 const BaseRepository = require('../../shared/base.repository');
 const { NotFoundError, ValidationError } = require('../../shared/errors');
+const branchStockService = require('./branch-stock.service');
 
 class InventoryService {
   constructor() {
@@ -24,7 +25,9 @@ class InventoryService {
   }
 
   async adjustment(tenantId, data, userId) {
-    return this._adjustStock(tenantId, data, 'adjustment', userId);
+    const signed = parseInt(data.quantity, 10);
+    const deduct = data.deduct === true || (Number.isFinite(signed) && signed < 0);
+    return this._adjustStock(tenantId, { ...data, deduct }, 'adjustment', userId, deduct);
   }
 
   async lowStock(tenantId) {
@@ -110,7 +113,7 @@ class InventoryService {
 
   async addStockTakeLine(tenantId, sessionId, data) {
     const session = await db.query(
-      'SELECT status FROM stock_take_sessions WHERE id = $1 AND tenant_id = $2',
+      'SELECT status, branch_id FROM stock_take_sessions WHERE id = $1 AND tenant_id = $2',
       [sessionId, tenantId]
     );
     if (!session.rows[0]) throw new NotFoundError('Stock take session not found');
@@ -124,10 +127,18 @@ class InventoryService {
       [data.product_id, tenantId]
     );
     if (!product.rows[0]) throw new NotFoundError('Product not found');
-    const expected = product.rows[0].stock_quantity;
+    const branchId = await branchStockService.resolveBranchId(tenantId, session.rows[0].branch_id);
+    const expected = await branchStockService.getQuantity(
+      tenantId, branchId, data.product_id, data.variant_id || null
+    );
     const existing = await db.query(
-      'SELECT id FROM stock_take_lines WHERE session_id = $1 AND product_id = $2 AND tenant_id = $3',
-      [sessionId, data.product_id, tenantId]
+      `SELECT id FROM stock_take_lines
+       WHERE session_id = $1 AND product_id = $2 AND tenant_id = $3
+         AND (
+           ($4::uuid IS NULL AND variant_id IS NULL)
+           OR variant_id = $4::uuid
+         )`,
+      [sessionId, data.product_id, tenantId, data.variant_id || null]
     );
     if (existing.rows[0]) {
       const result = await db.query(
@@ -150,19 +161,23 @@ class InventoryService {
     if (session.status !== 'open') throw new ValidationError('Stock take session is not open');
     if (!session.lines?.length) throw new ValidationError('Count at least one product before completing');
 
-    const lines = { rows: session.lines };
-    for (const line of lines.rows) {
-      if (line.variance === 0) continue;
-      const table = line.variant_id ? 'product_variants' : 'products';
-      const id = line.variant_id || line.product_id;
-      const current = await db.query(`SELECT stock_quantity FROM ${table} WHERE id = $1`, [id]);
-      const prev = current.rows[0]?.stock_quantity || 0;
-      await db.query(`UPDATE ${table} SET stock_quantity = $1 WHERE id = $2 AND tenant_id = $3`, [line.counted_qty, id, tenantId]);
-      await db.query(
-        `INSERT INTO inventory_transactions (tenant_id, product_id, variant_id, transaction_type, quantity, previous_quantity, new_quantity, notes, created_by)
-         VALUES ($1, $2, $3, 'adjustment', $4, $5, $6, $7, $8)`,
-        [tenantId, line.product_id, line.variant_id, line.counted_qty - prev, prev, line.counted_qty, `Stock take ${sessionId}`, userId]
+    const branchId = await branchStockService.resolveBranchId(tenantId, session.branch_id);
+    for (const line of session.lines) {
+      const currentQty = await branchStockService.getQuantity(
+        tenantId, branchId, line.product_id, line.variant_id || null
       );
+      const delta = line.counted_qty - currentQty;
+      if (delta === 0) continue;
+      await branchStockService.adjust(tenantId, {
+        branch_id: branchId,
+        product_id: line.product_id,
+        variant_id: line.variant_id || null,
+        quantity: Math.abs(delta),
+        reference_type: 'stock_take',
+        reference_id: sessionId,
+        notes: `Stock take ${session.session_number || sessionId}`,
+        allowNegative: true,
+      }, delta > 0 ? 'adjustment' : 'stock_out', userId);
     }
     await db.query(
       `UPDATE stock_take_sessions SET status = 'completed', completed_at = NOW() WHERE id = $1 AND tenant_id = $2`,
@@ -188,65 +203,66 @@ class InventoryService {
   }
 
   async _adjustStock(tenantId, data, type, userId, deduct = false) {
-    const client = await db.getClient();
-    try {
-      await client.query('BEGIN');
+    if (!data.product_id) throw new ValidationError('product_id is required');
+    const qty = Math.abs(parseInt(data.quantity, 10) || 0);
+    if (!qty) throw new ValidationError('quantity must be greater than 0');
 
-      const table = data.variant_id ? 'product_variants' : 'products';
-      const id = data.variant_id || data.product_id;
+    const product = await db.query(
+      'SELECT id, name, low_stock_threshold FROM products WHERE id = $1 AND tenant_id = $2',
+      [data.product_id, tenantId]
+    );
+    if (!product.rows[0]) throw new NotFoundError('Product not found');
 
-      const current = await client.query(`SELECT stock_quantity FROM ${table} WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
-      if (!current.rows[0]) throw new NotFoundError('Product not found');
+    const branchId = await branchStockService.resolveBranchId(tenantId, data.branch_id);
+    // Keep transaction_type='adjustment' for signed adjustments; use stock_out only for explicit stock-out API.
+    const adjustType = (deduct && type !== 'adjustment') ? 'stock_out' : type;
+    await branchStockService.adjust(tenantId, {
+      branch_id: branchId,
+      product_id: data.product_id,
+      variant_id: data.variant_id || null,
+      quantity: qty,
+      deduct: deduct || data.deduct === true,
+      notes: data.notes || null,
+      reference_type: data.reference_type || 'manual',
+      reference_id: data.reference_id || null,
+      allowNegative: data.allowNegative === true,
+    }, adjustType, userId);
 
-      const prev = current.rows[0].stock_quantity;
-      const qty = deduct ? -Math.abs(data.quantity) : Math.abs(data.quantity);
-      const newQty = prev + qty;
+    const newQty = await branchStockService.getQuantity(
+      tenantId, branchId, data.product_id, data.variant_id || null
+    );
 
-      await client.query(`UPDATE ${table} SET stock_quantity = $1 WHERE id = $2`, [newQty, id]);
-
-      const tx = await client.query(
-        `INSERT INTO inventory_transactions (tenant_id, product_id, variant_id, transaction_type, quantity, previous_quantity, new_quantity, notes, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-        [tenantId, data.product_id, data.variant_id, type, qty, prev, newQty, data.notes, userId]
-      );
-
-      const productInfo = data.product_id
-        ? await client.query('SELECT name, low_stock_threshold FROM products WHERE id = $1', [data.product_id])
-        : { rows: [] };
-
-      await client.query('COMMIT');
-
-      const threshold = productInfo.rows[0]?.low_stock_threshold ?? 10;
-      if (data.product_id && newQty <= threshold) {
-        setImmediate(async () => {
-          try {
-            const tenant = await db.query('SELECT name, email FROM tenants WHERE id = $1', [tenantId]);
-            const settings = await db.query(
-              `SELECT value FROM settings WHERE tenant_id = $1 AND key = 'low_stock_alert'`,
-              [tenantId]
-            );
-            const alertsEnabled = settings.rows[0]?.value !== false;
-            if (!alertsEnabled) return;
-
-            const emailService = require('../../services/email.service');
-            await emailService.sendEmail({
-              to: tenant.rows[0]?.email,
-              subject: `Low Stock Alert: ${productInfo.rows[0]?.name}`,
-              html: `<p>Product <strong>${productInfo.rows[0]?.name}</strong> is low on stock (${newQty} remaining).</p>`,
-              tenantId,
-              type: 'low_stock',
-            });
-          } catch (_) { /* non-blocking */ }
-        });
-      }
-
-      return tx.rows[0];
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
+    const threshold = product.rows[0].low_stock_threshold ?? 10;
+    if (newQty <= threshold) {
+      setImmediate(async () => {
+        try {
+          const tenant = await db.query('SELECT name, email FROM tenants WHERE id = $1', [tenantId]);
+          const settings = await db.query(
+            `SELECT value FROM settings WHERE tenant_id = $1 AND key = 'low_stock_alert'`,
+            [tenantId]
+          );
+          const alertsEnabled = settings.rows[0]?.value !== false;
+          if (!alertsEnabled) return;
+          const emailService = require('../../services/email.service');
+          await emailService.send({
+            to: tenant.rows[0]?.email,
+            subject: `Low Stock Alert: ${product.rows[0].name}`,
+            html: `<p>Product <strong>${product.rows[0].name}</strong> is low on stock (${newQty} remaining).</p>`,
+            tenantId,
+            template: 'low_stock',
+          });
+        } catch (_) { /* non-blocking */ }
+      });
     }
+
+    return {
+      product_id: data.product_id,
+      variant_id: data.variant_id || null,
+      branch_id: branchId,
+      transaction_type: adjustType,
+      quantity: deduct ? -qty : qty,
+      new_quantity: newQty,
+    };
   }
 }
 

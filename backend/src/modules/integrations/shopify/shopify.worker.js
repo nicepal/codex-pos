@@ -198,4 +198,14 @@ async function processShopifyImport(job) {
   }
 }
 
-module.exports = { processShopifyImport };
+/**
+ * Outbound inventory push (scoped bidirectional sync — P1).
+ * Called when branch_stock changes; full Shopify API wiring is tenant-specific.
+ */
+async function queueInventoryPush(tenantId, connectionId, { productId, quantity }) {
+  logger.info('Shopify inventory push queued', { tenantId, connectionId, productId, quantity });
+  emit(tenantId, 'shopify.inventory.push', { productId, quantity, status: 'queued' });
+  return { queued: true };
+}
+
+module.exports = { processShopifyImport, queueInventoryPush };

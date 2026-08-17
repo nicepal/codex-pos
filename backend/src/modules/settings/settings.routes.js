@@ -8,5 +8,6 @@ router.use(authenticate, requireTenant, requireTenantAccess, authorize('business
 
 router.get('/', controller.get);
 router.put('/', auditLog('settings.update', 'tenant'), controller.update);
+router.put('/locale', auditLog('settings.update', 'tenant'), controller.updateLocale);
 
 module.exports = router;

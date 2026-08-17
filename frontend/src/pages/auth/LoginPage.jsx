@@ -8,20 +8,23 @@ import { useEffect, useState } from 'react';
 import RHFTextField from '../../components/RHFTextField';
 import AuthPasswordField from '../../components/AuthPasswordField';
 import AuthLayout, { AuthLink } from '../../layouts/AuthLayout';
+import { needsOnboarding } from '../../services/onboardingService';
 
 export default function LoginPage() {
   const { register, handleSubmit, formState: { errors }, getValues, setValue } = useForm();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error, isAuthenticated } = useSelector(selectAuth);
+  const { loading, error, isAuthenticated, tenant } = useSelector(selectAuth);
   const isPlatformAdmin = useSelector(selectIsPlatformAdmin);
   const [mfaRequired, setMfaRequired] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(isPlatformAdmin ? '/admin' : '/dashboard');
+      if (isPlatformAdmin) navigate('/admin');
+      else if (needsOnboarding(tenant)) navigate('/onboarding');
+      else navigate('/dashboard');
     }
-  }, [isAuthenticated, isPlatformAdmin, navigate]);
+  }, [isAuthenticated, isPlatformAdmin, tenant, navigate]);
 
   const onSubmit = async (data) => {
     const payload = mfaRequired
@@ -35,7 +38,13 @@ export default function LoginPage() {
       if (result.payload.tenant?.slug) {
         localStorage.setItem('tenantSlug', result.payload.tenant.slug);
       }
-      navigate(isAdmin ? '/admin' : '/dashboard');
+      if (isAdmin) {
+        navigate('/admin');
+        return;
+      }
+      const goOnboarding = result.payload.onboarding_required
+        || needsOnboarding(result.payload.tenant);
+      navigate(goOnboarding ? '/onboarding' : '/dashboard');
       return;
     }
 

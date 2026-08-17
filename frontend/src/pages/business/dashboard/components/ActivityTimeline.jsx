@@ -1,8 +1,9 @@
 import {
   ShoppingCart, Inventory, SwapHoriz, Person, Receipt,
 } from '@mui/icons-material';
-import { Typography, Box, List, ListItem, ListItemAvatar, Avatar, ListItemText, Divider } from '@mui/material';
+import { Text, Box, Group, Avatar, Stack, Divider } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
+import { CODEX_TOKENS } from '../../../../design-system';
 import DashboardSection from './DashboardSection';
 import EmptyState from '../../../../components/EmptyState';
 
@@ -15,11 +16,11 @@ const TYPE_ICONS = {
 };
 
 const TYPE_COLORS = {
-  sale: 'primary',
-  product: 'secondary',
-  stock: 'info',
-  purchase_order: 'warning',
-  customer: 'success',
+  sale: CODEX_TOKENS.primary,
+  product: '#7c3aed',
+  stock: '#3b82f6',
+  purchase_order: CODEX_TOKENS.warning,
+  customer: CODEX_TOKENS.success,
 };
 
 function timeAgo(dateStr) {
@@ -38,44 +39,52 @@ export default function ActivityTimeline({ activity, loading, error, onRetry }) 
 
   return (
     <DashboardSection title="Recent Activity" loading={loading} error={error} onRetry={onRetry}>
-      {!loading && !activity?.length && (
-        <EmptyState compact illustration="store" title="No recent activity" message="Business activity will show here." />
-      )}
-      {!loading && activity?.length > 0 && (
-        <List disablePadding>
-          {activity.map((item, i) => {
+      {!loading && !activity?.length ? (
+        <EmptyState
+          compact
+          illustration="store"
+          title="No recent activity"
+          message="Business activity will show here."
+        />
+      ) : null}
+      {!loading && activity?.length > 0
+        ? activity.map((item, i) => {
             const Icon = TYPE_ICONS[item.type] || Receipt;
-            const color = TYPE_COLORS[item.type] || 'primary';
+            const color = TYPE_COLORS[item.type] || CODEX_TOKENS.primary;
             return (
               <Box key={`${item.id}-${i}`}>
-                <ListItem
-                  alignItems="flex-start"
-                  sx={{ px: 0, cursor: item.href ? 'pointer' : 'default' }}
+                <Group
+                  align="flex-start"
+                  wrap="nowrap"
+                  gap="sm"
+                  py="sm"
+                  style={{ cursor: item.href ? 'pointer' : 'default' }}
                   onClick={() => item.href && navigate(item.href)}
                 >
-                  <ListItemAvatar>
-                    <Avatar sx={{ width: 36, height: 36, bgcolor: `${color}.light`, color: `${color}.dark` }}>
-                      <Icon sx={{ fontSize: 18 }} />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-                        <Typography variant="body2" fontWeight={600}>{item.title}</Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
-                          {timeAgo(item.createdAt)}
-                        </Typography>
-                      </Box>
-                    }
-                    secondary={item.description}
-                  />
-                </ListItem>
-                {i < activity.length - 1 && <Divider component="li" />}
+                  <Avatar size={36} radius="xl" style={{ background: `${color}22`, color }}>
+                    <Icon style={{ fontSize: 18 }} />
+                  </Avatar>
+                  <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+                    <Group justify="space-between" wrap="nowrap" gap="sm">
+                      <Text size="sm" fw={600} lineClamp={1}>
+                        {item.title}
+                      </Text>
+                      <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                        {timeAgo(item.createdAt)}
+                      </Text>
+                    </Group>
+                    {item.description ? (
+                      <Text size="sm" c="dimmed" lineClamp={2}>
+                        {item.description}
+                      </Text>
+                    ) : null}
+                  </Stack>
+                </Group>
+                {i < activity.length - 1 ? <Divider /> : null}
               </Box>
             );
-          })}
-        </List>
-      )}
+          })
+        : null}
     </DashboardSection>
   );
 }

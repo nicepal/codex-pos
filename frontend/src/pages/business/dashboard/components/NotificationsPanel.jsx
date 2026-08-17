@@ -1,4 +1,4 @@
-import { Box, Typography, List, ListItem, ListItemText, Chip, Tabs, Tab } from '@mui/material';
+import { Box, Text, Stack, Badge, Tabs, Group } from '@mantine/core';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../../services/api';
@@ -13,10 +13,9 @@ const GROUPS = [
 ];
 
 export default function NotificationsPanel({ notifications, loading, error, onRetry }) {
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState('inventory');
   const queryClient = useQueryClient();
-  const groupKey = GROUPS[tab]?.key;
-  const items = notifications?.[groupKey] || [];
+  const items = notifications?.[tab] || [];
 
   const markRead = useMutation({
     mutationFn: (id) => api.patch(`/notifications/${id}/read`),
@@ -25,55 +24,58 @@ export default function NotificationsPanel({ notifications, loading, error, onRe
 
   return (
     <DashboardSection title="Notifications Center" loading={loading} error={error} onRetry={onRetry}>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, minHeight: 36 }}>
-        {GROUPS.map((g) => (
-          <Tab
-            key={g.key}
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                {g.label}
-                {(notifications?.[g.key]?.length > 0) && (
-                  <Chip label={notifications[g.key].length} size="small" sx={{ height: 18, fontSize: 11 }} />
-                )}
-              </Box>
-            }
-          />
-        ))}
+      <Tabs value={tab} onChange={setTab} mb="md">
+        <Tabs.List>
+          {GROUPS.map((g) => (
+            <Tabs.Tab
+              key={g.key}
+              value={g.key}
+              rightSection={
+                notifications?.[g.key]?.length > 0 ? (
+                  <Badge size="xs" circle>
+                    {notifications[g.key].length}
+                  </Badge>
+                ) : null
+              }
+            >
+              {g.label}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
       </Tabs>
 
-      {!loading && items.length === 0 && (
-        <EmptyState compact illustration="store" title="No notifications" message={`No ${GROUPS[tab].label.toLowerCase()} alerts right now.`} />
-      )}
+      {!loading && items.length === 0 ? (
+        <EmptyState
+          compact
+          illustration="store"
+          title="No notifications"
+          message={`No ${GROUPS.find((g) => g.key === tab)?.label.toLowerCase()} alerts right now.`}
+        />
+      ) : null}
 
-      {!loading && items.length > 0 && (
-        <List disablePadding dense>
+      {!loading && items.length > 0 ? (
+        <Stack gap="xs">
           {items.map((n) => (
-            <ListItem
+            <Box
               key={n.id}
-              sx={{
-                bgcolor: n.readAt ? 'transparent' : 'action.hover',
-                borderRadius: 1,
-                mb: 0.5,
+              p="sm"
+              style={{
+                background: n.readAt ? 'transparent' : 'var(--mantine-color-default-hover)',
+                borderRadius: 8,
                 cursor: 'pointer',
               }}
               onClick={() => !n.readAt && markRead.mutate(n.id)}
             >
-              <ListItemText
-                primary={
-                  <Typography variant="body2" fontWeight={n.readAt ? 400 : 700}>
-                    {n.title || n.type}
-                  </Typography>
-                }
-                secondary={
-                  <Typography variant="caption" color="text.secondary">
-                    {n.message} · {new Date(n.createdAt).toLocaleString()}
-                  </Typography>
-                }
-              />
-            </ListItem>
+              <Text size="sm" fw={n.readAt ? 400 : 700}>
+                {n.title || n.type}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {n.message} · {new Date(n.createdAt).toLocaleString()}
+              </Text>
+            </Box>
           ))}
-        </List>
-      )}
+        </Stack>
+      ) : null}
     </DashboardSection>
   );
 }

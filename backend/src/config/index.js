@@ -9,9 +9,9 @@ module.exports = {
     connectionString: process.env.DATABASE_URL,
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT, 10) || 5432,
-    database: process.env.DB_NAME || 'eyz_pos',
-    user: process.env.DB_USER || 'eyz_user',
-    password: process.env.DB_PASSWORD || 'eyz_password',
+    database: process.env.DB_NAME || process.env.CODEXPOS_DB_NAME || 'eyz_pos',
+    user: process.env.DB_USER || process.env.CODEXPOS_DB_USER || 'eyz_user',
+    password: process.env.DB_PASSWORD || process.env.CODEXPOS_DB_PASSWORD || 'eyz_password',
     min: parseInt(process.env.DB_POOL_MIN, 10) || 2,
     max: parseInt(process.env.DB_POOL_MAX, 10) || 20,
   },
@@ -21,6 +21,7 @@ module.exports = {
     refreshSecret: process.env.JWT_REFRESH_SECRET,
     accessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
+    cookieMode: process.env.AUTH_COOKIE_MODE === 'true',
   },
 
   redis: {
@@ -33,8 +34,8 @@ module.exports = {
     name: process.env.APP_NAME || 'Codex POS',
     url: process.env.APP_URL || 'http://localhost:3000',
     apiUrl: process.env.API_URL || 'http://localhost:5000',
-    platformDomain: process.env.PLATFORM_DOMAIN || 'poshive.store',
-    storefrontDomain: process.env.STOREFRONT_DOMAIN || 'poshive.store',
+    platformDomain: process.env.PLATFORM_DOMAIN || 'codexpos.store',
+    storefrontDomain: process.env.STOREFRONT_DOMAIN || 'codexpos.store',
   },
 
   smtp: {
@@ -42,7 +43,7 @@ module.exports = {
     port: parseInt(process.env.SMTP_PORT, 10) || 587,
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-    from: process.env.SMTP_FROM || 'noreply@poshive.store',
+    from: process.env.SMTP_FROM || 'noreply@codexpos.store',
   },
 
   storage: {
@@ -56,8 +57,9 @@ module.exports = {
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 900000,
-    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
-    authMax: parseInt(process.env.AUTH_RATE_LIMIT_MAX, 10) || 10,
+    // Authenticated POS/dashboard traffic easily exceeds 100/15m (browse + polls).
+    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 2000,
+    authMax: parseInt(process.env.AUTH_RATE_LIMIT_MAX, 10) || 20,
   },
 
   upload: {
@@ -67,7 +69,12 @@ module.exports = {
 
   payments: {
     webhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET,
-    provider: process.env.PAYMENT_PROVIDER || 'stub',
+    // Production defaults to stripe (must be configured). Stub only in non-production unless explicit.
+    provider: process.env.PAYMENT_PROVIDER
+      || (process.env.NODE_ENV === 'production' ? 'stripe' : 'stub'),
+    // Simulated POST /payments/confirm — never on by default in production.
+    allowStubConfirm: process.env.ALLOW_PAYMENT_STUB === 'true'
+      || (process.env.NODE_ENV !== 'production' && process.env.PAYMENT_PROVIDER !== 'stripe'),
     stripeSecretKey: process.env.STRIPE_SECRET_KEY,
     stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     currency: process.env.PAYMENTS_DEFAULT_CURRENCY || 'USD',

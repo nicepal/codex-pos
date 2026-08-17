@@ -1,5 +1,5 @@
+import { Button, Box, Loader, Avatar, Text } from '@mantine/core';
 import { useState } from 'react';
-import { Button, Box, CircularProgress, Avatar } from '@mui/material';
 import { CloudUpload } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -28,18 +28,27 @@ export default function ImageUpload({ onUploaded, label = 'Upload Image', endpoi
 
   return (
     <Box>
-      <Button variant="outlined" component="label" startIcon={loading ? <CircularProgress size={18} /> : <CloudUpload />} disabled={loading}>
+      <Button
+        variant="default"
+        component="label"
+        leftSection={loading ? <Loader size={16} /> : <CloudUpload fontSize="small" />}
+        disabled={loading}
+      >
         {label}
         <input type="file" hidden accept="image/*" onChange={handleChange} />
       </Button>
-      {error && <Box sx={{ color: 'error.main', fontSize: 12, mt: 0.5 }}>{error}</Box>}
+      {error ? (
+        <Text c="red" size="xs" mt={4}>
+          {error}
+        </Text>
+      ) : null}
     </Box>
   );
 }
 
 export function LogoPreview({ url, name }) {
   return (
-    <Avatar src={url} sx={{ width: 80, height: 80, mb: 2 }}>
+    <Avatar src={url} size={80} radius="md" mb="md">
       {name?.[0]}
     </Avatar>
   );

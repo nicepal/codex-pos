@@ -37,7 +37,21 @@ async function authenticate(req, res, next) {
        WHERE ur.user_id = $1`,
       [user.id]
     );
-    user.permissions = permResult.rows.map((r) => r.name);
+    const rolePerms = permResult.rows.map((r) => r.name);
+
+    // Merge tenant custom role permissions when assigned.
+    let customPerms = [];
+    if (user.custom_role_id && user.tenant_id) {
+      const cr = await db.query(
+        `SELECT permissions FROM custom_roles WHERE id = $1 AND tenant_id = $2`,
+        [user.custom_role_id, user.tenant_id]
+      );
+      const raw = cr.rows[0]?.permissions;
+      if (Array.isArray(raw)) customPerms = raw.map(String);
+      else if (raw && typeof raw === 'object') customPerms = Object.keys(raw).filter((k) => raw[k]);
+    }
+
+    user.permissions = Array.from(new Set([...rolePerms, ...customPerms]));
 
     req.user = user;
     next();

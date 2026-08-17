@@ -1,0 +1,48 @@
+:root {
+  /* CodexPOS design tokens — deep slate + teal (no purple / cream-terracotta) */
+  --color-ink: #0b1f2a;
+  --color-ink-soft: #1e3a4a;
+  --color-on-dark: #f4f7f6;
+  --color-brand: #0f766e;
+  --color-brand-bright: #14b8a6;
+  --color-brand-deep: #0a5c56;
+  --color-brand-soft: #e6f7f4;
+  --color-accent: #f5b942;
+  --color-accent-soft: #fff6e0;
+  --color-surface: #f4f7f6;
+  --color-surface-elevated: #ffffff;
+  --color-surface-muted: #e8eef0;
+  --color-mist: #dce8e6;
+  --color-line: rgba(11, 31, 42, 0.1);
+  --color-line-strong: rgba(11, 31, 42, 0.18);
+  --color-muted: #5a7380;
+  --color-success: #0d9488;
+  --color-warning: #c98412;
+  --color-danger: #c44536;
+
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-soft: 0 12px 40px rgba(11, 31, 42, 0.08);
+  --shadow-card: 0 1px 2px rgba(11, 31, 42, 0.04), 0 8px 24px rgba(11, 31, 42, 0.06);
+
+  --nav-height: 68px;
+  --container: 1240px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration: 0.45s;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+}

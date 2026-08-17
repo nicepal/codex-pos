@@ -14,12 +14,12 @@ module.exports = {
   }),
 
   create: asyncHandler(async (req, res) => {
-    const product = await productService.create(req.tenant.id, req.body);
+    const product = await productService.create(req.tenant.id, req.body, req.user?.id);
     return created(res, product);
   }),
 
   update: asyncHandler(async (req, res) => {
-    const product = await productService.update(req.tenant.id, req.params.id, req.body);
+    const product = await productService.update(req.tenant.id, req.params.id, req.body, req.user?.id);
     return success(res, product);
   }),
 
@@ -44,6 +44,7 @@ module.exports = {
     const products = await productService.search(req.tenant.id, req.query.q, {
       limit: req.query.limit ? parseInt(req.query.limit, 10) : 20,
       category_id: req.query.category_id || null,
+      branch_id: req.query.branch_id || null,
     });
     return success(res, products);
   }),
@@ -120,5 +121,11 @@ module.exports = {
     const tracking = require('./catalog-tracking.service');
     await tracking.removeBatch(req.tenant.id, req.params.id, req.params.batchId);
     return success(res, null, 'Batch removed');
+  }),
+
+  expiringBatches: asyncHandler(async (req, res) => {
+    const tracking = require('./catalog-tracking.service');
+    const days = parseInt(req.query.days, 10) || 30;
+    return success(res, await tracking.listExpiringBatches(req.tenant.id, days));
   }),
 };

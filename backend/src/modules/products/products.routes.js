@@ -12,6 +12,7 @@ const { upload } = require('../../middleware/upload');
 router.use(authenticate, requireTenant, requireTenantAccess);
 
 router.get('/search', authorize('business.products', 'business.pos'), controller.search);
+router.get('/expiring-batches', authorize('business.products', 'business.inventory'), requireFeature('catalog_pro'), controller.expiringBatches);
 router.get('/', authorize('business.products'), controller.list);
 router.post('/bulk-delete', authorize('business.products'), auditLog('product.delete', 'product'), controller.bulkRemove);
 router.get('/:id/bundle-items', authorize('business.products'), requireFeature('catalog_pro'), controller.getBundleItems);

@@ -1,0 +1,11 @@
+{
+  "name": "codexpos-e2e",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:live": "E2E_LIVE=1 playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

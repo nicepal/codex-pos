@@ -4,7 +4,7 @@ import {
   Dashboard, Inventory, ShoppingCart, People, Assessment, PointOfSale,
   Warehouse, Category, Settings, CreditCard, Store, Support,
   LocalShipping, Receipt, Groups, Label, ShoppingBag, Badge, Storefront, AutoAwesome, Code, Star,
-  CloudSync,
+  CloudSync, AccessTime, Campaign, AccountBalance, PrecisionManufacturing, Restaurant,
 } from '@mui/icons-material';
 import { logout, selectAuth } from '../features/auth/authSlice';
 import ResponsiveDrawer from '../components/ResponsiveDrawer';
@@ -64,6 +64,8 @@ export default function BusinessLayout() {
         { label: 'Suppliers', path: '/suppliers', icon: <LocalShipping />, selected: isActive('/suppliers'), onClick: () => navigate('/suppliers') },
         { label: 'Purchase Orders', path: '/purchase-orders', icon: <ShoppingBag />, selected: isActive('/purchase-orders'), onClick: () => navigate('/purchase-orders') },
         { label: 'Expenses', path: '/expenses', icon: <Receipt />, selected: isActive('/expenses'), onClick: () => navigate('/expenses') },
+        { label: 'Manufacturing', path: '/manufacturing', icon: <PrecisionManufacturing />, selected: isActive('/manufacturing'), onClick: () => navigate('/manufacturing') },
+        { label: 'Restaurant', path: '/restaurant', icon: <Restaurant />, selected: isActive('/restaurant'), onClick: () => navigate('/restaurant') },
       ],
     },
     {
@@ -72,12 +74,15 @@ export default function BusinessLayout() {
         { label: 'Customers', path: '/customers', icon: <People />, selected: isActive('/customers'), onClick: () => navigate('/customers') },
         { label: 'Employees', path: '/employees', icon: <Groups />, selected: isActive('/employees'), onClick: () => navigate('/employees') },
         { label: 'Team', path: '/team', icon: <Badge />, selected: isActive('/team'), onClick: () => navigate('/team') },
+        { label: 'Shifts', path: '/shifts', icon: <AccessTime />, selected: isActive('/shifts'), onClick: () => navigate('/shifts') },
       ],
     },
     {
       label: 'Insights',
       items: [
         { label: 'Reports', path: '/reports', icon: <Assessment />, selected: isActive('/reports'), onClick: () => navigate('/reports') },
+        { label: 'Accounting', path: '/accounting', icon: <AccountBalance />, selected: isActive('/accounting'), onClick: () => navigate('/accounting') },
+        { label: 'Marketing', path: '/marketing', icon: <Campaign />, selected: isActive('/marketing'), onClick: () => navigate('/marketing') },
         { label: 'AI Insights', path: '/ai-insights', icon: <AutoAwesome />, selected: isActive('/ai-insights'), onClick: () => navigate('/ai-insights') },
       ],
     },
@@ -102,7 +107,7 @@ export default function BusinessLayout() {
   return (
     <BusinessCurrencyProvider>
       <ResponsiveDrawer
-        title="Codex POS"
+        title="CodexPOS"
         subtitle={tenant?.name || 'My Business'}
         navGroups={navGroups}
         user={{ email: user?.email, initial: user?.first_name?.[0] }}

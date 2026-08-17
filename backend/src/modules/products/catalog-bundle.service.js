@@ -36,6 +36,12 @@ class CatalogBundleService {
   }
 
   async expandBundleForOrder(client, tenantId, productId, quantity) {
+    const bundle = await client.query(
+      `SELECT id, name, sale_price FROM products WHERE id = $1 AND tenant_id = $2`,
+      [productId, tenantId]
+    );
+    if (!bundle.rows[0]) throw new NotFoundError('Bundle product not found');
+
     const items = await client.query(
       `SELECT pbi.*, p.name, p.sale_price, p.sku
        FROM product_bundle_items pbi
@@ -44,16 +50,45 @@ class CatalogBundleService {
       [tenantId, productId]
     );
     if (!items.rows.length) throw new ValidationError('Bundle has no components');
-    return items.rows.map((row) => ({
-      product_id: row.component_product_id,
-      variant_id: row.variant_id,
-      product_name: row.name,
-      sku: row.sku,
-      quantity: (row.quantity || 1) * quantity,
-      unit_price: parseFloat(row.sale_price),
-      is_bundle_component: true,
-      bundle_product_id: productId,
-    }));
+
+    const bundleUnitPrice = parseFloat(bundle.rows[0].sale_price) || 0;
+    const componentRetailTotal = items.rows.reduce(
+      (sum, row) => sum + (parseFloat(row.sale_price) || 0) * (row.quantity || 1),
+      0
+    );
+
+    // Allocate the bundle's sale_price across components (proportional to component retail).
+    // Last line absorbs rounding remainder so line totals match bundle price * qty.
+    const lines = [];
+    let allocatedPerBundle = 0;
+    items.rows.forEach((row, idx) => {
+      const compQty = row.quantity || 1;
+      const retail = (parseFloat(row.sale_price) || 0) * compQty;
+      let lineBundleShare;
+      if (componentRetailTotal <= 0) {
+        lineBundleShare = idx === items.rows.length - 1
+          ? +(bundleUnitPrice - allocatedPerBundle).toFixed(4)
+          : +(bundleUnitPrice / items.rows.length).toFixed(4);
+      } else if (idx === items.rows.length - 1) {
+        lineBundleShare = +(bundleUnitPrice - allocatedPerBundle).toFixed(4);
+      } else {
+        lineBundleShare = +((bundleUnitPrice * retail) / componentRetailTotal).toFixed(4);
+        allocatedPerBundle += lineBundleShare;
+      }
+      const unitPrice = compQty > 0 ? +(lineBundleShare / compQty).toFixed(4) : 0;
+      lines.push({
+        product_id: row.component_product_id,
+        variant_id: row.variant_id,
+        product_name: row.name,
+        sku: row.sku,
+        quantity: compQty * quantity,
+        unit_price: unitPrice,
+        is_bundle_component: true,
+        bundle_product_id: productId,
+        bundle_name: bundle.rows[0].name,
+      });
+    });
+    return lines;
   }
 }
 

@@ -1,6 +1,11 @@
 import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { MantineProvider } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
+import { codexTheme, codexCssVariablesResolver } from './design-system';
 
 const ColorModeContext = createContext({ toggleColorMode: () => {}, mode: 'light' });
 
@@ -40,6 +45,10 @@ function buildTheme(mode) {
   });
 }
 
+/**
+ * Transitional dual theme: MUI ThemeProvider (admin/business) + MantineProvider (ops UI).
+ * Color mode stays in sync so light/dark toggle affects both systems.
+ */
 export default function AppThemeProvider({ children }) {
   const [mode, setMode] = useState(() => localStorage.getItem('themeMode') || 'light');
 
@@ -58,7 +67,15 @@ export default function AppThemeProvider({ children }) {
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        {children}
+        <MantineProvider
+          theme={codexTheme}
+          cssVariablesResolver={codexCssVariablesResolver}
+          forceColorScheme={mode === 'dark' ? 'dark' : 'light'}
+          defaultColorScheme={mode === 'dark' ? 'dark' : 'light'}
+        >
+          <Notifications position="bottom-right" zIndex={5000} />
+          {children}
+        </MantineProvider>
       </ThemeProvider>
     </ColorModeContext.Provider>
   );

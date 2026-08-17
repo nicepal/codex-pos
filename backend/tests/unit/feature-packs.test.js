@@ -3,12 +3,18 @@ const { calculateOrderTax, resolveRuleForItem } = require('../../src/services/ta
 
 describe('features clamp', () => {
   test('clampFeaturesToPlan caps disallowed overrides', () => {
-    const plan = { pos_pro: true, crm_pro: false, inventory_pro: false };
-    const { clamped, capped } = clampFeaturesToPlan(plan, { crm_pro: true, inventory_pro: true, pos_pro: true });
+    const plan = { pos_pro: true, crm_pro: false, inventory_pro: false, catalog_pro: true };
+    const { clamped, capped } = clampFeaturesToPlan(plan, {
+      crm_pro: true,
+      inventory_pro: true,
+      pos_pro: true,
+      catalog_pro: true,
+    });
     expect(capped).toContain('crm_pro');
     expect(capped).toContain('inventory_pro');
     expect(clamped.crm_pro).toBe(false);
-    expect(clamped.pos_pro).toBe(true);
+    expect(clamped.catalog_pro).toBe(true);
+    expect(clamped.pos_pro).toBeUndefined();
   });
 });
 

@@ -1,4 +1,4 @@
-import { Card, CardContent, Typography, Box, Skeleton, Alert, Button } from '@mui/material';
+import { Card, Group, Stack, Text, Title, Alert, Button, Skeleton, Box } from '@mantine/core';
 import { Refresh } from '@mui/icons-material';
 
 export default function DashboardSection({
@@ -12,38 +12,58 @@ export default function DashboardSection({
   noPadding,
 }) {
   return (
-    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: noPadding ? 0 : 2, '&:last-child': { pb: noPadding ? 0 : 2 } }}>
-        {(title || action) && (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, px: noPadding ? 2 : 0, pt: noPadding ? 2 : 0 }}>
-            <Box>
-              {title && <Typography variant="h6" fontWeight={700}>{title}</Typography>}
-              {subtitle && <Typography variant="body2" color="text.secondary">{subtitle}</Typography>}
-            </Box>
+    <Card withBorder padding={noPadding ? 0 : 'md'} radius="md" shadow="sm" h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
+      <Stack gap="md" style={{ flex: 1 }} p={noPadding ? 'md' : 0} pt={noPadding ? 'md' : undefined}>
+        {(title || action) ? (
+          <Group justify="space-between" align="flex-start" wrap="wrap" px={noPadding ? 0 : undefined}>
+            <Stack gap={2}>
+              {title ? (
+                <Title order={4} fw={700}>
+                  {title}
+                </Title>
+              ) : null}
+              {subtitle ? (
+                <Text size="sm" c="dimmed">
+                  {subtitle}
+                </Text>
+              ) : null}
+            </Stack>
             {action}
-          </Box>
-        )}
-        {error && (
+          </Group>
+        ) : null}
+
+        {error ? (
           <Alert
-            severity="error"
-            action={onRetry && (
-              <Button color="inherit" size="small" startIcon={<Refresh />} onClick={onRetry}>
-                Retry
-              </Button>
-            )}
-            sx={{ mb: 2, mx: noPadding ? 2 : 0 }}
+            color="red"
+            variant="light"
           >
-            {error}
+            <Group justify="space-between" wrap="wrap" gap="sm">
+              <span>{error}</span>
+              {onRetry ? (
+                <Button
+                  size="compact-sm"
+                  variant="subtle"
+                  color="red"
+                  leftSection={<Refresh fontSize="small" />}
+                  onClick={onRetry}
+                >
+                  Retry
+                </Button>
+              ) : null}
+            </Group>
           </Alert>
-        )}
+        ) : null}
+
         {loading ? (
-          <Box sx={{ flex: 1 }}>
-            <Skeleton variant="rounded" height={120} />
-            <Skeleton variant="text" sx={{ mt: 1 }} />
-            <Skeleton variant="text" width="60%" />
+          <Box>
+            <Skeleton height={120} radius="md" />
+            <Skeleton height={12} mt="sm" />
+            <Skeleton height={12} mt={6} width="60%" />
           </Box>
-        ) : children}
-      </CardContent>
+        ) : (
+          children
+        )}
+      </Stack>
     </Card>
   );
 }

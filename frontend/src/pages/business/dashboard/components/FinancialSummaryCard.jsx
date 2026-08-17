@@ -1,51 +1,60 @@
-import { Box, Typography, Divider, LinearProgress } from '@mui/material';
+import { Box, Text, SimpleGrid, Progress, Divider } from '@mantine/core';
 import TrendBadge from './TrendBadge';
 import DashboardSection from './DashboardSection';
 
 function PeriodBlock({ label, data, formatMoney }) {
   if (!data) return null;
   const trend = data.changePercent > 0 ? 'up' : data.changePercent < 0 ? 'down' : 'flat';
+  const progressColor =
+    data.marginPct >= 20 ? 'green' : data.marginPct >= 10 ? 'yellow' : 'red';
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="subtitle2" fontWeight={700} color="text.secondary" gutterBottom>
+    <Box mb="md">
+      <Text size="sm" fw={700} c="dimmed" mb="xs">
         {label}
-      </Typography>
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 1 }}>
+      </Text>
+      <SimpleGrid cols={2} spacing="sm" mb="sm">
         <Box>
-          <Typography variant="caption" color="text.secondary">Revenue</Typography>
-          <Typography variant="body1" fontWeight={700}>{formatMoney(data.revenue)}</Typography>
+          <Text size="xs" c="dimmed">
+            Revenue
+          </Text>
+          <Text fw={700}>{formatMoney(data.revenue)}</Text>
         </Box>
         <Box>
-          <Typography variant="caption" color="text.secondary">Expenses</Typography>
-          <Typography variant="body1" fontWeight={700}>{formatMoney(data.expenses)}</Typography>
+          <Text size="xs" c="dimmed">
+            Expenses
+          </Text>
+          <Text fw={700}>{formatMoney(data.expenses)}</Text>
         </Box>
         <Box>
-          <Typography variant="caption" color="text.secondary">Profit</Typography>
-          <Typography variant="body1" fontWeight={700} color={data.profit >= 0 ? 'success.main' : 'error.main'}>
+          <Text size="xs" c="dimmed">
+            Profit
+          </Text>
+          <Text fw={700} c={data.profit >= 0 ? 'green' : 'red'}>
             {formatMoney(data.profit)}
-          </Typography>
+          </Text>
         </Box>
         <Box>
-          <Typography variant="caption" color="text.secondary">Margin</Typography>
-          <Typography variant="body1" fontWeight={700}>{data.marginPct}%</Typography>
+          <Text size="xs" c="dimmed">
+            Margin
+          </Text>
+          <Text fw={700}>{data.marginPct}%</Text>
         </Box>
-      </Box>
-      <Box sx={{ mb: 1 }}>
-        <Typography variant="caption" color="text.secondary">Profit margin</Typography>
-        <LinearProgress
-          variant="determinate"
+      </SimpleGrid>
+      <Box mb="sm">
+        <Text size="xs" c="dimmed">
+          Profit margin
+        </Text>
+        <Progress
           value={Math.min(100, Math.max(0, data.marginPct))}
-          color={data.marginPct >= 20 ? 'success' : data.marginPct >= 10 ? 'warning' : 'error'}
-          sx={{ height: 6, borderRadius: 3, mt: 0.5 }}
+          color={progressColor}
+          size="sm"
+          radius="xl"
+          mt={4}
         />
       </Box>
-      <TrendBadge
-        changePercent={data.changePercent}
-        comparisonLabel="vs previous period"
-        trend={trend}
-      />
-      <Divider sx={{ mt: 2 }} />
+      <TrendBadge changePercent={data.changePercent} comparisonLabel="vs previous period" trend={trend} />
+      <Divider mt="md" />
     </Box>
   );
 }

@@ -1,13 +1,13 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconButton, Badge, Menu, MenuItem, Typography, Box, Divider } from '@mui/material';
+import { ActionIcon, Indicator, Menu, Text, Stack, Divider } from '@mantine/core';
 import { Notifications } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useRealtime from '../hooks/useRealtime';
 
 export default function NotificationBell() {
-  const [anchor, setAnchor] = useState(null);
+  const [opened, setOpened] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -17,10 +17,12 @@ export default function NotificationBell() {
     refetchInterval: 60000,
   });
 
-  // Live push: refresh immediately when the server emits a new notification
-  useRealtime('notification', useCallback(() => {
-    queryClient.invalidateQueries(['notifications']);
-  }, [queryClient]));
+  useRealtime(
+    'notification',
+    useCallback(() => {
+      queryClient.invalidateQueries(['notifications']);
+    }, [queryClient]),
+  );
 
   const markRead = useMutation({
     mutationFn: (id) => api.patch(`/notifications/${id}/read`),
@@ -31,25 +33,59 @@ export default function NotificationBell() {
   const unread = items.filter((n) => !n.read_at && n.status !== 'read').length;
 
   return (
-    <>
-      <IconButton color="inherit" onClick={(e) => setAnchor(e.currentTarget)}>
-        <Badge badgeContent={unread} color="error">
-          <Notifications />
-        </Badge>
-      </IconButton>
-      <Menu anchorEl={anchor} open={!!anchor} onClose={() => setAnchor(null)} PaperProps={{ sx: { width: 320 } }}>
-        <Box sx={{ px: 2, py: 1 }}><Typography fontWeight={600}>Notifications</Typography></Box>
+    <Menu
+      opened={opened}
+      onChange={setOpened}
+      width={320}
+      position="bottom-end"
+      shadow="md"
+      withinPortal
+    >
+      <Menu.Target>
+        <Indicator
+          inline
+          label={unread > 0 ? unread : undefined}
+          size={16}
+          color="red"
+          disabled={unread === 0}
+          processing={unread > 0}
+        >
+          <ActionIcon variant="subtle" color="gray" aria-label="Notifications">
+            <Notifications fontSize="small" />
+          </ActionIcon>
+        </Indicator>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>Notifications</Menu.Label>
         <Divider />
-        {items.length === 0 && <MenuItem disabled>No notifications</MenuItem>}
-        {items.map((n) => (
-          <MenuItem key={n.id} onClick={() => { if (!n.read_at) markRead.mutate(n.id); }}>
-            <Box>
-              <Typography variant="body2" fontWeight={n.read_at ? 400 : 700}>{n.title || n.type}</Typography>
-              <Typography variant="caption" color="text.secondary">{n.message}</Typography>
-            </Box>
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
+        {items.length === 0 ? (
+          <Menu.Item disabled>No notifications</Menu.Item>
+        ) : (
+          items.map((n) => (
+            <Menu.Item
+              key={n.id}
+              onClick={() => {
+                if (!n.read_at) markRead.mutate(n.id);
+                if (n.link) {
+                  navigate(n.link);
+                  setOpened(false);
+                }
+              }}
+            >
+              <Stack gap={2}>
+                <Text size="sm" fw={n.read_at ? 400 : 700}>
+                  {n.title || n.type}
+                </Text>
+                {n.message ? (
+                  <Text size="xs" c="dimmed" lineClamp={2}>
+                    {n.message}
+                  </Text>
+                ) : null}
+              </Stack>
+            </Menu.Item>
+          ))
+        )}
+      </Menu.Dropdown>
+    </Menu>
   );
 }

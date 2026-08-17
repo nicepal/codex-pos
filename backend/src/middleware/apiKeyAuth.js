@@ -4,7 +4,7 @@ const { UnauthorizedError, ForbiddenError } = require('../shared/errors');
 
 /**
  * Authenticates a request using a developer API key supplied via the
- * `X-API-Key` header or `Authorization: Bearer eyz_...`. Loads the owning
+ * `X-API-Key` header or `Authorization: Bearer cdx_...` (legacy `eyz_` still accepted). Loads the owning
  * tenant onto req.tenant so existing tenant-scoped services work unchanged.
  */
 async function authenticateApiKey(req, res, next) {

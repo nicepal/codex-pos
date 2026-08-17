@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useOutletContext } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import {
-  Box, Typography, Grid, Chip, Stack, MenuItem, Select, FormControl, InputLabel,
-  Pagination, Skeleton,
+  Box, Typography, Stack, MenuItem, Select, FormControl, InputLabel,
+  Pagination, Skeleton, Alert, Button,
 } from '@mui/material';
 import api from '../../services/api';
 import ProductCard from '../../components/storefront/ProductCard';
-import StoreBreadcrumbs from '../../components/storefront/StoreBreadcrumbs';
-import EmptyState from '../../components/EmptyState';
+import CategoryNavigation from '../../components/storefront/CategoryNavigation';
 import useDebounce from '../../hooks/useDebounce';
-import { addToCart } from '../../features/storefront/cartSlice';
+import { SF, productGridSx, storefrontStickyTop } from '../../components/storefront/storefrontTheme';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
@@ -22,39 +22,56 @@ const SORT_OPTIONS = [
 
 function ProductSkeleton() {
   return (
-    <Box sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-      <Skeleton variant="rectangular" sx={{ pt: '85%' }} />
-      <Box sx={{ p: 2 }}>
-        <Skeleton width="80%" />
-        <Skeleton width="40%" sx={{ mt: 1 }} />
-        <Skeleton height={36} sx={{ mt: 2 }} />
+    <Box
+      sx={{
+        borderRadius: SF.radius.lg,
+        overflow: 'hidden',
+        bgcolor: 'background.paper',
+        border: '1px solid',
+        borderColor: SF.colors.borderSubtle,
+      }}
+    >
+      <Skeleton variant="rectangular" animation="wave" sx={{ aspectRatio: SF.imageRatio }} />
+      <Box sx={{ p: 1.35 }}>
+        <Skeleton width="80%" height={16} />
+        <Skeleton width="40%" height={14} sx={{ mt: 1 }} />
+        <Skeleton height={38} sx={{ mt: 1.25, borderRadius: 1 }} />
       </Box>
     </Box>
   );
 }
 
 export default function StoreShop() {
-  const { basePath, primaryColor, showStock } = useOutletContext();
-  const dispatch = useDispatch();
+  const {
+    slug, primaryColor, showStock, openProductDetails,
+    categories: ctxCategories, themeSettings,
+  } = useOutletContext();
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const [searchParams, setSearchParams] = useSearchParams();
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10));
   const category = searchParams.get('category') || '';
   const debouncedSearch = useDebounce(searchParams.get('q') || '', 350);
 
+  const categorySeed = Array.isArray(ctxCategories) && ctxCategories.length > 0
+    ? ctxCategories
+    : undefined;
+
   const { data: categories } = useQuery({
-    queryKey: ['storefront-categories'],
+    queryKey: ['storefront-categories', slug],
     queryFn: () => api.get('/storefront/categories').then((r) => r.data.data),
+    ...(categorySeed ? { initialData: categorySeed } : {}),
   });
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['storefront-shop', debouncedSearch, category, page],
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
+    queryKey: ['storefront-shop', slug, debouncedSearch, category, page],
     queryFn: () => api.get('/storefront/products', {
       params: {
         search: debouncedSearch || undefined,
         category: category || undefined,
         page,
-        limit: 12,
+        limit: 20,
       },
     }).then((r) => r.data),
   });
@@ -77,53 +94,44 @@ export default function StoreShop() {
     setSearchParams(params, { replace: true });
   }, [debouncedSearch, category, page, setSearchParams]);
 
-  const setCategory = (slug) => {
+  const setCategory = (nextSlug) => {
     setPage(1);
     const params = new URLSearchParams(searchParams);
-    if (slug) params.set('category', slug);
+    if (nextSlug) params.set('category', nextSlug);
     else params.delete('category');
+    params.delete('page');
     setSearchParams(params, { replace: true });
-  };
-
-  const handleAddToCart = (product) => {
-    dispatch(addToCart({
-      product_id: product.id,
-      name: product.name,
-      slug: product.slug,
-      sale_price: parseFloat(product.sale_price),
-      category_name: product.category_name,
-      image_url: product.image_url,
-    }));
   };
 
   const totalPages = data?.pagination?.totalPages || 1;
   const total = data?.pagination?.total ?? 0;
   const categoryName = categories?.find((c) => c.slug === category)?.name;
-
-  const breadcrumbItems = [
-    { label: 'Home', to: basePath },
-    { label: 'Shop', to: `${basePath}/shop` },
-  ];
-  if (categoryName) {
-    breadcrumbItems.push({ label: categoryName, to: `${basePath}/shop?category=${category}` });
-  }
+  const showAnnouncement = themeSettings?.show_announcement !== false;
+  const stickyTop = storefrontStickyTop({ isMobile, hasAnnouncement: showAnnouncement });
 
   return (
     <Box>
-      <StoreBreadcrumbs items={breadcrumbItems} />
-
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} sx={{ mb: 3, gap: 2 }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ sm: 'center' }}
+        sx={{ mb: 1.25, gap: 1.25, mt: { xs: 1, md: 1.25 } }}
+      >
         <Box>
-          <Typography variant="h4" fontWeight={800}>
-            {categoryName || 'All Products'}
+          <Typography
+            component="h1"
+            fontWeight={750}
+            sx={{ fontSize: { xs: 19, md: 22 }, letterSpacing: '-0.025em' }}
+          >
+            {categoryName || (debouncedSearch ? `Results for “${debouncedSearch}”` : 'All products')}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {isFetching ? 'Updating…' : `${total} product${total === 1 ? '' : 's'}`}
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25, fontSize: 13 }}>
+            {isFetching ? 'Updating…' : `${total} item${total === 1 ? '' : 's'}`}
           </Typography>
         </Box>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel id="sort-label">Sort by</InputLabel>
-          <Select labelId="sort-label" label="Sort by" value={sort} onChange={(e) => setSort(e.target.value)}>
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel id="sort-label">Sort</InputLabel>
+          <Select labelId="sort-label" label="Sort" value={sort} onChange={(e) => setSort(e.target.value)}>
             {SORT_OPTIONS.map((o) => (
               <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
             ))}
@@ -132,57 +140,75 @@ export default function StoreShop() {
       </Stack>
 
       {(categories?.length > 0) && (
-        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3 }}>
-          <Chip
-            label="All"
-            onClick={() => setCategory('')}
-            variant={!category ? 'filled' : 'outlined'}
-            color={!category ? 'primary' : 'default'}
-            sx={{ fontWeight: 600 }}
-          />
-          {categories.map((c) => (
-            <Chip
-              key={c.id}
-              label={c.name}
-              onClick={() => setCategory(c.slug)}
-              variant={category === c.slug ? 'filled' : 'outlined'}
-              color={category === c.slug ? 'primary' : 'default'}
-            />
-          ))}
-        </Stack>
+        <CategoryNavigation
+          categories={categories}
+          activeSlug={category}
+          onSelect={setCategory}
+          primaryColor={primaryColor}
+          sticky
+          stickyTop={stickyTop}
+        />
+      )}
+
+      {isError && (
+        <Alert
+          severity="error"
+          sx={{ mt: 2, borderRadius: SF.radius.md }}
+          action={<Button color="inherit" size="small" onClick={() => refetch()}>Try again</Button>}
+        >
+          Couldn’t load products. Please try again.
+        </Alert>
       )}
 
       {isLoading ? (
-        <Grid container spacing={2.5}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Grid item xs={6} sm={4} md={3} key={i}><ProductSkeleton /></Grid>
+        <Box sx={[productGridSx(), { mt: 1.25 }]}>
+          {Array.from({ length: 10 }).map((_, i) => (
+            <ProductSkeleton key={i} />
           ))}
-        </Grid>
+        </Box>
       ) : products.length === 0 ? (
-        <EmptyState
-          title="No products found"
-          message="Try a different category or search term."
-          actionLabel="View all products"
-          onAction={() => setCategory('')}
-        />
+        <Box
+          sx={{
+            py: 8,
+            px: 2,
+            textAlign: 'center',
+            borderRadius: SF.radius.lg,
+            bgcolor: SF.colors.paper,
+            border: '1px dashed',
+            borderColor: SF.colors.border,
+            mt: 2,
+          }}
+        >
+          <Typography fontWeight={750} gutterBottom sx={{ letterSpacing: '-0.02em' }}>
+            No products found
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 2, fontSize: 14 }}>
+            Try a different category or search term.
+          </Typography>
+          <Button variant="outlined" onClick={() => setCategory('')}>View all products</Button>
+        </Box>
       ) : (
         <>
-          <Grid container spacing={2.5}>
+          <Box sx={[productGridSx(), { mt: 1.25 }]}>
             {products.map((p) => (
-              <Grid item xs={6} sm={4} md={3} key={p.id}>
-                <ProductCard
-                  product={p}
-                  basePath={basePath}
-                  primaryColor={primaryColor}
-                  onAddToCart={handleAddToCart}
-                  showStock={showStock}
-                />
-              </Grid>
+              <ProductCard
+                key={p.id}
+                product={p}
+                primaryColor={primaryColor}
+                onOpenDetails={openProductDetails}
+                showStock={showStock}
+              />
             ))}
-          </Grid>
+          </Box>
           {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
-              <Pagination count={totalPages} page={page} onChange={(_, p) => setPage(p)} color="primary" shape="rounded" />
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(_, p) => setPage(p)}
+                color="primary"
+                shape="rounded"
+              />
             </Box>
           )}
         </>

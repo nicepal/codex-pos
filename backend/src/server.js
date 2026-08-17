@@ -2,8 +2,18 @@ const http = require('http');
 const { createApp } = require('./app');
 const config = require('./config');
 const logger = require('./utils/logger');
+const { formatError } = logger;
 const db = require('./config/database');
 const { initRealtime } = require('./realtime/socket');
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', formatError(reason));
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', formatError(err));
+  process.exit(1);
+});
 
 const app = createApp();
 const server = http.createServer(app);
@@ -22,7 +32,16 @@ async function start() {
       logger.warn('PAYMENT_WEBHOOK_SECRET is not set — payment webhooks will be rejected');
     }
 
-    await db.query('SELECT 1');
+    try {
+      await db.query('SELECT 1');
+    } catch (err) {
+      logger.error(
+        `Postgres unreachable at ${config.db.host}:${config.db.port} (database ${config.db.database}). `
+          + 'Start Docker Desktop, then: docker compose up -d postgres redis',
+        formatError(err)
+      );
+      process.exit(1);
+    }
     logger.info('Database connected');
 
     initRealtime(server);
@@ -33,7 +52,7 @@ async function start() {
       logger.info(`API: http://localhost:${config.port}${config.apiPrefix}`);
     });
   } catch (err) {
-    logger.error('Failed to start server', { error: err.message });
+    logger.error('Failed to start server', formatError(err));
     process.exit(1);
   }
 }

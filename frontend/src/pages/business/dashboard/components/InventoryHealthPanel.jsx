@@ -1,37 +1,43 @@
-import {
-  Box, Chip, Stack, Table, TableBody, TableCell, TableHead, TableRow,
-  Button, Typography,
-} from '@mui/material';
+import { Box, Badge, Group, Stack, Table, Text, Button } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
+import { CODEX_TOKENS } from '../../../../design-system';
 import DashboardSection from './DashboardSection';
 import EmptyState from '../../../../components/EmptyState';
 
 function ProductMiniTable({ rows, onReorder, onAdjust }) {
   if (!rows?.length) return null;
   return (
-    <Table size="small">
-      <TableHead>
-        <TableRow>
-          <TableCell>Product</TableCell>
-          <TableCell align="right">Stock</TableCell>
-          <TableCell align="right">Actions</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
+    <Table striped highlightOnHover withTableBorder={false}>
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th>Product</Table.Th>
+          <Table.Th ta="right">Stock</Table.Th>
+          <Table.Th ta="right">Actions</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
         {rows.slice(0, 5).map((p) => (
-          <TableRow key={p.id}>
-            <TableCell>
-              <Typography variant="body2" noWrap sx={{ maxWidth: 140 }}>{p.name}</Typography>
-              <Typography variant="caption" color="text.secondary">{p.sku}</Typography>
-            </TableCell>
-            <TableCell align="right">{p.stockQuantity}</TableCell>
-            <TableCell align="right">
-              <Button size="small" onClick={() => onReorder(p.id)}>Reorder</Button>
-              <Button size="small" onClick={() => onAdjust(p.id)}>Adjust</Button>
-            </TableCell>
-          </TableRow>
+          <Table.Tr key={p.id}>
+            <Table.Td>
+              <Text size="sm" lineClamp={1} maw={140}>
+                {p.name}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {p.sku}
+              </Text>
+            </Table.Td>
+            <Table.Td ta="right">{p.stockQuantity}</Table.Td>
+            <Table.Td ta="right">
+              <Button size="compact-xs" variant="subtle" onClick={() => onReorder(p.id)}>
+                Reorder
+              </Button>
+              <Button size="compact-xs" variant="subtle" onClick={() => onAdjust(p.id)}>
+                Adjust
+              </Button>
+            </Table.Td>
+          </Table.Tr>
         ))}
-      </TableBody>
+      </Table.Tbody>
     </Table>
   );
 }
@@ -45,53 +51,73 @@ export default function InventoryHealthPanel({ inventory, formatMoney, loading, 
 
   return (
     <DashboardSection title="Inventory Health" loading={loading} error={error} onRetry={onRetry}>
-      {!loading && !summary && (
-        <EmptyState compact illustration="store" title="No inventory data" message="Add products to track inventory health." />
-      )}
-      {!loading && summary && (
+      {!loading && !summary ? (
+        <EmptyState
+          compact
+          illustration="store"
+          title="No inventory data"
+          message="Add products to track inventory health."
+        />
+      ) : null}
+      {!loading && summary ? (
         <Box>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
-            <Chip label={`Value: ${formatMoney(summary.totalValue)}`} color="primary" variant="outlined" />
-            <Chip label={`Low: ${summary.lowStockCount}`} color="warning" variant="outlined" />
-            <Chip label={`Out: ${summary.outOfStockCount}`} color="error" variant="outlined" />
-            <Chip label={`Overstocked: ${summary.overstockedCount}`} variant="outlined" />
-          </Stack>
+          <Group gap="xs" mb="md" wrap="wrap">
+            <Badge variant="outline" color="codex">
+              Value: {formatMoney(summary.totalValue)}
+            </Badge>
+            <Badge variant="outline" color="yellow">
+              Low: {summary.lowStockCount}
+            </Badge>
+            <Badge variant="outline" color="red">
+              Out: {summary.outOfStockCount}
+            </Badge>
+            <Badge variant="outline" color="gray">
+              Overstocked: {summary.overstockedCount}
+            </Badge>
+          </Group>
 
-          {summary.outOfStockCount > 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" fontWeight={700} color="error.main" gutterBottom>Out of Stock</Typography>
+          {summary.outOfStockCount > 0 ? (
+            <Box mb="md">
+              <Text fw={700} size="sm" c="red" mb="xs">
+                Out of Stock
+              </Text>
               <ProductMiniTable rows={inventory.outOfStock} onReorder={onReorder} onAdjust={onAdjust} />
             </Box>
-          )}
+          ) : null}
 
-          {summary.lowStockCount > 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" fontWeight={700} color="warning.main" gutterBottom>Low Stock</Typography>
+          {summary.lowStockCount > 0 ? (
+            <Box mb="md">
+              <Text fw={700} size="sm" style={{ color: CODEX_TOKENS.warning }} mb="xs">
+                Low Stock
+              </Text>
               <ProductMiniTable rows={inventory.lowStock} onReorder={onReorder} onAdjust={onAdjust} />
             </Box>
-          )}
+          ) : null}
 
-          {inventory.recentMovements?.length > 0 && (
+          {inventory.recentMovements?.length > 0 ? (
             <Box>
-              <Typography variant="subtitle2" fontWeight={700} gutterBottom>Recent Stock Movement</Typography>
+              <Text fw={700} size="sm" mb="xs">
+                Recent Stock Movement
+              </Text>
               {inventory.recentMovements.slice(0, 5).map((m, i) => (
-                <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                  <Typography variant="body2" noWrap sx={{ maxWidth: '70%' }}>
+                <Group key={i} justify="space-between" py={4} wrap="nowrap">
+                  <Text size="sm" lineClamp={1} style={{ maxWidth: '70%' }}>
                     {m.productName} · {m.type}
-                  </Typography>
-                  <Typography variant="body2" color={m.quantity >= 0 ? 'success.main' : 'error.main'}>
-                    {m.quantity > 0 ? '+' : ''}{m.quantity}
-                  </Typography>
-                </Box>
+                  </Text>
+                  <Text size="sm" c={m.quantity >= 0 ? 'green' : 'red'}>
+                    {m.quantity > 0 ? '+' : ''}
+                    {m.quantity}
+                  </Text>
+                </Group>
               ))}
             </Box>
-          )}
+          ) : null}
 
-          {summary.lowStockCount === 0 && summary.outOfStockCount === 0 && (
+          {summary.lowStockCount === 0 && summary.outOfStockCount === 0 ? (
             <EmptyState compact illustration="store" title="Inventory healthy" message="No stock issues detected." />
-          )}
+          ) : null}
         </Box>
-      )}
+      ) : null}
     </DashboardSection>
   );
 }

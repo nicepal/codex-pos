@@ -23,6 +23,13 @@ const PERMISSIONS = [
   { name: 'business.reports', display_name: 'View Reports', module: 'business' },
   { name: 'business.settings', display_name: 'Business Settings', module: 'business' },
   { name: 'business.storefront', display_name: 'Manage Storefront', module: 'business' },
+  { name: 'restaurant.view', display_name: 'View Restaurant', module: 'business' },
+  { name: 'restaurant.manage', display_name: 'Manage Restaurant', module: 'business' },
+  { name: 'restaurant.tables.view', display_name: 'View Restaurant Tables', module: 'business' },
+  { name: 'restaurant.tables.manage', display_name: 'Manage Restaurant Tables', module: 'business' },
+  { name: 'restaurant.settings.manage', display_name: 'Manage Restaurant Settings', module: 'business' },
+  { name: 'kds.view', display_name: 'View Kitchen Display', module: 'business' },
+  { name: 'kds.manage', display_name: 'Manage Kitchen Display', module: 'business' },
 ];
 
 const ROLES = [
@@ -43,7 +50,15 @@ const ROLES = [
     permissions: [
       'business.dashboard', 'business.products', 'business.categories', 'business.inventory',
       'business.customers', 'business.orders', 'business.pos', 'business.reports', 'business.expenses',
+      'restaurant.view', 'restaurant.manage', 'restaurant.tables.view', 'restaurant.tables.manage', 'restaurant.settings.manage',
+      'kds.view', 'kds.manage',
     ],
+  },
+  {
+    name: 'kitchen_staff',
+    display_name: 'Kitchen Staff',
+    is_platform: false,
+    permissions: ['kds.view', 'kds.manage', 'restaurant.view'],
   },
   {
     name: 'cashier',
@@ -121,7 +136,7 @@ async function seed() {
   const adminHash = await hashPassword('Admin@123456');
   const adminResult = await db.query(
     `INSERT INTO users (email, password_hash, first_name, last_name, email_verified_at, status)
-     VALUES ('admin@poshive.store', $1, 'Super', 'Admin', NOW(), 'active')
+     VALUES ('admin@codexpos.store', $1, 'Super', 'Admin', NOW(), 'active')
      ON CONFLICT DO NOTHING
      RETURNING id`,
     [adminHash]
@@ -137,7 +152,7 @@ async function seed() {
 
   const demoTenant = await db.query(
     `INSERT INTO tenants (name, slug, email, phone, address, timezone, currency, status, trial_ends_at)
-     VALUES ('Demo Store', 'demo', 'owner@demo.poshive.store', '+1234567890', '123 Main St', 'America/New_York', 'USD', 'active', NOW() + INTERVAL '14 days')
+     VALUES ('Demo Store', 'demo', 'owner@demo.codexpos.store', '+1234567890', '123 Main St', 'America/New_York', 'USD', 'active', NOW() + INTERVAL '14 days')
      ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
      RETURNING id`,
   );
@@ -146,7 +161,7 @@ async function seed() {
 
   await db.query(
     `INSERT INTO tenant_domains (tenant_id, domain, domain_type, is_primary, verification_status)
-     VALUES ($1, 'demo.poshive.store', 'subdomain', true, 'verified')
+     VALUES ($1, 'demo.codexpos.store', 'subdomain', true, 'verified')
      ON CONFLICT (domain) DO NOTHING`,
     [tenantId]
   );
@@ -162,18 +177,26 @@ async function seed() {
   const ownerHash = await hashPassword('Owner@123456');
   const ownerResult = await db.query(
     `INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, email_verified_at, status)
-     VALUES ($1, 'owner@demo.poshive.store', $2, 'John', 'Doe', NOW(), 'active')
+     VALUES ($1, 'owner@demo.codexpos.store', $2, 'John', 'Doe', NOW(), 'active')
      ON CONFLICT DO NOTHING
      RETURNING id`,
     [tenantId, ownerHash]
   );
 
-  if (ownerResult.rows[0]) {
-    const ownerRole = await db.query(`SELECT id FROM roles WHERE name = 'business_owner'`);
-    await db.query(
-      `INSERT INTO user_roles (user_id, role_id, tenant_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-      [ownerResult.rows[0].id, ownerRole.rows[0].id, tenantId]
-    );
+  const ownerRole = await db.query(`SELECT id FROM roles WHERE name = 'business_owner'`);
+  if (ownerRole.rows[0]) {
+    const ownerUserId = ownerResult.rows[0]?.id
+      || (await db.query(
+        `SELECT id FROM users WHERE tenant_id = $1 ORDER BY created_at ASC LIMIT 1`,
+        [tenantId]
+      )).rows[0]?.id;
+
+    if (ownerUserId) {
+      await db.query(
+        `INSERT INTO user_roles (user_id, role_id, tenant_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+        [ownerUserId, ownerRole.rows[0].id, tenantId]
+      );
+    }
   }
 
   const templates = [
@@ -201,8 +224,8 @@ async function seed() {
   }
 
   logger.info('Database seed completed');
-  logger.info('Super Admin: admin@poshive.store / Admin@123456');
-  logger.info('Business Owner: owner@demo.poshive.store / Owner@123456');
+  logger.info('Super Admin: admin@codexpos.store / Admin@123456');
+  logger.info('Business Owner: owner@demo.codexpos.store / Owner@123456');
 }
 
 if (require.main === module) {

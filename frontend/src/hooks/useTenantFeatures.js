@@ -9,6 +9,12 @@ const DEFAULT_FEATURES = {
   staff_pro: false,
   crm_pro: false,
   omnichannel: false,
+  marketing_pro: false,
+  finance_pro: false,
+  ai_pro: false,
+  mfg_pro: false,
+  restaurant_pro: false,
+  enterprise: false,
   allow_negative_stock: false,
   open_price_items: false,
 };

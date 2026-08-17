@@ -31,6 +31,18 @@ export function formatMoney(amount, currencyCode = 'USD') {
   }
 }
 
+/** Parse a payment/amount field; empty or non-finite → 0. */
+export function safeNumber(value) {
+  if (value === '' || value == null) return 0;
+  const n = typeof value === 'number' ? value : Number(String(value).trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Round to 2 decimal places to avoid float noise (e.g. 0.0000001). */
+export function roundMoney(value) {
+  return Math.round((safeNumber(value) + Number.EPSILON) * 100) / 100;
+}
+
 export function moneyFieldLabel(label, currencyCode) {
   return `${label} (${resolveCurrency(currencyCode)})`;
 }

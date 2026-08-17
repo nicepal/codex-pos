@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { isRestaurantBusinessType, isPosBusinessType } = require('../modules/onboarding/business-types');
 
 /** Feature pack keys and metadata */
 const FEATURE_PACKS = {
@@ -9,24 +10,42 @@ const FEATURE_PACKS = {
   staff_pro: { label: 'Staff Pro', description: 'PIN login, drawer sessions, unified team' },
   crm_pro: { label: 'CRM Pro', description: 'Customer accounts, loyalty rules, tags' },
   omnichannel: { label: 'Omnichannel', description: 'Custom domains, click & collect, webhooks' },
+  marketing_pro: { label: 'Marketing Pro', description: 'Campaigns, abandoned cart, SMS/email automation' },
+  finance_pro: { label: 'Finance Pro', description: 'Ledger, journals, multi-currency, tax reports' },
+  ai_pro: { label: 'AI Pro', description: 'Forecasting, content generation, AI assistant' },
+  mfg_pro: { label: 'Manufacturing Pro', description: 'BOM and production orders' },
+  restaurant_pro: { label: 'Restaurant Pro', description: 'Table management, floor plans, dining sessions, KDS' },
+  enterprise: { label: 'Enterprise', description: 'SSO, SCIM, advanced permissions, franchise' },
   allow_negative_stock: { label: 'Allow Negative Stock', description: 'Sell when stock is zero' },
   open_price_items: { label: 'Open Price Items', description: 'Cashier can set price at POS' },
 };
 
 const PACK_KEYS = Object.keys(FEATURE_PACKS);
 
+/** Features that clients cannot toggle via settings — managed by backend only */
+const CLIENT_PROTECTED_FEATURE_KEYS = ['pos_pro', 'restaurant_pro'];
+
+function getBusinessTypeEntitlements(businessType) {
+  const entitlements = {};
+  if (isPosBusinessType(businessType)) {
+    entitlements.pos_pro = true;
+  }
+  if (isRestaurantBusinessType(businessType)) {
+    entitlements.restaurant_pro = true;
+  }
+  return entitlements;
+}
+
+async function getTenantBusinessType(tenantId, client = db) {
+  const result = await client.query(
+    'SELECT business_type FROM tenants WHERE id = $1',
+    [tenantId]
+  );
+  return result.rows[0]?.business_type || null;
+}
+
 const PLAN_DEFAULTS = {
-  starter: {
-    pos_pro: false,
-    catalog_pro: false,
-    tax_advanced: false,
-    inventory_pro: false,
-    staff_pro: false,
-    crm_pro: false,
-    omnichannel: false,
-    allow_negative_stock: false,
-    open_price_items: false,
-  },
+  starter: Object.fromEntries(PACK_KEYS.map((k) => [k, false])),
   professional: {
     pos_pro: true,
     catalog_pro: true,
@@ -35,20 +54,16 @@ const PLAN_DEFAULTS = {
     staff_pro: false,
     crm_pro: true,
     omnichannel: true,
+    marketing_pro: true,
+    finance_pro: false,
+    ai_pro: false,
+    mfg_pro: false,
+    restaurant_pro: false,
+    enterprise: false,
     allow_negative_stock: false,
     open_price_items: false,
   },
-  enterprise: {
-    pos_pro: true,
-    catalog_pro: true,
-    tax_advanced: true,
-    inventory_pro: true,
-    staff_pro: true,
-    crm_pro: true,
-    omnichannel: true,
-    allow_negative_stock: true,
-    open_price_items: true,
-  },
+  enterprise: Object.fromEntries(PACK_KEYS.map((k) => [k, true])),
 };
 
 function normalizeFeatures(input = {}) {
@@ -95,12 +110,18 @@ async function getTenantFeatureOverrides(tenantId) {
   return normalizeFeatures(val);
 }
 
-async function resolveTenantFeatures(tenantId) {
+async function resolveTenantFeatures(tenantId, client = db) {
   const planFeatures = await getPlanFeatures(tenantId);
   const overrides = await getTenantFeatureOverrides(tenantId);
+  const businessType = await getTenantBusinessType(tenantId, client);
+  const typeEntitlements = getBusinessTypeEntitlements(businessType);
+
   const resolved = { ...planFeatures };
   for (const [key, val] of Object.entries(overrides)) {
     resolved[key] = val;
+  }
+  for (const [key, val] of Object.entries(typeEntitlements)) {
+    if (val) resolved[key] = true;
   }
   return resolved;
 }
@@ -109,16 +130,18 @@ function isFeatureEnabled(features, key) {
   return Boolean(features?.[key]);
 }
 
-/** Clamp tenant overrides to what the subscription plan allows */
-function clampFeaturesToPlan(planFeatures, requestedOverrides) {
+/** Clamp tenant overrides to what the subscription plan allows (business-type entitlements exempt) */
+function clampFeaturesToPlan(planFeatures, requestedOverrides, businessType = null) {
   const normalized = normalizeFeatures(requestedOverrides);
+  const typeEntitlements = getBusinessTypeEntitlements(businessType);
   const clamped = {};
   const capped = [];
   for (const key of PACK_KEYS) {
+    if (CLIENT_PROTECTED_FEATURE_KEYS.includes(key)) continue;
     const planAllows = Boolean(planFeatures[key]);
     const requested = normalized[key];
     if (typeof requested === 'boolean') {
-      if (requested && !planAllows) {
+      if (requested && !planAllows && !typeEntitlements[key]) {
         clamped[key] = false;
         capped.push(key);
       } else {
@@ -127,6 +150,14 @@ function clampFeaturesToPlan(planFeatures, requestedOverrides) {
     }
   }
   return { clamped, capped };
+}
+
+function stripClientProtectedFeatures(requestedOverrides) {
+  const normalized = normalizeFeatures(requestedOverrides);
+  for (const key of CLIENT_PROTECTED_FEATURE_KEYS) {
+    delete normalized[key];
+  }
+  return normalized;
 }
 
 async function assertFeatureEnabled(tenantId, key) {
@@ -142,11 +173,15 @@ module.exports = {
   FEATURE_PACKS,
   PACK_KEYS,
   PLAN_DEFAULTS,
+  CLIENT_PROTECTED_FEATURE_KEYS,
   normalizeFeatures,
   getPlanFeatures,
   getTenantFeatureOverrides,
+  getTenantBusinessType,
+  getBusinessTypeEntitlements,
   resolveTenantFeatures,
   isFeatureEnabled,
   clampFeaturesToPlan,
+  stripClientProtectedFeatures,
   assertFeatureEnabled,
 };

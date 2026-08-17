@@ -22,8 +22,8 @@ class ApiKeysService {
     const scopes = Array.isArray(data.scopes) && data.scopes.length ? data.scopes : ['read'];
 
     const secret = crypto.randomBytes(24).toString('hex');
-    const rawKey = `eyz_${secret}`;
-    const keyPrefix = rawKey.slice(0, 12); // "eyz_" + 8 chars
+    const rawKey = `cdx_${secret}`;
+    const keyPrefix = rawKey.slice(0, 12); // "cdx_" + 8 chars
     const keyHash = hashKey(rawKey);
 
     const result = await db.query(
@@ -52,7 +52,7 @@ class ApiKeysService {
    * last_used_at asynchronously. Returns null when invalid/revoked.
    */
   async verify(rawKey) {
-    if (!rawKey || !rawKey.startsWith('eyz_')) return null;
+    if (!rawKey || !(rawKey.startsWith('cdx_') || rawKey.startsWith('eyz_'))) return null;
     const keyPrefix = rawKey.slice(0, 12);
     const keyHash = hashKey(rawKey);
     const result = await db.query(
@@ -61,9 +61,15 @@ class ApiKeysService {
        WHERE ak.key_prefix = $1 AND ak.status = 'active'`,
       [keyPrefix]
     );
-    const key = result.rows.find((k) => crypto.timingSafeEqual(
-      Buffer.from(k.key_hash), Buffer.from(keyHash)
-    ));
+    const key = result.rows.find((k) => {
+      try {
+        const a = Buffer.from(k.key_hash);
+        const b = Buffer.from(keyHash);
+        return a.length === b.length && crypto.timingSafeEqual(a, b);
+      } catch {
+        return false;
+      }
+    });
     if (!key) return null;
     if (['suspended', 'deleted'].includes(key.tenant_status)) return null;
 

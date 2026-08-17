@@ -1,4 +1,4 @@
-import { Box, Typography, ToggleButtonGroup, ToggleButton, IconButton, Tooltip } from '@mui/material';
+import { Box, Title, Text, Group, SegmentedControl, ActionIcon, Tooltip, Stack } from '@mantine/core';
 import { Refresh } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '../../../../features/auth/authSlice';
@@ -22,49 +22,36 @@ export default function DashboardHeader({ range, onRangeChange, onRefresh, isRef
   const { user } = useSelector(selectAuth);
   const name = user?.first_name || user?.email?.split('@')[0] || 'there';
   const dateStr = new Date().toLocaleDateString(undefined, {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   });
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', md: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'flex-start', md: 'center' },
-        gap: 2,
-        mb: 3,
-      }}
-    >
-      <Box>
-        <Typography variant="h5" fontWeight={700}>
+    <Group justify="space-between" align="flex-start" mb="lg" gap="md" wrap="wrap">
+      <Stack gap={4}>
+        <Title order={2} fw={700} style={{ fontSize: '1.5rem' }}>
           {getGreeting()}, {name}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
+        </Title>
+        <Text size="sm" c="dimmed">
           {dateStr}
-          {generatedAt && ` · Updated ${new Date(generatedAt).toLocaleTimeString()}`}
-        </Typography>
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <ToggleButtonGroup
+          {generatedAt ? ` · Updated ${new Date(generatedAt).toLocaleTimeString()}` : ''}
+        </Text>
+      </Stack>
+      <Group gap="sm" wrap="wrap">
+        <SegmentedControl
           value={range}
-          exclusive
-          onChange={(_, v) => v && onRangeChange(v)}
-          size="small"
-          sx={{ flexWrap: 'wrap' }}
-        >
-          {RANGES.map((r) => (
-            <ToggleButton key={r.value} value={r.value} sx={{ px: { xs: 1.5, sm: 2 } }}>
-              {r.label}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-        <Tooltip title="Refresh dashboard">
-          <IconButton onClick={onRefresh} disabled={isRefreshing} size="small">
-            <Refresh />
-          </IconButton>
+          onChange={onRangeChange}
+          data={RANGES}
+          size="sm"
+        />
+        <Tooltip label="Refresh dashboard">
+          <ActionIcon variant="default" onClick={onRefresh} disabled={isRefreshing} aria-label="Refresh">
+            <Refresh fontSize="small" />
+          </ActionIcon>
         </Tooltip>
-      </Box>
-    </Box>
+      </Group>
+    </Group>
   );
 }

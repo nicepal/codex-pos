@@ -64,9 +64,9 @@ class PurchaseOrderService {
       }
 
       const poResult = await client.query(
-        `INSERT INTO purchase_orders (tenant_id, supplier_id, po_number, status, total_amount, notes, ordered_at, created_by)
-         VALUES ($1, $2, $3, $4, 0, $5, NOW(), $6) RETURNING *`,
-        [tenantId, data.supplier_id, poNumber, data.status || 'draft', data.notes, userId]
+        `INSERT INTO purchase_orders (tenant_id, supplier_id, po_number, status, total_amount, notes, ordered_at, created_by, branch_id)
+         VALUES ($1, $2, $3, $4, 0, $5, NOW(), $6, $7) RETURNING *`,
+        [tenantId, data.supplier_id, poNumber, data.status || 'draft', data.notes, userId, data.branch_id || null]
       );
       const poId = poResult.rows[0].id;
 

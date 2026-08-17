@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://codexpos.store/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://codexpos.store/features</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://codexpos.store/features/pos</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://codexpos.store/features/inventory</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://codexpos.store/features/ecommerce</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://codexpos.store/features/analytics</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://codexpos.store/integrations/shopify</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://codexpos.store/pricing</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://codexpos.store/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://codexpos.store/contact</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://codexpos.store/faq</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://codexpos.store/blog</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://codexpos.store/blog/unify-pos-and-inventory</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://codexpos.store/blog/multi-branch-stock-transfers</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://codexpos.store/blog/shopify-import-without-chaos</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://codexpos.store/blog/ai-reorder-insights</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://codexpos.store/blog/developer-api-webhooks</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+</urlset>

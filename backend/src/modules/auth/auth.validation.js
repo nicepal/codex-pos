@@ -7,8 +7,8 @@ const registerSchema = Joi.object({
   password: Joi.string().min(8).max(128).required(),
   firstName: Joi.string().min(1).max(100).required(),
   lastName: Joi.string().min(1).max(100).required(),
-  phone: Joi.string().max(50).optional(),
-  address: Joi.string().optional(),
+  phone: Joi.string().max(50).allow('', null).optional(),
+  address: Joi.string().allow('', null).optional(),
   timezone: Joi.string().optional(),
   currency: Joi.string().length(3).optional(),
 });

@@ -1,8 +1,9 @@
-import { Box, alpha, useTheme } from '@mui/material';
+import { Box } from '@mantine/core';
 import {
   Storefront, Inventory2, Category, Groups, Receipt, ShoppingCart,
   LocalShipping, SupportAgent, Business, Loyalty,
 } from '@mui/icons-material';
+import { CODEX_TOKENS } from '../design-system';
 
 const ICONS = {
   store: Storefront,
@@ -17,50 +18,59 @@ const ICONS = {
   customers: Loyalty,
 };
 
+function withAlpha(hex, alpha) {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/** Decorative empty illustration — MUI icons only; no MUI layout. */
 export default function EmptyStateIllustration({ type = 'store', size = 120 }) {
-  const theme = useTheme();
   const Icon = ICONS[type] || Storefront;
-  const primary = theme.palette.primary.main;
+  const primary = CODEX_TOKENS.primary;
+  const dots = [
+    { top: 4, left: '50%', transform: 'translateX(-50%)' },
+    { right: 4, top: '50%', transform: 'translateY(-50%)' },
+    { bottom: 4, left: '30%' },
+    { left: 8, top: '25%' },
+  ];
 
   return (
-    <Box sx={{ position: 'relative', width: size, height: size, mx: 'auto', mb: 3 }}>
+    <Box pos="relative" w={size} h={size} mx="auto" mb="md">
       <Box
-        sx={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: '50%',
-          bgcolor: alpha(primary, 0.08),
-        }}
+        pos="absolute"
+        inset={0}
+        style={{ borderRadius: '50%', background: withAlpha(primary, 0.08) }}
       />
       <Box
-        sx={{
-          position: 'absolute',
+        pos="absolute"
+        style={{
           inset: 12,
-          borderRadius: 3,
-          bgcolor: alpha(primary, 0.12),
+          borderRadius: 12,
+          background: withAlpha(primary, 0.12),
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          border: '1px solid',
-          borderColor: alpha(primary, 0.2),
+          border: `1px solid ${withAlpha(primary, 0.2)}`,
         }}
       >
-        <Icon sx={{ fontSize: size * 0.4, color: primary }} />
+        <Icon style={{ fontSize: size * 0.4, color: primary }} />
       </Box>
-      {['top', 'right', 'bottom', 'left'].map((pos, i) => (
+      {dots.map((style, i) => (
         <Box
-          key={pos}
-          sx={{
-            position: 'absolute',
-            width: 8,
-            height: 8,
+          key={i}
+          pos="absolute"
+          w={8}
+          h={8}
+          style={{
             borderRadius: '50%',
-            bgcolor: alpha(primary, 0.35),
-            ...(pos === 'top' && { top: 4, left: '50%', transform: 'translateX(-50%)' }),
-            ...(pos === 'right' && { right: 4, top: '50%', transform: 'translateY(-50%)' }),
-            ...(pos === 'bottom' && { bottom: 4, left: '30%' }),
-            ...(pos === 'left' && { left: 8, top: '25%' }),
+            background: withAlpha(primary, 0.35),
             opacity: 0.5 + (i % 2) * 0.3,
+            ...style,
           }}
         />
       ))}

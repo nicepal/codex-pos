@@ -13,7 +13,7 @@ function getRedis() {
     });
 
     redis.on('error', (err) => {
-      logger.error('Redis connection error', { error: err.message });
+      logger.error('Redis connection error', logger.formatError(err));
     });
 
     redis.on('connect', () => {

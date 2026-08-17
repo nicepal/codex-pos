@@ -16,8 +16,7 @@ class PaymentsController {
 
   confirmCheckout = asyncHandler(async (req, res) => {
     const { session_id: sessionId, payment_reference: paymentReference } = req.body;
-    const reference = paymentReference || `sim_${Date.now()}`;
-    const result = await paymentsService.completeCheckoutSession(sessionId, reference);
+    const result = await paymentsService.confirmCheckout(req.tenant.id, sessionId, paymentReference);
     return success(res, result, 'Payment confirmed');
   });
 

@@ -56,7 +56,7 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-in-production}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-in-production}
-      PLATFORM_DOMAIN: poshive.store
+      PLATFORM_DOMAIN: codexpos.store
     ports:
       - "5000:5000"
     volumes:
@@ -77,6 +77,11 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://eyz_user:eyz_password@postgres:5432/eyz_pos
       REDIS_URL: redis://redis:6379
+    networks:
+      default:
+        aliases:
+          - codexpos-worker
+          - eyz-worker
 
   frontend:
     build:

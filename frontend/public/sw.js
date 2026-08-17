@@ -7,7 +7,7 @@
  *  - API writes (POST/PUT/DELETE): never cached; the app's IndexedDB queue
  *    handles offline order capture.
  */
-const CACHE = 'poshive-pos-shell-v2';
+const CACHE = 'codexpos-pos-shell-v3';
 const APP_SHELL = ['/', '/index.html', '/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -44,8 +44,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+          // Do not cache authenticated / tenant-scoped API GETs (stale PII & stock).
+          const auth = request.headers.get('authorization');
+          const tenant = request.headers.get('x-tenant-slug') || request.headers.get('x-tenant-domain');
+          if (!auth && !tenant && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(() => caches.match(request))

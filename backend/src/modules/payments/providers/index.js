@@ -1,15 +1,36 @@
 const config = require('../../../config');
 const stripe = require('./stripe.provider');
+const { ValidationError } = require('../../../shared/errors');
 
 /**
- * Resolves the active payment provider. Falls back to the simulated `stub`
- * provider when no real gateway is configured, so checkout always works in
- * development and for self-hosted demos.
+ * Resolves the active payment provider. Stub is allowed in non-production
+ * (or with ALLOW_PAYMENT_STUB). Production + PAYMENT_PROVIDER=stripe requires Stripe keys.
  */
 function resolveProvider() {
-  if (config.payments.provider === 'stripe' && stripe.isConfigured()) {
-    return { name: 'stripe', ...stripe };
+  const name = config.payments.provider || 'stub';
+
+  if (name === 'stripe') {
+    if (stripe.isConfigured()) {
+      return { name: 'stripe', ...stripe };
+    }
+    if (config.env === 'production' && process.env.ALLOW_PAYMENT_STUB !== 'true') {
+      throw new ValidationError(
+        'PAYMENT_PROVIDER=stripe but STRIPE_SECRET_KEY is not configured'
+      );
+    }
+    // Dev fallback only
+    return { name: 'stub', ...stubProvider };
   }
+
+  if (name === 'stub') {
+    if (config.env === 'production' && process.env.ALLOW_PAYMENT_STUB !== 'true') {
+      throw new ValidationError(
+        'Stub payment provider is disabled in production. Set PAYMENT_PROVIDER=stripe or ALLOW_PAYMENT_STUB=true'
+      );
+    }
+    return { name: 'stub', ...stubProvider };
+  }
+
   return { name: 'stub', ...stubProvider };
 }
 

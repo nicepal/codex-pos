@@ -73,6 +73,45 @@ class PaymentsService {
     return result.rows[0];
   }
 
+  /**
+   * Client-facing confirm. Stub confirm is gated; Stripe requires a paid session
+   * (prefer webhooks — this path only completes after gateway says paid).
+   */
+  async confirmCheckout(tenantId, sessionId, paymentReference) {
+    const session = await this.getCheckoutSession(tenantId, sessionId);
+    const provider = resolveProvider();
+
+    if (provider.name === 'stub' || session.provider === 'stub') {
+      if (!config.payments.allowStubConfirm) {
+        throw new ForbiddenError(
+          'Simulated payment confirmation is disabled. Configure Stripe or set ALLOW_PAYMENT_STUB=true for demos only.'
+        );
+      }
+      const reference = paymentReference || `sim_${Date.now()}`;
+      return this.completeCheckoutSession(sessionId, reference, { payment_method: 'stub' });
+    }
+
+    if (provider.name === 'stripe' && session.external_session_id) {
+      let paid = false;
+      try {
+        const remote = await provider.retrieveCheckout(session.external_session_id);
+        paid = Boolean(remote?.paid || remote?.status === 'complete' || remote?.payment_status === 'paid');
+        if (paid) {
+          const reference = paymentReference
+            || remote.paymentIntent
+            || remote.payment_intent
+            || `stripe_${session.external_session_id}`;
+          return this.completeCheckoutSession(sessionId, reference, { payment_method: 'stripe' });
+        }
+      } catch (err) {
+        throw new ValidationError(`Unable to verify Stripe checkout: ${err.message}`);
+      }
+      throw new ValidationError('Payment not completed yet. Finish checkout or wait for the Stripe webhook.');
+    }
+
+    throw new ForbiddenError('Payment confirmation is not available for this provider configuration');
+  }
+
   async completeCheckoutSession(sessionId, paymentReference, options = {}) {
     const client = await db.getClient();
     try {
@@ -189,6 +228,42 @@ class PaymentsService {
       provider: provider.name,
       publishable_key: provider.name === 'stripe' ? config.payments.stripePublishableKey : null,
       currency: config.payments.currency,
+    };
+  }
+
+  /**
+   * Refunds a payment intent. Uses Stripe Refunds API when configured;
+   * otherwise returns a stub refund id for offline/dev flows.
+   */
+  async refundPaymentIntent(paymentIntentId, amount = null) {
+    if (!paymentIntentId) throw new ValidationError('payment_intent_id is required');
+
+    const provider = resolveProvider();
+    if (provider.name === 'stripe' && config.payments.stripeSecretKey) {
+      const params = { payment_intent: paymentIntentId };
+      if (amount != null) params.amount = Math.round(Number(amount) * 100);
+      const res = await fetch('https://api.stripe.com/v1/refunds', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.payments.stripeSecretKey}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: Object.entries(params)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+          .join('&'),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new ValidationError(data?.error?.message || 'Stripe refund failed');
+      return { id: data.id, refund_id: data.id, status: data.status, provider: 'stripe', amount: data.amount };
+    }
+
+    return {
+      id: `re_stub_${Date.now()}`,
+      refund_id: `re_stub_${Date.now()}`,
+      status: 'succeeded',
+      provider: 'stub',
+      amount: amount != null ? Math.round(Number(amount) * 100) : null,
+      payment_intent: paymentIntentId,
     };
   }
 }

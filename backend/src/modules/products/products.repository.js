@@ -79,26 +79,99 @@ class ProductRepository extends BaseRepository {
     };
   }
 
-  async search(tenantId, q, { limit = 20, category_id } = {}) {
+  /**
+   * Prefer branch_stock aggregate so POS matches inventory after onboarding
+   * (stock is written to branch_stock then synced). Falls back to products.stock_quantity
+   * for legacy rows without branch_stock.
+   */
+  _posStockExpr(alias = 'p') {
+    return `COALESCE(
+      (SELECT SUM(bs.quantity)::int FROM branch_stock bs
+       WHERE bs.tenant_id = ${alias}.tenant_id AND bs.product_id = ${alias}.id),
+      ${alias}.stock_quantity, 0
+    )`;
+  }
+
+  async search(tenantId, q, { limit = 20, category_id, branch_id } = {}) {
+    const term = String(q || '').trim();
+    const lim = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const stockExpr = this._posStockExpr('p');
+
+    // Empty query = browse mode for POS product grid (active catalog)
+    if (!term) {
+      const conditions = ['p.tenant_id = $1', "p.status = 'active'"];
+      const params = [tenantId];
+      let idx = 2;
+      let stockSql = stockExpr;
+      if (branch_id) {
+        stockSql = `COALESCE(
+          (SELECT SUM(bs.quantity)::int FROM branch_stock bs
+           WHERE bs.tenant_id = p.tenant_id AND bs.product_id = p.id AND bs.branch_id = $${idx}),
+          0
+        )`;
+        params.push(branch_id);
+        idx++;
+      }
+      if (category_id) {
+        conditions.push(`p.category_id = $${idx}`);
+        params.push(category_id);
+        idx++;
+      }
+      params.push(lim);
+      return this.query(
+        `SELECT p.id, p.name, p.sku, p.barcode, p.sale_price,
+                ${stockSql} AS stock_quantity,
+                p.product_type, p.category_id, p.tracks_serials, p.tracks_batches, p.is_open_price,
+                (SELECT url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, sort_order LIMIT 1) AS image_url
+         FROM products p
+         WHERE ${conditions.join(' AND ')}
+         ORDER BY p.name ASC
+         LIMIT $${idx}`,
+        params
+      );
+    }
+
+    // Exact barcode match on products or variants first (POS scan)
+    const exact = await this.query(
+      `SELECT p.id, p.name, p.sku, COALESCE(pv.barcode, p.barcode) AS barcode,
+              COALESCE(pv.sale_price, p.sale_price) AS sale_price,
+              COALESCE(pv.stock_quantity, ${stockExpr}) AS stock_quantity,
+              p.product_type, p.category_id, pv.id AS variant_id, pv.name AS variant_name,
+              p.tracks_serials, p.tracks_batches, p.is_open_price,
+              (SELECT url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, sort_order LIMIT 1) AS image_url
+       FROM products p
+       LEFT JOIN product_variants pv ON pv.product_id = p.id AND pv.tenant_id = p.tenant_id
+         AND (pv.barcode = $2 OR p.barcode = $2)
+       WHERE p.tenant_id = $1 AND p.status = 'active'
+         AND (p.barcode = $2 OR pv.barcode = $2)
+       LIMIT 5`,
+      [tenantId, term]
+    );
+    if (exact.length) return exact.slice(0, lim);
+
     const conditions = [
-      'tenant_id = $1',
-      "status = 'active'",
-      '(name ILIKE $2 OR sku ILIKE $2 OR barcode ILIKE $2)',
+      'p.tenant_id = $1',
+      "p.status = 'active'",
+      '(p.name ILIKE $2 OR p.sku ILIKE $2 OR p.barcode ILIKE $2 OR pv.sku ILIKE $2 OR pv.barcode ILIKE $2)',
     ];
-    const params = [tenantId, `%${q}%`];
+    const params = [tenantId, `%${term}%`];
     let idx = 3;
     if (category_id) {
-      conditions.push(`category_id = $${idx}`);
+      conditions.push(`p.category_id = $${idx}`);
       params.push(category_id);
       idx++;
     }
-    params.push(limit);
+    params.push(lim);
     return this.query(
-      `SELECT id, name, sku, barcode, sale_price, stock_quantity, product_type, category_id,
-        (SELECT url FROM product_images WHERE product_id = products.id ORDER BY is_primary DESC, sort_order LIMIT 1) AS image_url
-       FROM products
+      `SELECT DISTINCT ON (p.id) p.id, p.name, p.sku, p.barcode, p.sale_price,
+              ${stockExpr} AS stock_quantity,
+              p.product_type, p.category_id, p.tracks_serials, p.tracks_batches, p.is_open_price,
+              (SELECT url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, sort_order LIMIT 1) AS image_url
+       FROM products p
+       LEFT JOIN product_variants pv ON pv.product_id = p.id AND pv.tenant_id = p.tenant_id
        WHERE ${conditions.join(' AND ')}
-       ORDER BY name LIMIT $${idx}`,
+       ORDER BY p.id, p.name
+       LIMIT $${idx}`,
       params
     );
   }

@@ -4,6 +4,7 @@ const { NotFoundError } = require('../../shared/errors');
 const { slugify } = require('../../utils/helpers');
 const { checkLimit } = require('../../shared/plan-limits');
 const { pickAllowedFields } = require('../../shared/sanitize');
+const branchStockService = require('../inventory/branch-stock.service');
 
 const PRODUCT_WRITABLE_FIELDS = [
   'category_id', 'brand_id', 'branch_id', 'name', 'slug', 'sku', 'barcode', 'product_type',
@@ -13,6 +14,32 @@ const PRODUCT_WRITABLE_FIELDS = [
 ];
 
 class ProductService {
+  async _syncBranchStock(tenantId, productId, branchId, targetQty, variantId, userId) {
+    const qty = parseInt(targetQty, 10);
+    if (!Number.isFinite(qty) || qty < 0) return;
+    const bid = await branchStockService.resolveBranchId(tenantId, branchId);
+    const current = await branchStockService.getQuantity(tenantId, bid, productId, variantId || null);
+    const delta = qty - current;
+    if (delta === 0) return;
+    const base = {
+      branch_id: bid,
+      product_id: productId,
+      variant_id: variantId || null,
+      reference_type: 'product_form',
+      notes: 'Product stock from catalog',
+    };
+    if (delta > 0) {
+      await branchStockService.adjust(tenantId, { ...base, quantity: delta }, 'stock_in', userId);
+      return;
+    }
+    await branchStockService.adjust(
+      tenantId,
+      { ...base, quantity: Math.abs(delta), deduct: true },
+      'adjustment',
+      userId
+    );
+  }
+
   async list(tenantId, query) {
     return productRepo.findAll(tenantId, {
       page: query.page,
@@ -32,7 +59,7 @@ class ProductService {
     return product;
   }
 
-  async create(tenantId, data) {
+  async create(tenantId, data, userId = null) {
     await checkLimit(tenantId, 'products');
     const { variants, images, ...rest } = data;
     const productData = pickAllowedFields(rest, PRODUCT_WRITABLE_FIELDS);
@@ -46,18 +73,37 @@ class ProductService {
     if (variants?.length) {
       await productRepo.update(product.id, { product_type: 'variable' }, tenantId);
       for (const v of variants) {
-        await db.query(
+        const inserted = await db.query(
           `INSERT INTO product_variants (tenant_id, product_id, name, sku, attributes, cost_price, sale_price, stock_quantity)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
           [tenantId, product.id, v.name, v.sku, JSON.stringify(v.attributes || {}), v.cost_price || 0, v.sale_price, v.stock_quantity || 0]
         );
+        if ((v.stock_quantity || 0) > 0) {
+          await this._syncBranchStock(
+            tenantId,
+            product.id,
+            productData.branch_id,
+            v.stock_quantity || 0,
+            inserted.rows[0].id,
+            userId
+          );
+        }
       }
+    } else if ((productData.stock_quantity || 0) > 0) {
+      await this._syncBranchStock(
+        tenantId,
+        product.id,
+        productData.branch_id,
+        productData.stock_quantity,
+        null,
+        userId
+      );
     }
 
     return this.getById(tenantId, product.id);
   }
 
-  async update(tenantId, id, data) {
+  async update(tenantId, id, data, userId = null) {
     const { variants, images, ...rest } = data;
     const productData = pickAllowedFields(rest, PRODUCT_WRITABLE_FIELDS);
     if (productData.name && !productData.slug) {
@@ -74,14 +120,29 @@ class ProductService {
              WHERE id=$7 AND tenant_id=$8 AND product_id=$9`,
             [v.name, v.sku, JSON.stringify(v.attributes || {}), v.cost_price || 0, v.sale_price, v.stock_quantity || 0, v.id, tenantId, id]
           );
+          if (v.stock_quantity !== undefined) {
+            await this._syncBranchStock(tenantId, id, productData.branch_id, v.stock_quantity || 0, v.id, userId);
+          }
         } else {
-          await db.query(
+          const inserted = await db.query(
             `INSERT INTO product_variants (tenant_id, product_id, name, sku, attributes, cost_price, sale_price, stock_quantity)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
             [tenantId, id, v.name, v.sku, JSON.stringify(v.attributes || {}), v.cost_price || 0, v.sale_price, v.stock_quantity || 0]
           );
+          if ((v.stock_quantity || 0) > 0) {
+            await this._syncBranchStock(
+              tenantId,
+              id,
+              productData.branch_id,
+              v.stock_quantity || 0,
+              inserted.rows[0].id,
+              userId
+            );
+          }
         }
       }
+    } else if (productData.stock_quantity !== undefined) {
+      await this._syncBranchStock(tenantId, id, productData.branch_id, productData.stock_quantity, null, userId);
     }
 
     return this.getById(tenantId, id);

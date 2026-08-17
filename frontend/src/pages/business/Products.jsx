@@ -2,8 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Box, TextField, MenuItem, IconButton, Chip, Avatar, Grid, Tooltip,
-} from '@mui/material';
+  ActionIcon,
+  Avatar,
+  Badge,
+  Group,
+  NativeSelect,
+  Textarea,
+  TextInput,
+  Tooltip,
+  SimpleGrid,
+} from '@mantine/core';
 import { Add, Edit, Delete, Visibility, Image, ContentCopy, UploadFile } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import api from '../../services/api';
@@ -42,17 +50,21 @@ function ProductImageUpload({ productId, hasImage, onDone }) {
   };
 
   return (
-    <IconButton component="label" size="small" color="primary" onClick={(e) => e.stopPropagation()}>
+    <ActionIcon component="label" size="sm" variant="subtle" color="codex" onClick={(e) => e.stopPropagation()}>
       <Image fontSize="small" />
       <input type="file" hidden accept="image/*" onChange={handleChange} />
-    </IconButton>
+    </ActionIcon>
   );
 }
 
 function stockChip(qty) {
-  if (qty <= 0) return <Chip label="Out of stock" size="small" color="error" />;
-  if (qty <= 10) return <Chip label={`Low (${qty})`} size="small" color="warning" />;
-  return <Chip label={qty} size="small" color="success" variant="outlined" />;
+  if (qty <= 0) return <Badge size="sm" color="red">Out of stock</Badge>;
+  if (qty <= 10) return <Badge size="sm" color="yellow">{`Low (${qty})`}</Badge>;
+  return (
+    <Badge size="sm" color="green" variant="outline">
+      {qty}
+    </Badge>
+  );
 }
 
 export default function ProductsPage() {
@@ -73,7 +85,8 @@ export default function ProductsPage() {
   const { register, handleSubmit, reset } = useForm();
 
   const queryParams = {
-    page, limit,
+    page,
+    limit,
     q: search || undefined,
     category_id: categoryFilter || undefined,
     brand_id: brandFilter || undefined,
@@ -97,17 +110,26 @@ export default function ProductsPage() {
 
   const openForm = (product = null) => {
     setEditing(product);
-    reset(product || {
-      name: '', sku: '', barcode: '', sale_price: '', cost_price: '', stock_quantity: 0,
-      description: '', category_id: '', brand_id: '', status: 'active',
-    });
+    reset(
+      product || {
+        name: '',
+        sku: '',
+        barcode: '',
+        sale_price: '',
+        cost_price: '',
+        stock_quantity: 0,
+        description: '',
+        category_id: '',
+        brand_id: '',
+        status: 'active',
+      },
+    );
     setOpen(true);
   };
 
   const saveMutation = useMutation({
-    mutationFn: (payload) => (editing
-      ? api.put(`/products/${editing.id}`, payload)
-      : api.post('/products', payload)),
+    mutationFn: (payload) =>
+      editing ? api.put(`/products/${editing.id}`, payload) : api.post('/products', payload),
     onSuccess: () => {
       queryClient.invalidateQueries(['products']);
       setOpen(false);
@@ -115,13 +137,18 @@ export default function ProductsPage() {
       reset();
     },
     onError: (err) => {
-      if (err.response?.status === 403) alert(err.response?.data?.message || 'Plan limit reached. Upgrade your subscription.');
+      if (err.response?.status === 403) {
+        alert(err.response?.data?.message || 'Plan limit reached. Upgrade your subscription.');
+      }
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => api.delete(`/products/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries(['products']); setDeleteId(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['products']);
+      setDeleteId(null);
+    },
   });
 
   const copyMutation = useMutation({
@@ -146,52 +173,76 @@ export default function ProductsPage() {
 
   const columns = [
     {
-      field: 'image', label: '',
+      field: 'image',
+      label: '',
       render: (r) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
-          <Avatar variant="rounded" src={resolveImageUrl(r.image_url)} sx={{ width: 40, height: 40 }}>{r.name?.[0]}</Avatar>
-          <ProductImageUpload productId={r.id} hasImage={!!r.image_url} onDone={() => queryClient.invalidateQueries(['products'])} />
-        </Box>
+        <Group gap={4} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+          <Avatar radius="sm" src={resolveImageUrl(r.image_url)} size={40}>
+            {r.name?.[0]}
+          </Avatar>
+          <ProductImageUpload
+            productId={r.id}
+            hasImage={!!r.image_url}
+            onDone={() => queryClient.invalidateQueries(['products'])}
+          />
+        </Group>
       ),
     },
     { field: 'name', label: 'Name' },
     { field: 'sku', label: 'SKU', render: (r) => r.sku || '-' },
     { field: 'sale_price', label: 'Price', render: (r) => formatMoney(r.sale_price) },
     { field: 'stock_quantity', label: 'Stock', render: (r) => stockChip(r.stock_quantity) },
-    { field: 'status', label: 'Status', render: (r) => <Chip label={formatDisplayText(r.status)} size="small" color={r.status === 'active' ? 'success' : 'default'} /> },
     {
-      field: 'actions', label: 'Actions',
+      field: 'status',
+      label: 'Status',
       render: (r) => (
-        <>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(`/products/${r.id}`); }}><Visibility fontSize="small" /></IconButton>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); openForm(r); }}><Edit fontSize="small" /></IconButton>
-          <Tooltip title="Duplicate product">
-            <IconButton
-              size="small"
-              onClick={(e) => { e.stopPropagation(); copyMutation.mutate(r.id); }}
+        <Badge size="sm" color={r.status === 'active' ? 'green' : 'gray'}>
+          {formatDisplayText(r.status)}
+        </Badge>
+      ),
+    },
+    {
+      field: 'actions',
+      label: 'Actions',
+      render: (r) => (
+        <Group gap={4} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+          <ActionIcon size="sm" variant="subtle" onClick={() => navigate(`/products/${r.id}`)}>
+            <Visibility fontSize="small" />
+          </ActionIcon>
+          <ActionIcon size="sm" variant="subtle" onClick={() => openForm(r)}>
+            <Edit fontSize="small" />
+          </ActionIcon>
+          <Tooltip label="Duplicate product">
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              onClick={() => copyMutation.mutate(r.id)}
               disabled={copyMutation.isPending && copyMutation.variables === r.id}
             >
               <ContentCopy fontSize="small" />
-            </IconButton>
+            </ActionIcon>
           </Tooltip>
-          <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); setDeleteId(r.id); }}><Delete fontSize="small" /></IconButton>
-        </>
+          <ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteId(r.id)}>
+            <Delete fontSize="small" />
+          </ActionIcon>
+        </Group>
       ),
     },
   ];
 
-  const onSubmit = (d) => saveMutation.mutate({
-    name: d.name,
-    sku: d.sku,
-    barcode: d.barcode,
-    description: d.description,
-    status: d.status,
-    sale_price: parseFloat(d.sale_price),
-    cost_price: parseFloat(d.cost_price || 0),
-    stock_quantity: parseInt(d.stock_quantity || 0, 10),
-    category_id: d.category_id || null,
-    brand_id: d.brand_id || null,
-  });
+  const onSubmit = (d) =>
+    saveMutation.mutate({
+      name: d.name,
+      sku: d.sku,
+      barcode: d.barcode,
+      description: d.description,
+      status: d.status,
+      sale_price: parseFloat(d.sale_price),
+      cost_price: parseFloat(d.cost_price || 0),
+      stock_quantity: parseInt(d.stock_quantity || 0, 10),
+      category_id: d.category_id || null,
+      brand_id: d.brand_id || null,
+    });
 
   return (
     <>
@@ -201,32 +252,68 @@ export default function ProductsPage() {
         actionLabel="Add Product"
         actionIcon={<Add />}
         onAction={() => openForm()}
-        secondaryAction={hasFeature('catalog_pro') ? {
-          label: 'Import CSV',
-          icon: <UploadFile />,
-          onClick: () => setImportOpen(true),
-        } : undefined}
+        secondaryAction={
+          hasFeature('catalog_pro')
+            ? {
+                label: 'Import CSV',
+                icon: <UploadFile />,
+                onClick: () => setImportOpen(true),
+              }
+            : undefined
+        }
       />
 
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-        <TextField size="small" label="Search" placeholder="Name, SKU, barcode" value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }} sx={{ minWidth: 200 }} />
-        <TextField size="small" select label="Category" value={categoryFilter}
-          onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }} sx={{ minWidth: 140 }}>
-          <MenuItem value="">All</MenuItem>
-          {(categories || []).map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-        </TextField>
-        <TextField size="small" select label="Brand" value={brandFilter}
-          onChange={(e) => { setBrandFilter(e.target.value); setPage(1); }} sx={{ minWidth: 140 }}>
-          <MenuItem value="">All</MenuItem>
-          {(brands || []).map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
-        </TextField>
-        <TextField size="small" select label="Status" value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} sx={{ minWidth: 120 }}>
-          <MenuItem value="">All</MenuItem>
-          {STATUSES.map((s) => <MenuItem key={s} value={s}>{formatDisplayText(s)}</MenuItem>)}
-        </TextField>
-      </Box>
+      <Group gap="md" mb="md" wrap="wrap" align="flex-end">
+        <TextInput
+          label="Search"
+          placeholder="Name, SKU, barcode"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.currentTarget.value);
+            setPage(1);
+          }}
+          w={220}
+        />
+        <NativeSelect
+          label="Category"
+          value={categoryFilter}
+          onChange={(e) => {
+            setCategoryFilter(e.currentTarget.value);
+            setPage(1);
+          }}
+          w={160}
+          data={[
+            { value: '', label: 'All' },
+            ...(categories || []).map((c) => ({ value: String(c.id), label: c.name })),
+          ]}
+        />
+        <NativeSelect
+          label="Brand"
+          value={brandFilter}
+          onChange={(e) => {
+            setBrandFilter(e.currentTarget.value);
+            setPage(1);
+          }}
+          w={160}
+          data={[
+            { value: '', label: 'All' },
+            ...(brands || []).map((b) => ({ value: String(b.id), label: b.name })),
+          ]}
+        />
+        <NativeSelect
+          label="Status"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.currentTarget.value);
+            setPage(1);
+          }}
+          w={140}
+          data={[
+            { value: '', label: 'All' },
+            ...STATUSES.map((s) => ({ value: s, label: formatDisplayText(s) })),
+          ]}
+        />
+      </Group>
 
       <BulkDeleteActions
         {...bulkDelete}
@@ -250,42 +337,66 @@ export default function ProductsPage() {
         onRowClick={(r) => navigate(`/products/${r.id}`)}
         pagination={pagination}
         onPageChange={setPage}
-        onRowsPerPageChange={(l) => { setLimit(l); setPage(1); }}
+        onRowsPerPageChange={(l) => {
+          setLimit(l);
+          setPage(1);
+        }}
         {...bulkDelete.selectionProps}
       />
 
       <FormDialog
         open={open}
         title={editing ? 'Edit Product' : 'Add Product'}
-        onClose={() => { setOpen(false); setEditing(null); }}
+        onClose={() => {
+          setOpen(false);
+          setEditing(null);
+        }}
         onSubmit={handleSubmit(onSubmit)}
         loading={saveMutation.isPending}
         submitLabel={editing ? 'Update' : 'Create'}
       >
-        <Grid item xs={12}><RHFTextField register={register} name="name" rules={{ required: true }} label="Name" /></Grid>
-        <Grid item xs={12}>
-          <TextField fullWidth select label="Category" defaultValue="" {...register('category_id')}>
-            <MenuItem value="">None</MenuItem>
-            {(categories || []).map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-          </TextField>
-        </Grid>
-        <Grid item xs={12}>
-          <TextField fullWidth select label="Brand" defaultValue="" {...register('brand_id')}>
-            <MenuItem value="">None</MenuItem>
-            {(brands || []).map((b) => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
-          </TextField>
-        </Grid>
-        <Grid item xs={6}><TextField fullWidth label="SKU" {...register('sku')} /></Grid>
-        <Grid item xs={6}><TextField fullWidth label="Barcode" {...register('barcode')} /></Grid>
-        <Grid item xs={4}><TextField fullWidth label={moneyLabel('Cost Price')} type="number" inputProps={{ step: '0.01' }} {...register('cost_price')} /></Grid>
-        <Grid item xs={4}><RHFTextField register={register} name="sale_price" rules={{ required: true }} label={moneyLabel('Sale Price')} type="number" inputProps={{ step: '0.01' }} /></Grid>
-        <Grid item xs={4}><TextField fullWidth label="Stock" type="number" {...register('stock_quantity')} /></Grid>
-        <Grid item xs={12}>
-          <TextField fullWidth select label="Status" defaultValue="active" {...register('status')}>
-            {STATUSES.map((s) => <MenuItem key={s} value={s}>{formatDisplayText(s)}</MenuItem>)}
-          </TextField>
-        </Grid>
-        <Grid item xs={12}><TextField fullWidth label="Description" multiline rows={3} {...register('description')} /></Grid>
+        <RHFTextField register={register} name="name" rules={{ required: true }} label="Name" />
+        <NativeSelect
+          label="Category"
+          w="100%"
+          {...register('category_id')}
+          data={[
+            { value: '', label: 'None' },
+            ...(categories || []).map((c) => ({ value: String(c.id), label: c.name })),
+          ]}
+        />
+        <NativeSelect
+          label="Brand"
+          w="100%"
+          {...register('brand_id')}
+          data={[
+            { value: '', label: 'None' },
+            ...(brands || []).map((b) => ({ value: String(b.id), label: b.name })),
+          ]}
+        />
+        <SimpleGrid cols={2} spacing="md">
+          <TextInput label="SKU" w="100%" {...register('sku')} />
+          <TextInput label="Barcode" w="100%" {...register('barcode')} />
+        </SimpleGrid>
+        <SimpleGrid cols={3} spacing="md">
+          <TextInput label={moneyLabel('Cost Price')} type="number" step="0.01" w="100%" {...register('cost_price')} />
+          <RHFTextField
+            register={register}
+            name="sale_price"
+            rules={{ required: true }}
+            label={moneyLabel('Sale Price')}
+            type="number"
+            inputProps={{ step: '0.01' }}
+          />
+          <TextInput label="Stock" type="number" w="100%" {...register('stock_quantity')} />
+        </SimpleGrid>
+        <NativeSelect
+          label="Status"
+          w="100%"
+          {...register('status')}
+          data={STATUSES.map((s) => ({ value: s, label: formatDisplayText(s) }))}
+        />
+        <Textarea label="Description" minRows={3} w="100%" {...register('description')} />
       </FormDialog>
 
       <ConfirmDialog
