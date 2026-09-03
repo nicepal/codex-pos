@@ -72,7 +72,7 @@ See [docs/API.md](docs/API.md)
 
 ## Deployment
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+Ubuntu + PM2 + Nginx (public port **8502**, API on `127.0.0.1:8510`) is documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Docker Compose remains available as an alternative.
 
 ## Project Structure
 

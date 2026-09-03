@@ -46,10 +46,10 @@ async function start() {
 
     initRealtime(server);
 
-    server.listen(config.port, () => {
-      logger.info(`${config.app.name} API running on port ${config.port}`);
+    server.listen(config.port, config.host, () => {
+      logger.info(`${config.app.name} API running on ${config.host}:${config.port}`);
       logger.info(`Environment: ${config.env}`);
-      logger.info(`API: http://localhost:${config.port}${config.apiPrefix}`);
+      logger.info(`API: http://${config.host}:${config.port}${config.apiPrefix}`);
     });
   } catch (err) {
     logger.error('Failed to start server', formatError(err));

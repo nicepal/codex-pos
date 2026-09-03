@@ -1,25 +1,179 @@
 # Codex POS Deployment Guide
 
-## Prerequisites
+Two supported paths:
+
+1. **Ubuntu + PM2 + Nginx** (this is the production path when you have a dedicated port range)
+2. **Docker Compose** (all-in-one, including Postgres/Redis containers)
+
+---
+
+## Ubuntu + PM2 + Nginx (port range 8502–8900)
+
+Public traffic enters **Nginx on 8502**. Node never listens on a public port.
+
+| Service | Bind | Port | Public? |
+|---------|------|------|---------|
+| Nginx | `0.0.0.0` | **8502** | Yes — only this port is opened in UFW |
+| API + Socket.IO | `127.0.0.1` | **8510** | No — Nginx proxies `/api/` and `/socket.io/` |
+| BullMQ worker | — | none | No |
+| PostgreSQL | `127.0.0.1` | 5432 | No |
+| Redis | `127.0.0.1` | 6379 | No |
+| Frontend SPA | static files | — | Served by Nginx |
+| Marketing site | static files | — | Served by Nginx |
+
+Do not publish 8510, 5432, or 6379. Those stay on localhost.
+
+### 1. Server packages
+
+```bash
+# From a sudo user (not root)
+sudo mkdir -p /opt/codexpos
+sudo chown "$USER:$USER" /opt/codexpos
+# copy or clone this repo into /opt/codexpos
+
+cd /opt/codexpos
+chmod +x deploy/scripts/*.sh
+./deploy/scripts/setup-ubuntu.sh
+```
+
+`setup-ubuntu.sh` installs Node 20, Nginx, PostgreSQL, Redis, and PM2, then opens **8502/tcp** in UFW.
+
+### 2. PostgreSQL
+
+```bash
+sudo -u postgres psql <<'SQL'
+CREATE USER codexpos WITH PASSWORD 'choose-a-strong-password';
+CREATE DATABASE codexpos_pos OWNER codexpos;
+GRANT ALL PRIVILEGES ON DATABASE codexpos_pos TO codexpos;
+SQL
+```
+
+### 3. Environment files
+
+```bash
+cp deploy/env/backend.production.example backend/.env
+cp deploy/env/frontend.production.example frontend/.env.production
+cp deploy/env/website.production.example main-website/.env.production
+nano backend/.env
+```
+
+Required in `backend/.env`:
+
+- `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` — `openssl rand -hex 32` each
+- `UPLOAD_SIGNING_SECRET` — `openssl rand -hex 32`
+- `DB_PASSWORD` and `DATABASE_URL` matching the role you created
+- `APP_URL=https://app.poshive.store`
+- `API_URL=https://poshive.store`
+- `PLATFORM_DOMAIN=poshive.store`
+
+Frontend production env uses same-origin `/api/v1` so the browser talks to Nginx, not to 8510.
+
+### 4. First deploy
+
+```bash
+cd /opt/codexpos
+./deploy/scripts/deploy.sh
+```
+
+That script:
+
+- installs backend deps and runs migrations
+- builds `frontend` and `main-website`
+- copies `dist/` to `/var/www/codexpos/{frontend,website}`
+- starts `codexpos-api` and `codexpos-worker` with PM2
+- installs the Nginx site and reloads Nginx
+
+Optional seed (demo users):
+
+```bash
+cd /opt/codexpos/backend && npm run seed
+```
+
+| Role | Email | Password |
+|------|-------|----------|
+| Super Admin | admin@codexpos.store | Admin@123456 |
+| Business Owner | owner@demo.codexpos.store | Owner@123456 |
+
+Change those immediately after first login.
+
+### 5. DNS
+
+Point these at the server IP. Terminate HTTPS on 443 (Cloudflare, host panel, or another proxy) and forward to Nginx on **8502**. Public URLs have no port.
+
+| Record | Type | Value |
+|--------|------|-------|
+| `poshive.store` | A | `YOUR_SERVER_IP` |
+| `www.poshive.store` | A | `YOUR_SERVER_IP` |
+| `app.poshive.store` | A | `YOUR_SERVER_IP` |
+| `*.poshive.store` | A | `YOUR_SERVER_IP` |
+
+Browse:
+
+- Marketing: https://poshive.store
+- App / POS: https://app.poshive.store
+- Tenant storefront: https://{slug}.poshive.store
+- Health: https://poshive.store/api/v1/health
+
+### 6. Day-2 commands
+
+```bash
+pm2 status
+pm2 logs codexpos-api
+pm2 logs codexpos-worker
+pm2 restart all
+
+# After a git pull
+cd /opt/codexpos && ./deploy/scripts/deploy.sh
+```
+
+### 7. SSL on a non-80 port
+
+Let's Encrypt HTTP-01 needs port 80. With only 8502–8900 you have two options:
+
+1. **DNS-01** (works without 80/443):
+
+```bash
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot certonly --manual --preferred-challenges dns \
+  -d poshive.store -d '*.poshive.store'
+```
+
+Then add `listen 8503 ssl;` (or another free port in range) and the `ssl_certificate` paths in `deploy/nginx/codexpos.conf`.
+
+2. **Front proxy** that already has 80/443 (Cloudflare, another Nginx, or the host panel) and forwards to `http://127.0.0.1:8502`.
+
+### 8. Backups
+
+```bash
+mkdir -p /opt/codexpos/backups
+0 2 * * * pg_dump -U codexpos -h 127.0.0.1 codexpos_pos | gzip > /opt/codexpos/backups/codexpos_$(date +\%Y\%m\%d).sql.gz
+```
+
+### Security checklist
+
+- [ ] Only UFW ports: SSH + **8502** (do not open 8510 / 5432 / 6379)
+- [ ] Strong DB password and JWT / upload secrets
+- [ ] `PAYMENT_PROVIDER=stripe` (or another real gateway) in production
+- [ ] Seed passwords changed
+- [ ] Automated Postgres backups
+
+---
+
+## Docker Compose (alternative)
+
+### Prerequisites
 
 - Ubuntu 22.04+ server
 - Docker & Docker Compose
-- Domain with wildcard DNS (`*.codexpos.store`)
+- Domain with wildcard DNS (`*.poshive.store`)
 - SSL certificate (Let's Encrypt recommended)
-
-## Production Deployment
 
 ### 1. Server Setup
 
 ```bash
-# Update system
 sudo apt update && sudo apt upgrade -y
-
-# Install Docker
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
-
-# Install Docker Compose
 sudo apt install docker-compose-plugin -y
 ```
 
@@ -31,12 +185,11 @@ cd /opt/eyz-pos
 
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-
-# Edit secrets
 nano backend/.env
 ```
 
 **Required production variables:**
+
 - `JWT_ACCESS_SECRET` — 64+ char random string
 - `JWT_REFRESH_SECRET` — 64+ char random string
 - `DATABASE_URL` — PostgreSQL connection string
@@ -47,12 +200,13 @@ nano backend/.env
 
 | Record | Type | Value |
 |--------|------|-------|
-| codexpos.store | A | YOUR_SERVER_IP |
-| *.codexpos.store | A | YOUR_SERVER_IP |
-| api.codexpos.store | A | YOUR_SERVER_IP |
+| poshive.store | A | YOUR_SERVER_IP |
+| *.poshive.store | A | YOUR_SERVER_IP |
+| app.poshive.store | A | YOUR_SERVER_IP |
 
 **Custom domains (per tenant):**
-- CNAME `www.store.com` → `codexpos.store`
+
+- CNAME `www.store.com` → `poshive.store`
 - TXT `_eyz-verify.store.com` → verification token from admin panel
 
 ### 4. Launch Stack
@@ -71,7 +225,7 @@ docker compose logs -f api worker
 
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d codexpos.store -d www.codexpos.store -d '*.codexpos.store'
+sudo certbot --nginx -d poshive.store -d www.poshive.store -d '*.poshive.store'
 ```
 
 ### 6. Database Backups
@@ -107,18 +261,9 @@ For high-throughput notification queues, use Redis Cluster or managed Redis.
 ## Monitoring
 
 - **Health check:** `GET /api/v1/health`
-- **Logs:** `docker compose logs -f api worker`
+- **PM2 logs:** `pm2 logs`
+- **Docker logs:** `docker compose logs -f api worker`
 - **Queue status:** Redis CLI `LLEN bull:notifications:wait`
-
-## Security Checklist
-
-- [ ] Change all default passwords
-- [ ] Enable firewall (UFW): allow 80, 443, 22 only
-- [ ] Use strong JWT secrets
-- [ ] Enable PostgreSQL SSL
-- [ ] Configure rate limiting
-- [ ] Set up automated backups
-- [ ] Enable audit log retention policy
 
 ## Local Development
 
