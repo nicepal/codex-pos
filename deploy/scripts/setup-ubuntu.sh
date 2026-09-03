@@ -19,7 +19,7 @@ fi
 echo "==> Installing system packages"
 sudo apt-get update
 sudo apt-get install -y curl ca-certificates gnupg lsb-release build-essential \
-  nginx postgresql postgresql-contrib redis-server
+  rsync nginx postgresql postgresql-contrib redis-server
 
 if ! command -v node >/dev/null 2>&1 || [[ "$(node -v | sed 's/v//' | cut -d. -f1)" -lt "${NODE_MAJOR}" ]]; then
   echo "==> Installing Node.js ${NODE_MAJOR}.x"

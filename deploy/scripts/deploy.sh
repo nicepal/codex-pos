@@ -20,6 +20,18 @@ copy_env_if_missing() {
   fi
 }
 
+sync_dist() {
+  local src="$1"
+  local dest="$2"
+  mkdir -p "${dest}"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "${src}/" "${dest}/"
+  else
+    rm -rf "${dest:?}/"*
+    cp -a "${src}/." "${dest}/"
+  fi
+}
+
 copy_env_if_missing "${APP_DIR}/deploy/env/backend.production.example" "${APP_DIR}/backend/.env"
 copy_env_if_missing "${APP_DIR}/deploy/env/frontend.production.example" "${APP_DIR}/frontend/.env.production"
 copy_env_if_missing "${APP_DIR}/deploy/env/website.production.example" "${APP_DIR}/main-website/.env.production"
@@ -32,13 +44,11 @@ echo "==> Running database migrations"
 
 echo "==> Building frontend"
 (cd "${APP_DIR}/frontend" && npm ci && npm run build)
-mkdir -p "${WWW_DIR}/frontend"
-rsync -a --delete "${APP_DIR}/frontend/dist/" "${WWW_DIR}/frontend/"
+sync_dist "${APP_DIR}/frontend/dist" "${WWW_DIR}/frontend"
 
 echo "==> Building marketing website"
 (cd "${APP_DIR}/main-website" && npm ci && npm run build)
-mkdir -p "${WWW_DIR}/website"
-rsync -a --delete "${APP_DIR}/main-website/dist/" "${WWW_DIR}/website/"
+sync_dist "${APP_DIR}/main-website/dist" "${WWW_DIR}/website"
 
 echo "==> Starting / reloading PM2 apps"
 mkdir -p "${HOME}/.pm2"
