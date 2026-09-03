@@ -3,7 +3,8 @@
 # Run as a sudo-capable user. Does not overwrite existing .env files.
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/opt/codexpos}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="${APP_DIR:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 WWW_DIR="${WWW_DIR:-/var/www/codexpos}"
 NODE_MAJOR="${NODE_MAJOR:-20}"
 NGINX_PORT="${NGINX_PORT:-8502}"
