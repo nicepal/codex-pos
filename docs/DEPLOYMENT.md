@@ -42,10 +42,16 @@ chmod +x deploy/scripts/*.sh
 
 ```bash
 sudo -u postgres psql <<'SQL'
-CREATE USER codexpos WITH PASSWORD 'choose-a-strong-password';
-CREATE DATABASE codexpos_pos OWNER codexpos;
-GRANT ALL PRIVILEGES ON DATABASE codexpos_pos TO codexpos;
+CREATE USER poshive WITH PASSWORD 'codexpos@123';
+CREATE DATABASE poshive_pos OWNER poshive;
+GRANT ALL PRIVILEGES ON DATABASE poshive_pos TO poshive;
 SQL
+```
+
+Production `DATABASE_URL` (the `@` in the password must be encoded as `%40`):
+
+```
+postgresql://poshive:codexpos%40123@127.0.0.1:5432/poshive_pos
 ```
 
 ### 3. Environment files
@@ -146,7 +152,7 @@ Then add `listen 8503 ssl;` (or another free port in range) and the `ssl_certifi
 
 ```bash
 mkdir -p /opt/codexpos/backups
-0 2 * * * pg_dump -U codexpos -h 127.0.0.1 codexpos_pos | gzip > /opt/codexpos/backups/codexpos_$(date +\%Y\%m\%d).sql.gz
+0 2 * * * pg_dump -U poshive -h 127.0.0.1 poshive_pos | gzip > /opt/codexpos/backups/poshive_$(date +\%Y\%m\%d).sql.gz
 ```
 
 ### Security checklist

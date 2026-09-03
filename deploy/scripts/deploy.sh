@@ -40,9 +40,13 @@ echo "==> Building marketing website"
 mkdir -p "${WWW_DIR}/website"
 rsync -a --delete "${APP_DIR}/main-website/dist/" "${WWW_DIR}/website/"
 
-echo "==> Starting PM2 apps"
+echo "==> Starting / reloading PM2 apps"
 mkdir -p "${HOME}/.pm2"
-pm2 start "${APP_DIR}/deploy/ecosystem.config.cjs" --env production
+if pm2 describe codexpos-api >/dev/null 2>&1; then
+  pm2 reload "${APP_DIR}/deploy/ecosystem.config.cjs" --env production --update-env
+else
+  pm2 start "${APP_DIR}/deploy/ecosystem.config.cjs" --env production
+fi
 pm2 save
 if command -v sudo >/dev/null 2>&1; then
   sudo env PATH="${PATH}" pm2 startup systemd -u "$(whoami)" --hp "${HOME}" >/tmp/codexpos-pm2-startup.txt || true

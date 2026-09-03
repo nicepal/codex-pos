@@ -4,12 +4,13 @@ PORT=8510
 API_PREFIX=/api/v1
 
 # Database (Postgres stays on localhost; not in the public 8502–8900 range)
-DATABASE_URL=postgresql://codexpos:CHANGE_ME@127.0.0.1:5432/codexpos_pos
+# Password in the URL is URL-encoded: @ → %40
+DATABASE_URL=postgresql://poshive:codexpos%40123@127.0.0.1:5432/poshive_pos
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_NAME=codexpos_pos
-DB_USER=codexpos
-DB_PASSWORD=CHANGE_ME
+DB_NAME=poshive_pos
+DB_USER=poshive
+DB_PASSWORD=codexpos@123
 DB_POOL_MIN=2
 DB_POOL_MAX=20
 
