@@ -200,24 +200,50 @@ class BusinessService {
   }
 
   async upgradePlan(tenantId, planId, billingCycle = 'monthly') {
+    const { ValidationError } = require('../../shared/errors');
+    if (!planId) throw new ValidationError('plan_id is required');
+
+    const cycle = billingCycle === 'annual' ? 'annual' : 'monthly';
+    const periodDays = cycle === 'annual' ? 365 : 30;
+
+    const tenant = await db.query('SELECT id FROM tenants WHERE id = $1', [tenantId]);
+    if (!tenant.rows[0]) throw new NotFoundError('Business not found');
+
     const plan = await db.query('SELECT * FROM plans WHERE id = $1', [planId]);
     if (!plan.rows[0]) throw new NotFoundError('Plan not found');
 
-    await db.query(
-      `UPDATE subscriptions SET status = 'cancelled', cancelled_at = NOW()
-       WHERE tenant_id = $1 AND status IN ('active', 'trialing')`,
-      [tenantId]
-    );
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
 
-    const sub = await db.query(
-      `INSERT INTO subscriptions (tenant_id, plan_id, status, billing_cycle, current_period_start, current_period_end)
-       VALUES ($1, $2, 'active', $3, NOW(), NOW() + INTERVAL '1 month' * CASE WHEN $3 = 'annual' THEN 12 ELSE 1 END)
-       RETURNING *`,
-      [tenantId, planId, billingCycle]
-    );
+      await client.query(
+        `UPDATE subscriptions
+         SET status = 'cancelled', cancelled_at = NOW()
+         WHERE tenant_id = $1 AND status IN ('active', 'trialing')`,
+        [tenantId]
+      );
 
-    await db.query(`UPDATE tenants SET status = 'active' WHERE id = $1`, [tenantId]);
-    return sub.rows[0];
+      const sub = await client.query(
+        `INSERT INTO subscriptions
+           (tenant_id, plan_id, status, billing_cycle, current_period_start, current_period_end)
+         VALUES ($1, $2, 'active', $3, NOW(), NOW() + ($4 || ' days')::interval)
+         RETURNING *`,
+        [tenantId, planId, cycle, String(periodDays)]
+      );
+
+      await client.query(
+        `UPDATE tenants SET status = 'active', trial_ends_at = NULL, updated_at = NOW() WHERE id = $1`,
+        [tenantId]
+      );
+
+      await client.query('COMMIT');
+      return { ...sub.rows[0], plan_name: plan.rows[0].name, plan_slug: plan.rows[0].slug };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async getInvoices(tenantId, query) {

@@ -86,6 +86,17 @@ export default function BusinessDetailPage() {
         Business Overview
       </Typography>
 
+      {action.isError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => action.reset()}>
+          {action.error?.response?.data?.message || 'Action failed'}
+        </Alert>
+      )}
+      {action.isSuccess && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => action.reset()}>
+          {action.data?.data?.message || action.data?.message || 'Updated successfully'}
+        </Alert>
+      )}
+
       <BusinessOverviewDashboard
         dashboard={dashboard}
         plans={plans}
