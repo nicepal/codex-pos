@@ -1,6 +1,6 @@
 ---
 name: POS Gap Analysis
-overview: Codebase-backed gap analysis of Codex POS / PosHive versus Shopify POS, Square, Lightspeed, Loyverse, Zoho, Odoo, Toast, Vend, and Clover — with prioritized missing modules, incomplete flows, Codecanyon value scoring, and a 4-phase roadmap.
+overview: Codebase-backed gap analysis of PosHive / PosHive versus Shopify POS, Square, Lightspeed, Loyverse, Zoho, Odoo, Toast, Vend, and Clover — with prioritized missing modules, incomplete flows, Codecanyon value scoring, and a 4-phase roadmap.
 todos:
   - id: phase1-inventory-returns
     content: "Phase 1: Unify branch_stock + harden returns/serials/batches"
@@ -23,7 +23,7 @@ todos:
 isProject: false
 ---
 
-# Codex POS / PosHive – Missing Features & Product Gap Analysis
+# PosHive / PosHive – Missing Features & Product Gap Analysis
 
 **Audit basis:** Live codebase (migrations 001–014, modules, frontend pages), not marketing claims. Many listed capabilities are **PARTIAL** (schema/API without full sale/restock/UI wiring) or **stubs**.
 

@@ -30,7 +30,7 @@ export default function AnalyticsDemo() {
           <h2 className="section-title">Reports operators can act on</h2>
           <p className="section-lead">
             Business dashboards and reports cover sales, inventory health, and customer signals.
-            Charts in CodexPOS use Recharts. Sample chart below is illustrative only.
+            Charts in PosHive use Recharts. Sample chart below is illustrative only.
           </p>
           <ul className="ana-list">
             <li>Sales and order reporting on Professional+ (seed reports flag)</li>

@@ -1,5 +1,5 @@
 /**
- * CodexPOS reference print agent — polls print job API and logs ESC/POS payload.
+ * PosHive reference print agent — polls print job API and logs ESC/POS payload.
  * Configure API_KEY, API_URL, and optional PRINTER_HOST for a network ESC/POS printer.
  *
  * Usage:

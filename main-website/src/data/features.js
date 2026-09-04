@@ -1,5 +1,5 @@
 /**
- * Marketing feature copy grounded in shipped CodexPOS modules.
+ * Marketing feature copy grounded in shipped PosHive modules.
  * Partial / gated capabilities are labeled. No invented claims.
  */
 export const featureHighlights = [
@@ -22,7 +22,7 @@ export const featureHighlights = [
   {
     id: 'ecommerce',
     title: 'Storefront on your subdomain',
-    body: 'Public shop on {slug}.codexpos.store or a verified custom domain. Cart, checkout, accounts, wishlists, and reviews.',
+    body: 'Public shop on {slug}.poshive.store or a verified custom domain. Cart, checkout, accounts, wishlists, and reviews.',
     href: '/features/ecommerce',
     points: ['Professional+ storefront', 'Custom domains (Omnichannel)', 'Coupons & reviews'],
     layout: 'split',
@@ -33,7 +33,7 @@ export const featurePages = {
   overview: {
     title: 'Everything on one platform',
     description:
-      'CodexPOS combines POS, inventory, multi-tenant storefronts, reports, and developer tooling — with plan limits and feature packs.',
+      'PosHive combines POS, inventory, multi-tenant storefronts, reports, and developer tooling — with plan limits and feature packs.',
     groups: [
       {
         title: 'Sell',
@@ -124,7 +124,7 @@ export const featurePages = {
     sections: [
       {
         heading: 'Reports you can act on',
-        body: 'Business dashboards and reports cover sales, inventory health, and customer signals. Charts in CodexPOS use Recharts.',
+        body: 'Business dashboards and reports cover sales, inventory health, and customer signals. Charts in PosHive use Recharts.',
       },
       {
         heading: 'AI Pro (assistive)',
@@ -132,7 +132,7 @@ export const featurePages = {
       },
       {
         heading: 'What AI is not',
-        body: 'CodexPOS does not claim autonomous buying, guaranteed forecasts, or set-and-forget inventory. Humans stay in control.',
+        body: 'PosHive does not claim autonomous buying, guaranteed forecasts, or set-and-forget inventory. Humans stay in control.',
       },
     ],
   },

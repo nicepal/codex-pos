@@ -1,11 +1,11 @@
-# CodexPOS Complete System Audit
+# PosHive Complete System Audit
 
 **Audit date:** 2026-08-12  
-**Brand:** CodexPOS · **Domain:** codexpos.store  
+**Brand:** PosHive · **Domain:** poshive.store  
 **Scope:** Read-only static review of monorepo at `/Applications/MAMP/htdocs/POS`  
 **Methodology:** Module inventory, frontend→API→service→DB flow tracing, schema cross-checks, threat review. No live penetration test; no product code changes.
 
-> **Stack correction:** CodexPOS is **not Laravel**. It is **Node.js / Express + React / Vite / MUI + PostgreSQL + Redis / BullMQ**, with Socket.IO realtime and optional Stripe / OpenAI / Twilio. Package names and some Docker/nginx strings still say `eyz-pos` / `eyz.com`.
+> **Stack correction:** PosHive is **not Laravel**. It is **Node.js / Express + React / Vite / MUI + PostgreSQL + Redis / BullMQ**, with Socket.IO realtime and optional Stripe / OpenAI / Twilio. Package names and some Docker/nginx strings still say `eyz-pos` / `eyz.com`.
 
 **Honesty scale:** **YES** = end-to-end usable · **PARTIAL** = real code with material gaps · **NO** = absent · **BROKEN** = present but fails / corrupts data · **STUB** = shell or fake completion.
 
@@ -13,7 +13,7 @@
 
 ## 1. Executive Summary
 
-CodexPOS is a **broad multi-tenant SaaS POS + inventory + storefront** with genuine depth in tenancy, RBAC, feature packs, SMTP, Shopify catalog import, smart onboarding (migration 016), full-screen POS (split auto-balance, offline queue, receipt UI), and many newer modules (accounting, manufacturing, marketing, shifts, print, orgs).
+PosHive is a **broad multi-tenant SaaS POS + inventory + storefront** with genuine depth in tenancy, RBAC, feature packs, SMTP, Shopify catalog import, smart onboarding (migration 016), full-screen POS (split auto-balance, offline queue, receipt UI), and many newer modules (accounting, manufacturing, marketing, shifts, print, orgs).
 
 It is **not yet safe as a production POS of record** and **not CodeCanyon-sale ready** without fixing inventory corruption, shift schema breakage, split-payment status bugs, payment-provider defaults, domain/nginx leftovers, and financial edge cases (refund after partial return).
 
@@ -142,7 +142,7 @@ POS/
 | Cash drawer | PARTIAL | Expected cash = opening float only |
 | Stripe billing | PARTIAL | Real when configured; default stub |
 | Domains DNS TXT | YES verify | Host resolve ignores `verification_status` |
-| Nginx subdomain storefront | **BROKEN** | `*.eyz.com` vs `codexpos.store` |
+| Nginx subdomain storefront | **BROKEN** | `*.eyz.com` vs `poshive.store` |
 | Shopify import | YES | No order/inventory bidirectional sync |
 | Storefront checkout coupons/GC | YES | Loyalty redeem NO |
 | Public API + API keys | YES | Prefix `eyz_` |
@@ -167,7 +167,7 @@ POS/
 | **BUG-SHIFT-001** | **P0** | Shifts | List/current SELECT `e.first_name, e.last_name` but `employees` has `name` → runtime SQL failure. | `shifts.service.js` ~44–74; `002_business_operations.sql` employees |
 | **BUG-EMP-001** | **P0** | Employees PIN | PIN verify SELECT `first_name, last_name` → fails. | `employees.routes.js` ~33–45 |
 | **BUG-PAY-001** | **P0** | SaaS payments | `PAYMENT_PROVIDER` defaults to `'stub'`; authenticated `POST /payments/confirm` can complete checkout without Stripe money. | `config/index.js`; `payments.routes.js` `/confirm` |
-| **BUG-NGX-001** | **P0** | Deploy / storefront | Tenant subdomain server_name is `~^(?<subdomain>.+)\.eyz\.com$` while apex is `codexpos.store`. | `docker/nginx/conf.d/eyz.conf` |
+| **BUG-NGX-001** | **P0** | Deploy / storefront | Tenant subdomain server_name is `~^(?<subdomain>.+)\.eyz\.com$` while apex is `poshive.store`. | `docker/nginx/conf.d/eyz.conf` |
 
 ---
 
@@ -241,7 +241,7 @@ Traced against §63-style journeys (static evidence):
 7. Clear empty states when onboarding skipped with zero products.  
 8. Manager override / PIN flows with clearer errors when employee unlinked.  
 9. Reduce business chrome noise; POS already full-screen — keep register keyboard-first.  
-10. Marketing site + app brand consistency (`CodexPOS` everywhere; purge `eyz`).  
+10. Marketing site + app brand consistency (`PosHive` everywhere; purge `eyz`).  
 11. Storefront mobile checkout progress / payment failure clarity.  
 12. Inventory adjustment UI: signed qty or explicit increase/decrease.  
 
@@ -497,10 +497,10 @@ See **§60 Release Roadmap** below (Release 1–5).
 1. Fix `adjust()` to decrement on `transfer` (or use `stock_out`).  
 2. Set `payment_status='paid'` / `payment_method='split'` when payments sum OK.  
 3. Change shifts/employees SQL to `e.name`.  
-4. Nginx: `*.codexpos.store`.  
+4. Nginx: `*.poshive.store`.  
 5. Drawer expected cash = float + cash tenders − cash refunds.  
 6. Production env: `PAYMENT_PROVIDER=stripe`.  
-7. MFA label + API key prefix → CodexPOS.  
+7. MFA label + API key prefix → PosHive.  
 8. Expose tax + payment-mix report tabs.  
 9. Disable `/payments/confirm` stub path in production.  
 10. Document employee must link `user_id` for PIN until auth fixed.  
@@ -517,7 +517,7 @@ See **§60 Release Roadmap** below (Release 1–5).
 - [x] BUG-NGX-001  
 - [x] BUG-DRW-001  
 - [x] BUG-DOM-001 verified-only routing  
-- [x] Brand purge `eyz` → CodexPOS *(app-facing: MFA, API keys `cdx_`, offline DB, logger, nginx; docker DB creds/container names left for deploy continuity)*  
+- [x] Brand purge `eyz` → PosHive *(app-facing: MFA, API keys `cdx_`, offline DB, logger, nginx; docker DB creds/container names left for deploy continuity)*  
 - [ ] Workers running in prod compose  
 - [x] Smoke e2e: financial integrity unit tests + Playwright live-gated smoke (`E2E_LIVE=1`)  
 
@@ -564,7 +564,7 @@ See **§60 Release Roadmap** below (Release 1–5).
 
 ## RELEASE 1 — MUST FIX (blockers / financial integrity)
 
-Transfer decrement, refund vs return, shifts/PIN SQL, split `payment_status`, payment stub hardening, nginx `codexpos.store`, drawer expected cash, inventory adjustment sign, brand-critical env defaults.
+Transfer decrement, refund vs return, shifts/PIN SQL, split `payment_status`, payment stub hardening, nginx `poshive.store`, drawer expected cash, inventory adjustment sign, brand-critical env defaults.
 
 ## RELEASE 2 — COMMERCIAL READY
 
@@ -591,7 +591,7 @@ Shopify bidirectional, real marketplaces, accounting auto-post, real OIDC, franc
 3. Harden payments: no stub activation in production (BUG-PAY-001)  
 4. Fix split payment `payment_status` (BUG-POS-001)  
 5. Fix shifts + employee PIN SQL (BUG-SHIFT-001 / BUG-EMP-001)  
-6. Fix nginx tenant subdomain to `codexpos.store` (BUG-NGX-001)  
+6. Fix nginx tenant subdomain to `poshive.store` (BUG-NGX-001)  
 7. Fix drawer expected cash from cash tenders (BUG-DRW-001)  
 8. Fix inventory adjustment decrement path (BUG-INV-002)  
 9. Fix unlinked PIN auth session (BUG-AUTH-001 / 002)  
@@ -611,10 +611,10 @@ Shopify bidirectional, real marketplaces, accounting auto-post, real OIDC, franc
 
 # 65. Final Decision
 
-### 1. Is CodexPOS currently safe to use as a production POS?
+### 1. Is PosHive currently safe to use as a production POS?
 **No** — not as system of record for multi-branch inventory or shift cash control. Single-branch cash/card-record POS may work for demos after avoiding transfers/refunds/shifts bugs.
 
-### 2. Is CodexPOS ready for commercial sale?
+### 2. Is PosHive ready for commercial sale?
 **No** — CodeCanyon / paid SaaS sale would be misleading until Release 1 (+ branding/payment defaults). Core story is strong; integrity and honesty gaps remain.
 
 ### 3. What are the 5 biggest weaknesses?
@@ -640,7 +640,7 @@ BUG-INV-001, BUG-ORD-001, BUG-POS-001, BUG-PAY-001, BUG-DRW-001, BUG-BND-001, ta
 ### 7. What UX problems could slow cashiers down?
 Broken PIN unlock, no gift/loyalty tender, tax mismatch errors on split, shift screens erroring, empty product grid if search/browse regression, offline without receipt, no forced drawer/shift discipline.
 
-### 8. What features would make CodexPOS more competitive?
+### 8. What features would make PosHive more competitive?
 Terminals + printers, bidirectional Shopify, real promotions, loyalty at register, vertical modes, auto accounting, true offline-first conflict UI.
 
 ### 9. What should NOT be built yet?

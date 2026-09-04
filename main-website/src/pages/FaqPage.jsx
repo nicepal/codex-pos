@@ -6,7 +6,7 @@ import FinalCta from '../sections/FinalCta';
 export default function FaqPage() {
   usePageMeta({
     title: 'FAQ',
-    description: 'Frequently asked questions about CodexPOS plans, feature packs, Shopify, and AI.',
+    description: 'Frequently asked questions about PosHive plans, feature packs, Shopify, and AI.',
     path: '/faq',
   });
 

@@ -1,4 +1,4 @@
--- Codex POS: Support, CMS, notifications, affiliates
+-- PosHive: Support, CMS, notifications, affiliates
 -- Migration: 003_platform_features
 
 -- ============================================================

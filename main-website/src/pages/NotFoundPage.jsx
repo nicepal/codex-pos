@@ -4,7 +4,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 export default function NotFoundPage() {
   usePageMeta({
     title: 'Page not found',
-    description: 'The page you requested does not exist on CodexPOS.',
+    description: 'The page you requested does not exist on PosHive.',
     path: '/404',
   });
 
@@ -12,7 +12,7 @@ export default function NotFoundPage() {
     <div className="page-shell">
       <div className="container page-hero">
         <h1>Page not found</h1>
-        <p>That route is not part of the CodexPOS marketing site.</p>
+        <p>That route is not part of the PosHive marketing site.</p>
         <Link className="btn btn-primary" to="/">
           Back home
         </Link>

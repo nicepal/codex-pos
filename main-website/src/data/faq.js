@@ -1,7 +1,7 @@
 export const faqItems = [
   {
-    q: 'What is CodexPOS?',
-    a: 'CodexPOS is a multi-tenant SaaS for point of sale, inventory, and tenant eCommerce storefronts. Businesses run on shared infrastructure with strict tenant_id isolation.',
+    q: 'What is PosHive?',
+    a: 'PosHive is a multi-tenant SaaS for point of sale, inventory, and tenant eCommerce storefronts. Businesses run on shared infrastructure with strict tenant_id isolation.',
   },
   {
     q: 'How does pricing work?',
@@ -17,7 +17,7 @@ export const faqItems = [
   },
   {
     q: 'Do you replace Shopify?',
-    a: 'No. CodexPOS includes Shopify product import (GraphQL bulk ops + worker). You can run a CodexPOS storefront separately; marketplace channels are stubs, not full marketplace networks.',
+    a: 'No. PosHive includes Shopify product import (GraphQL bulk ops + worker). You can run a PosHive storefront separately; marketplace channels are stubs, not full marketplace networks.',
   },
   {
     q: 'What does AI do today?',
@@ -36,7 +36,7 @@ export const faqItems = [
     a: 'The business app lives separately from this marketing site. Use Login / Get Started to open the app login or register routes.',
   },
   {
-    q: 'Who is CodexPOS for?',
+    q: 'Who is PosHive for?',
     a: 'Single-location retailers, multi-branch shops, and teams that want POS + inventory + optional online storefront on one multi-tenant platform.',
   },
 ];

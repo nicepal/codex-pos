@@ -1,4 +1,4 @@
-# CodexPOS POS Implementation Log
+# PosHive POS Implementation Log
 
 Date: 2026-08-12
 

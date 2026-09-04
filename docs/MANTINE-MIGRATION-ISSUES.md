@@ -1,6 +1,6 @@
-# CodexPOS Mantine Migration Issues
+# PosHive Mantine Migration Issues
 
-**Brand:** CodexPOS  
+**Brand:** PosHive  
 **Started:** 2026-08-12  
 **Updated:** 2026-08-13
 
@@ -24,7 +24,7 @@ Track bugs found during the Mantine migration. Prefer fixing UI-only issues safe
 |----|------|------------|
 | LONG-1 | Admin/business shell | Business (and Admin) `ResponsiveDrawer` → Mantine AppShell; shared dashboard primitives migrated. |
 | — | Dual CSS reset | Kept single MUI `CssBaseline`; Mantine styles imported once in `AppThemeProvider`. |
-| — | Brand naming | Shell title uses **CodexPOS**. |
+| — | Brand naming | Shell title uses **PosHive**. |
 | DOC-1 | Kitchen docs | Phase 3 complete (prior). |
 | RISK-1 | Dual modals | Ops on CodexModal; ConfirmDialog/FormDialog now Mantine for dashboard. |
 | UI-1 | ReturnRefundDialog | Migrated earlier. |

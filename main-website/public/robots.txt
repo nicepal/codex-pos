@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://codexpos.store/sitemap.xml
+Sitemap: https://poshive.store/sitemap.xml

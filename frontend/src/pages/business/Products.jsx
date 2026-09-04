@@ -7,19 +7,20 @@ import {
   Badge,
   Group,
   NativeSelect,
-  Textarea,
   TextInput,
   Tooltip,
   SimpleGrid,
 } from '@mantine/core';
-import { Add, Edit, Delete, Visibility, Image, ContentCopy, UploadFile } from '@mui/icons-material';
+import { Add, Edit, Delete, Visibility, Image, ContentCopy, UploadFile, Download } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
+import { Button as MuiButton, Stack as MuiStack } from '@mui/material';
 import api from '../../services/api';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
 import RHFTextField from '../../components/RHFTextField';
+import RHFRichTextEditor from '../../components/RHFRichTextEditor';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
@@ -28,6 +29,7 @@ import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import { formatDisplayText } from '../../utils/displayText';
 import useTenantFeatures from '../../hooks/useTenantFeatures';
 import ProductsImportWizard from '../../components/ProductsImportWizard';
+import { downloadProductImportSampleExcel } from '../../utils/productImport';
 
 const empty = emptyPresetProps('products');
 
@@ -82,7 +84,7 @@ export default function ProductsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
   const { hasFeature } = useTenantFeatures();
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, control } = useForm();
 
   const queryParams = {
     page,
@@ -249,18 +251,29 @@ export default function ProductsPage() {
       <PageHeader
         title="Products"
         subtitle="Manage catalog, pricing, and stock"
-        actionLabel="Add Product"
-        actionIcon={<Add />}
-        onAction={() => openForm()}
-        secondaryAction={
-          hasFeature('catalog_pro')
-            ? {
-                label: 'Import CSV',
-                icon: <UploadFile />,
-                onClick: () => setImportOpen(true),
-              }
-            : undefined
-        }
+        action={(
+          <MuiStack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <MuiButton
+              variant="outlined"
+              startIcon={<Download />}
+              onClick={downloadProductImportSampleExcel}
+            >
+              Sample Excel
+            </MuiButton>
+            {hasFeature('catalog_pro') && (
+              <MuiButton
+                variant="outlined"
+                startIcon={<UploadFile />}
+                onClick={() => setImportOpen(true)}
+              >
+                Bulk Import
+              </MuiButton>
+            )}
+            <MuiButton variant="contained" startIcon={<Add />} onClick={() => openForm()}>
+              Add Product
+            </MuiButton>
+          </MuiStack>
+        )}
       />
 
       <Group gap="md" mb="md" wrap="wrap" align="flex-end">
@@ -396,7 +409,7 @@ export default function ProductsPage() {
           {...register('status')}
           data={STATUSES.map((s) => ({ value: s, label: formatDisplayText(s) }))}
         />
-        <Textarea label="Description" minRows={3} w="100%" {...register('description')} />
+        <RHFRichTextEditor control={control} name="description" label="Description" minHeight={140} />
       </FormDialog>
 
       <ConfirmDialog

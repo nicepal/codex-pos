@@ -8,7 +8,7 @@ export default function Hero() {
     <section className="hero">
       <div className="container hero-grid">
         <div className="hero-copy anim-fade-up">
-          <p className="hero-brand">CodexPOS</p>
+          <p className="hero-brand">PosHive</p>
           <h1>POS, inventory, and storefront — one platform.</h1>
           <p className="hero-lead">
             Multi-tenant retail software for growing shops. Checkout that survives offline, stock

@@ -1,4 +1,4 @@
--- Codex POS: Business operations tables (products, inventory, orders, POS)
+-- PosHive: Business operations tables (products, inventory, orders, POS)
 -- Migration: 002_business_operations
 
 -- ============================================================

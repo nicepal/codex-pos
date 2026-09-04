@@ -11,7 +11,7 @@ export default function FeatureBlocks() {
     <section className="section features-home" id="features" ref={ref}>
       <div className={`container reveal ${visible ? 'is-visible' : ''}`}>
         <p className="section-label">Capabilities</p>
-        <h2 className="section-title">What CodexPOS ships today</h2>
+        <h2 className="section-title">What PosHive ships today</h2>
         <p className="section-lead">
           Core retail ops on one tenant — with feature packs for depth. No invented marketplace
           networks or autonomous AI buying.

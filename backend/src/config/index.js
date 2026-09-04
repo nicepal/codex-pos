@@ -32,11 +32,11 @@ module.exports = {
   },
 
   app: {
-    name: process.env.APP_NAME || 'Codex POS',
+    name: process.env.APP_NAME || 'PosHive',
     url: process.env.APP_URL || 'http://localhost:3000',
     apiUrl: process.env.API_URL || 'http://localhost:5000',
-    platformDomain: process.env.PLATFORM_DOMAIN || 'codexpos.store',
-    storefrontDomain: process.env.STOREFRONT_DOMAIN || 'codexpos.store',
+    platformDomain: process.env.PLATFORM_DOMAIN || 'poshive.store',
+    storefrontDomain: process.env.STOREFRONT_DOMAIN || 'poshive.store',
   },
 
   smtp: {
@@ -44,7 +44,7 @@ module.exports = {
     port: parseInt(process.env.SMTP_PORT, 10) || 587,
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-    from: process.env.SMTP_FROM || 'noreply@codexpos.store',
+    from: process.env.SMTP_FROM || 'noreply@poshive.store',
   },
 
   storage: {

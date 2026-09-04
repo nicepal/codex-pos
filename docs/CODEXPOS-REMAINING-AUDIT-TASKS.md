@@ -1,4 +1,4 @@
-# CodexPOS — Remaining Audit Tasks
+# PosHive — Remaining Audit Tasks
 Date: 2026-08-12
 
 ## Executive Summary (counts)
@@ -21,7 +21,7 @@ Reconciliation of `CODEXPOS-SYSTEM-AUDIT.md`, `CODEXPOS-AUDIT-FIXES.md` (Pass 1�
 
 # P0 — Critical Remaining Work
 
-No open P0 code blockers remain from the original audit. Pass 1–3 fixes were spot-checked in source (transfer decrement, refund restock math, shifts/PIN SQL, split `payment_status`, payment stub gating, nginx `*.codexpos.store`, drawer expected cash, branch_stock sync, offline receipt, logout revocation, etc.). See **Already Completed** and **Regressions**.
+No open P0 code blockers remain from the original audit. Pass 1–3 fixes were spot-checked in source (transfer decrement, refund restock math, shifts/PIN SQL, split `payment_status`, payment stub gating, nginx `*.poshive.store`, drawer expected cash, branch_stock sync, offline receipt, logout revocation, etc.). See **Already Completed** and **Regressions**.
 
 | ID | Feature | Status | Evidence | Current implementation | Missing piece | Files | API | Database | Recommended fix |
 |----|---------|--------|----------|------------------------|---------------|-------|-----|----------|-----------------|
@@ -47,7 +47,7 @@ No open P0 code blockers remain from the original audit. Pass 1–3 fixes were s
 | STOREFRONT-LOY | Storefront loyalty redeem | MISSING | `Checkout.jsx` coupons + gift cards; earn on checkout | Loyalty earn async after paid order | Redeem points as checkout tender | `storefront.checkout.service.js`, `Checkout.jsx`, `loyalty.service.js` | `POST /storefront/checkout` | `loyalty_transactions` | Mirror POS loyalty tender: points→discount line at checkout |
 | SEC-UPLOAD | Upload access control | NEEDS VERIFICATION | `media.routes.js` mixed public/signed; audit flagged cross-tenant reads | Signed URLs for private media; some `public` cache headers | Confirm tenant isolation on `/uploads` paths | `backend/src/modules/media/*`, `upload.service.js` | `GET /uploads/*` | `media` | Audit static handler; enforce signed URLs for non-catalog assets |
 | BUG-AI-001 | AI feature gating | PARTIALLY IMPLEMENTED | `ai.routes.js` — forecast/chat gated; reorder/insights open | `requireFeature('ai_pro')` on advanced routes | `/ai/reorder-suggestions`, `/ai/insights` lack `ai_pro` gate | `backend/src/modules/ai/ai.routes.js` | `GET /ai/reorder-suggestions`, `POST /ai/insights` | — | Add `requireFeature('ai_pro')` or move to base plan explicitly |
-| BRAND-EYZ-DOCKER | Docker/DB `eyz_*` naming | DEFERRED | `docker-compose.yml` `eyz-worker`; `config` defaults `eyz_pos` | App-facing CodexPOS branding done | Container names, DB creds, S3 bucket `eyz-pos` | `docker-compose.yml`, `backend/src/config/index.js` | — | — | Coordinated migration with volume/URL cutover (see Deferred) |
+| BRAND-EYZ-DOCKER | Docker/DB `eyz_*` naming | DEFERRED | `docker-compose.yml` `eyz-worker`; `config` defaults `eyz_pos` | App-facing PosHive branding done | Container names, DB creds, S3 bucket `eyz-pos` | `docker-compose.yml`, `backend/src/config/index.js` | — | — | Coordinated migration with volume/URL cutover (see Deferred) |
 
 ---
 
@@ -93,7 +93,7 @@ Pass 1–3 fixes from `CODEXPOS-AUDIT-FIXES.md` verified in code (not listed as 
 | BUG-SHIFT-001 | Shifts use `employees.name` |
 | BUG-EMP-001 | PIN verify uses `employees.name` |
 | BUG-PAY-001 | Production defaults `PAYMENT_PROVIDER=stripe`; stub confirm gated |
-| BUG-NGX-001 | Nginx tenant vhost `*.codexpos.store` |
+| BUG-NGX-001 | Nginx tenant vhost `*.poshive.store` |
 | BUG-POS-001 | `derivePaymentFields` sets `payment_status=paid` for split/gift card |
 | BUG-AUTH-001/002 | PIN requires linked user; POS unlock via verify-pin |
 | BUG-DRW-001 | Drawer expected cash = float + cash sales − refunds + movements |
@@ -105,7 +105,7 @@ Pass 1–3 fixes from `CODEXPOS-AUDIT-FIXES.md` verified in code (not listed as 
 | BUG-ROLE-001 | `custom_role_id` merged in auth middleware |
 | FEAT-POS-GC | Gift card tender dialog + button |
 | FEAT-POS-LOY | Loyalty tender dialog + backend redeem |
-| BRAND-EYZ | MFA `CodexPOS:`, API keys `cdx_`, offline DB, logger, nginx |
+| BRAND-EYZ | MFA `PosHive:`, API keys `cdx_`, offline DB, logger, nginx |
 | Reports | Tax + payment-mix tabs in `Reports.jsx` |
 | TEST-E2E | `financial-integrity.test.js`; Playwright live-gated |
 | BUG-POS-002 | POS tax via `posTax.js` + `tax_rules` |
@@ -151,11 +151,11 @@ Spot-checks of Pass 1–3 fixes found **no regressions**. Key checks:
 - `branch-stock.service.js`: `_isDecrement('transfer')` → decrement
 - `orders.helpers.js`: `derivePaymentFields` for split payments
 - `shifts.service.js` / `employees.routes.js`: `e.name`
-- `docker/nginx/conf.d/eyz.conf`: `*.codexpos.store`
+- `docker/nginx/conf.d/eyz.conf`: `*.poshive.store`
 - `drawer.service.js`: `computeExpected` includes cash tenders
 - `frontend/public/sw.js`: `codexpos-pos-shell-v3`
 - `POS.jsx`: `buildOfflineReceiptData`, `RegisterGate`, gift/loyalty dialogs
-- `auth.service.js`: MFA label `CodexPOS:`, `hashToken` on reset
+- `auth.service.js`: MFA label `PosHive:`, `hashToken` on reset
 
 ---
 
@@ -170,7 +170,7 @@ Spot-checks of Pass 1–3 fixes found **no regressions**. Key checks:
 | VERIFY-PRINT | Hardware | External agent claims `POST /print/jobs/claim` and completes ESC-POS job |
 | VERIFY-SSO | Enterprise | OIDC with real IdP; confirm stub disabled in production |
 | VERIFY-RACE | POS | Two registers selling last unit simultaneously — expect one failure |
-| VERIFY-SUBDOMAIN | Deploy | `{slug}.codexpos.store` storefront on Docker nginx |
+| VERIFY-SUBDOMAIN | Deploy | `{slug}.poshive.store` storefront on Docker nginx |
 | VERIFY-UPLOAD | Security | Cross-tenant media URL access attempts |
 
 ---

@@ -1,6 +1,6 @@
 export const nav = {
   product: [
-    { label: 'Overview', href: '/features', description: 'What CodexPOS includes today' },
+    { label: 'Overview', href: '/features', description: 'What PosHive includes today' },
     { label: 'POS', href: '/features/pos', description: 'Checkout, tips, gift cards, offline queue' },
     { label: 'Inventory', href: '/features/inventory', description: 'Stock, transfers, purchase orders' },
     { label: 'Storefront', href: '/features/ecommerce', description: 'Tenant shops & custom domains' },

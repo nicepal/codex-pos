@@ -1,10 +1,10 @@
-# CodexPOS Restaurant + KDS
+# PosHive Restaurant + KDS
 
 Date: 2026-08-12
 
 ## Overview
 
-Restaurant Pro extends CodexPOS with table/floor management, dining sessions, restaurant POS mode, product modifiers, and a live kitchen display (KDS).
+Restaurant Pro extends PosHive with table/floor management, dining sessions, restaurant POS mode, product modifiers, and a live kitchen display (KDS).
 
 Feature pack: **`restaurant_pro`** (enable in Settings → Feature packs; included on Enterprise plan defaults).
 

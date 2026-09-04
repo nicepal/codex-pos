@@ -5,6 +5,7 @@ import { Notifications } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import useRealtime from '../hooks/useRealtime';
+import { stripHtmlToText } from '../utils/displayText';
 
 export default function NotificationBell() {
   const [opened, setOpened] = useState(false);
@@ -74,11 +75,11 @@ export default function NotificationBell() {
             >
               <Stack gap={2}>
                 <Text size="sm" fw={n.read_at ? 400 : 700}>
-                  {n.title || n.type}
+                  {stripHtmlToText(n.title || n.type)}
                 </Text>
                 {n.message ? (
                   <Text size="xs" c="dimmed" lineClamp={2}>
-                    {n.message}
+                    {stripHtmlToText(n.message)}
                   </Text>
                 ) : null}
               </Stack>

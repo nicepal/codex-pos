@@ -20,7 +20,7 @@ export default function SetupConfirm({ businessType, typeMeta, onBack }) {
         Ready to set up {typeMeta?.label || 'your business'}?
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Codex POS will create a light starter catalog. You can edit or delete everything afterward.
+        PosHive will create a light starter catalog. You can edit or delete everything afterward.
       </Typography>
 
       <Paper

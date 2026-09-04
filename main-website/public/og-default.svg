@@ -8,7 +8,7 @@
     <path d="M41.5 32.5h12v5.8H47.5v4.2H53v5.8H41.5V32.5z" fill="#0B1F2A"/>
     <path d="M53.5 49.5h12.8v6.2H35.5V38h6v11.5z" fill="#0B1F2A"/>
   </g>
-  <text x="220" y="275" font-family="Inter, system-ui, sans-serif" font-size="72" font-weight="700" letter-spacing="-0.04em" fill="#F4F7F6">CodexPOS</text>
+  <text x="220" y="275" font-family="Inter, system-ui, sans-serif" font-size="72" font-weight="700" letter-spacing="-0.04em" fill="#F4F7F6">PosHive</text>
   <text x="96" y="360" font-family="Inter, system-ui, sans-serif" font-size="36" font-weight="500" fill="#9BB0BC">POS, inventory &amp; storefront � one platform</text>
-  <text x="96" y="430" font-family="Inter, system-ui, sans-serif" font-size="28" fill="#14B8A6">codexpos.store</text>
+  <text x="96" y="430" font-family="Inter, system-ui, sans-serif" font-size="28" fill="#14B8A6">poshive.store</text>
 </svg>

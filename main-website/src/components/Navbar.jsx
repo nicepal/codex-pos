@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import CodexPOSLogo from './CodexPOSLogo';
+import PosHiveLogo from './PosHiveLogo';
 import { nav } from '../data/navigation';
 import { loginUrl, registerUrl } from '../data/site';
 import './Navbar.css';
@@ -150,7 +150,7 @@ export default function Navbar() {
   return (
     <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`} ref={navRef}>
       <div className="container site-header-inner">
-        <CodexPOSLogo size="md" variant="light" />
+        <PosHiveLogo size="md" variant="light" />
         <nav className="nav-desktop" aria-label="Primary">
           {DESKTOP_MENUS.map((menu) => (
             <Dropdown

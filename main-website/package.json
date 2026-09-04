@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "CodexPOS marketing website — codexpos.store",
+  "description": "PosHive marketing website — poshive.store",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

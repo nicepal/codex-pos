@@ -132,7 +132,7 @@ export default function SmtpSettingsPage() {
               <TextField fullWidth label="From Email" placeholder="noreply@domain.com" value={form.from_email} onChange={setField('from_email')} required />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="From Name" placeholder="POSHive" value={form.from_name} onChange={setField('from_name')} />
+              <TextField fullWidth label="From Name" placeholder="PosHive" value={form.from_name} onChange={setField('from_name')} />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField fullWidth label="Reply-To Email" placeholder="support@domain.com" value={form.reply_to_email} onChange={setField('reply_to_email')} />

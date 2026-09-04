@@ -1,7 +1,7 @@
 import { useReveal } from '../hooks/useReveal';
 import './DeveloperPlatform.css';
 
-const snippet = `curl -s https://api.codexpos.store/api/v1/public/v1/products \\
+const snippet = `curl -s https://api.poshive.store/api/v1/public/v1/products \\
   -H "Authorization: Bearer cx_live_***" \\
   -H "X-Tenant-Slug: demo"`;
 

@@ -14,7 +14,7 @@ export default function ContactPage() {
 
   usePageMeta({
     title: 'Contact',
-    description: 'Contact the CodexPOS team about plans, demos, or partnership.',
+    description: 'Contact the PosHive team about plans, demos, or partnership.',
     path: '/contact',
   });
 
@@ -47,7 +47,7 @@ export default function ContactPage() {
     <div className="page-shell">
       <header className="container page-hero">
         <p className="section-label">Contact</p>
-        <h1>Talk with CodexPOS</h1>
+        <h1>Talk with PosHive</h1>
         <p>
           Questions about plans, Shopify import, or enterprise packs? Email{' '}
           <a href={`mailto:${site.email}`}>{site.email}</a> or send a note below.

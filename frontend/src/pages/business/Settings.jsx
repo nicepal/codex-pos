@@ -394,7 +394,7 @@ export default function SettingsPage() {
                       multiline
                       rows={2}
                       {...register('footer_text')}
-                      placeholder="Powered by Codex POS"
+                      placeholder="Powered by PosHive"
                       disabled={!storefrontEnabled}
                     />
                   </Grid>

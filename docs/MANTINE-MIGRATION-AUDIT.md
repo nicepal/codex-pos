@@ -1,7 +1,7 @@
-# CodexPOS Mantine Migration Audit (Phase 0)
+# PosHive Mantine Migration Audit (Phase 0)
 
 **Date:** 2026-08-12  
-**Brand:** CodexPOS only  
+**Brand:** PosHive only  
 **Scope:** Operational UIs (POS / Restaurant / KDS / Customer Display). Admin & business back-office stay on MUI.
 
 ---
@@ -57,7 +57,7 @@ No Mantine today. No Tailwind / Bootstrap / Chakra / Ant / shadcn.
 - Icons: `@mui/icons-material` everywhere (keep during transition; no need for Tabler unless desired later)
 - Shared admin primitives reused from POS: `EmptyState`, `ConfirmDialog`, `FeatureGate`
 
-**Brand colors (CodexPOS blue):**
+**Brand colors (PosHive blue):**
 
 - Primary `#2563eb` / dark `#1d4ed8` / light `#3b82f6`
 - Secondary `#7c3aed` (admin accent — operational UI can de-emphasize)
@@ -77,7 +77,7 @@ No Mantine today. No Tailwind / Bootstrap / Chakra / Ant / shadcn.
 | `FormDialog`, RHF fields | Admin forms | Stay MUI |
 | `LoadingState` | Auth gate | Stay MUI |
 | `FeatureGate` | KDS, restaurant | Keep (logic wrapper; UI chrome can change underneath) |
-| Storefront `storefrontTheme.js` | Tenant branding | Separate system — do not fold into CodexPOS Mantine theme |
+| Storefront `storefrontTheme.js` | Tenant branding | Separate system — do not fold into PosHive Mantine theme |
 
 ---
 
@@ -196,14 +196,14 @@ Doc debt: update `CODEXPOS-RESTAURANT-KDS.md` Phase 3 section when convenient; t
 
 ## 10. Storefront evaluation (audit only)
 
-Storefront already has a **tenant-driven** theme (`storefrontTheme.js`), custom hero/cart/checkout, and public unauthenticated routes. Blindly converting to CodexPOS Mantine would fight merchant branding. **Recommendation:** leave on MUI (or current hybrid) until ops migration is stable; revisit as a separate project.
+Storefront already has a **tenant-driven** theme (`storefrontTheme.js`), custom hero/cart/checkout, and public unauthenticated routes. Blindly converting to PosHive Mantine would fight merchant branding. **Recommendation:** leave on MUI (or current hybrid) until ops migration is stable; revisit as a separate project.
 
 ---
 
 ## 11. Success criteria for early phases
 
 - Admin/business screens unchanged and still MUI  
-- POS shell visually Mantine with CodexPOS blue tokens  
+- POS shell visually Mantine with PosHive blue tokens  
 - Dual providers: MUI + Mantine coexist  
 - Cart/payment/kitchen logic untouched  
 - `npm run build` passes  

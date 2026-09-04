@@ -17,7 +17,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function HomePage() {
   usePageMeta({
-    title: 'CodexPOS — POS, Inventory & Storefront',
+    title: 'PosHive — POS, Inventory & Storefront',
     description:
       'Multi-tenant POS, inventory, and storefront platform. Plans from $29/mo with trials. Shopify import, Stripe billing, API & webhooks.',
     path: '/',

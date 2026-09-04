@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import './CodexPOSLogo.css';
+import './PosHiveLogo.css';
 
 const SIZES = {
   sm: { mark: 28, word: 16 },
@@ -36,13 +36,13 @@ function Mark({ size, variant }) {
 }
 
 /**
- * Official CodexPOS brand lockup.
+ * Official PosHive brand lockup.
  * @param {'light'|'dark'} variant
  * @param {'sm'|'md'|'lg'} size
  * @param {boolean} link — wrap in home Link (default true)
  * @param {boolean} markOnly — hide wordmark
  */
-export default function CodexPOSLogo({
+export default function PosHiveLogo({
   variant = 'light',
   size = 'md',
   link = true,
@@ -70,7 +70,7 @@ export default function CodexPOSLogo({
             letterSpacing="-0.04em"
             fill="currentColor"
           >
-            CodexPOS
+            PosHive
           </text>
         </svg>
       )}
@@ -79,7 +79,7 @@ export default function CodexPOSLogo({
 
   if (!link) return content;
   return (
-    <Link to="/" className="codexpos-logo-link" aria-label="CodexPOS home">
+    <Link to="/" className="codexpos-logo-link" aria-label="PosHive home">
       {content}
     </Link>
   );

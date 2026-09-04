@@ -1,6 +1,6 @@
-# PROJECT BRIEF — Codex POS
+# PROJECT BRIEF — PosHive
 
-You are helping me work on **Codex POS** (domain **codexpos.store**). This is a production multi-tenant SaaS Point of Sale + Inventory + eCommerce storefront platform.
+You are helping me work on **PosHive** (domain **poshive.store**). This is a production multi-tenant SaaS Point of Sale + Inventory + eCommerce storefront platform.
 
 Treat this document as the source of truth for architecture, stack, folders, modules, auth, tenancy, and conventions. Prefer matching existing patterns over inventing new ones.
 
@@ -8,19 +8,19 @@ Treat this document as the source of truth for architecture, stack, folders, mod
 
 ## 1. What the product is
 
-**Codex POS** is a multi-tenant SaaS where:
+**PosHive** is a multi-tenant SaaS where:
 
 1. **Super Admin** runs the platform (tenants, plans, billing, CMS, support, SMTP, email templates/logs).
 2. **Business owners / staff** run a tenant dashboard: POS, products, inventory, orders, customers, team, reports, settings, integrations.
-3. **Public customers** shop on a **tenant storefront** (`{slug}.codexpos.store` or custom domain).
+3. **Public customers** shop on a **tenant storefront** (`{slug}.poshive.store` or custom domain).
 
 Target: many businesses on one shared PostgreSQL schema, isolated by `tenant_id`.
 
 Live-style domains:
 
-- App / admin UI: `codexpos.store` (and admin routes under `/admin`)
-- API: `api.codexpos.store`
-- Storefronts: `{tenant-slug}.codexpos.store` or custom domains via `tenant_domains`
+- App / admin UI: `poshive.store` (and admin routes under `/admin`)
+- API: `api.poshive.store`
+- Storefronts: `{tenant-slug}.poshive.store` or custom domains via `tenant_domains`
 
 ---
 
@@ -61,7 +61,7 @@ POS/
 └── README.md
 ```
 
-Package names still say `eyz-pos-*` in places; product branding is **Codex POS** / **CodexPOS** and domain **codexpos.store**.
+Package names still say `eyz-pos-*` in places; product branding is **PosHive** / **PosHive** and domain **poshive.store**.
 
 ---
 
@@ -265,8 +265,8 @@ npm run seed
 
 | Role | Email | Password |
 |------|-------|----------|
-| Super Admin | admin@codexpos.store | Admin@123456 |
-| Business Owner | owner@demo.codexpos.store | Owner@123456 |
+| Super Admin | admin@poshive.store | Admin@123456 |
+| Business Owner | owner@demo.poshive.store | Owner@123456 |
 
 After fresh migrate on a server, **seed is required** or business signup can fail (missing `business_owner` role).
 
@@ -301,7 +301,7 @@ Redis must be running for queues; if Redis is down, some email paths may fall ba
 
 Typical AWS layout:
 
-- Nginx → `api.codexpos.store` → Node backend
+- Nginx → `api.poshive.store` → Node backend
 - Separate PM2 processes for **frontend** and **backend** (restarting frontend does **not** load new API routes)
 - After `git pull` on backend: `npm install`, `npm run migrate`, optionally `npm run seed`, then **restart the backend PM2 process**
 - Missing route `PUT /api/v1/admin/email/smtp` with JSON `code: NOT_FOUND` means Express is running **old code** (route not mounted), not an Nginx miss
@@ -334,7 +334,7 @@ When changing this codebase:
 7. Wire new admin/business pages into `App.jsx` + the correct layout nav.
 8. Add SQL migrations as new numbered files; do not rewrite old migrations casually.
 9. Queue heavy/async work via BullMQ when similar features already do.
-10. Do not commit secrets (`.env`). Domain branding is **codexpos.store**, not eyz.com.
+10. Do not commit secrets (`.env`). Domain branding is **poshive.store**, not eyz.com.
 
 ---
 

@@ -1,4 +1,4 @@
-# Codex POS Deployment Guide
+# PosHive Deployment Guide
 
 Two supported paths:
 
@@ -97,8 +97,8 @@ cd /opt/codexpos/backend && npm run seed
 
 | Role | Email | Password |
 |------|-------|----------|
-| Super Admin | admin@codexpos.store | Admin@123456 |
-| Business Owner | owner@demo.codexpos.store | Owner@123456 |
+| Super Admin | admin@poshive.store | Admin@123456 |
+| Business Owner | owner@demo.poshive.store | Owner@123456 |
 
 Change those immediately after first login.
 

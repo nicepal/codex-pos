@@ -1,4 +1,4 @@
--- CodexPOS register: auditable cash drawer movements (cash in / cash out)
+-- PosHive register: auditable cash drawer movements (cash in / cash out)
 -- Used by POS cash management and expected-cash reconciliation.
 
 CREATE TABLE IF NOT EXISTS cash_drawer_movements (

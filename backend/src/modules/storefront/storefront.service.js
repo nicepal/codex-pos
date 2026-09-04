@@ -82,6 +82,7 @@ class StorefrontService {
       phone: tenant.phone,
       address: tenant.address,
       currency: tenant.currency,
+      business_type: tenant.business_type || null,
       settings: Object.fromEntries(settings.rows.map((s) => [s.key, s.value])),
     };
   }

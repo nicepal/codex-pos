@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -9,18 +10,86 @@ import ProductDetails from '../../components/storefront/ProductDetails';
 import ProductCard from '../../components/storefront/ProductCard';
 import ProductReviews from '../../components/storefront/ProductReviews';
 import { SF } from '../../components/storefront/storefrontTheme';
+import { resolveProductImageSrc } from '../../utils/imageUrl';
+import { customerFacingDescription } from '../../utils/storefrontContent';
+import { applyDocumentSeo, toAbsoluteUrl } from '../../utils/documentSeo';
+import useStoreCurrency from '../../hooks/useStoreCurrency';
 
 export default function StoreProduct() {
   const { productSlug } = useParams();
-  const { basePath, slug, primaryColor, showStock, openProductDetails } = useOutletContext();
+  const {
+    basePath, slug, primaryColor, showStock, openProductDetails, storeName, currency,
+  } = useOutletContext();
+  const { formatMoney } = useStoreCurrency();
 
   const { data: product, isLoading, isError, refetch } = useQuery({
     queryKey: ['storefront-product', slug, productSlug],
     queryFn: () => api.get(`/storefront/products/${productSlug}`).then((r) => r.data.data),
   });
 
+  const productUrl = useMemo(() => {
+    if (typeof window === 'undefined' || !product?.slug) return undefined;
+    return `${window.location.origin}${basePath}/product/${product.slug}`;
+  }, [basePath, product?.slug]);
+
+  const imageUrl = useMemo(
+    () => toAbsoluteUrl(resolveProductImageSrc(product) || product?.images?.[0]?.url),
+    [product],
+  );
+
+  const description = useMemo(() => {
+    const fromProduct = customerFacingDescription(product?.description);
+    if (fromProduct) return fromProduct;
+    if (product?.name && storeName) return `${product.name} available at ${storeName}. Order online.`;
+    return product?.name || '';
+  }, [product, storeName]);
+
+  useEffect(() => {
+    if (!product?.name) return undefined;
+
+    const price = parseFloat(product.sale_price);
+    const priceValid = Number.isFinite(price) && price >= 0;
+    const title = storeName ? `${product.name} | ${storeName}` : product.name;
+
+    return applyDocumentSeo({
+      title,
+      description,
+      image: imageUrl,
+      url: productUrl || `${basePath}/product/${product.slug}`,
+      type: 'product',
+      siteName: storeName || 'Store',
+      jsonLdId: 'storefront-product',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: product.name,
+        description: description || undefined,
+        image: imageUrl ? [imageUrl] : undefined,
+        sku: product.sku || undefined,
+        url: productUrl,
+        category: product.category_name || undefined,
+        brand: storeName ? { '@type': 'Brand', name: storeName } : undefined,
+        offers: priceValid ? {
+          '@type': 'Offer',
+          priceCurrency: currency || 'USD',
+          price: price.toFixed(2),
+          availability: Number(product.stock_quantity) > 0
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+          url: productUrl,
+        } : undefined,
+      },
+    });
+  }, [
+    product, storeName, description, imageUrl, productUrl, basePath, currency,
+  ]);
+
+  const priceLabel = product
+    ? formatMoney(parseFloat(product.sale_price))
+    : undefined;
+
   return (
-    <Box sx={{ pb: 2 }}>
+    <Box sx={{ pb: 2 }} component="article" itemScope itemType="https://schema.org/Product">
       <Button
         component={Link}
         to={basePath}
@@ -64,7 +133,7 @@ export default function StoreProduct() {
               {product.category_name}
             </MuiLink>
           )}
-          <Typography color="text.primary" sx={{ fontSize: 13, fontWeight: 650 }} noWrap>
+          <Typography color="text.primary" sx={{ fontSize: 13, fontWeight: 650 }} noWrap itemProp="name">
             {product.name}
           </Typography>
         </Breadcrumbs>
@@ -114,13 +183,16 @@ export default function StoreProduct() {
               primaryColor={primaryColor}
               showStock={showStock}
               basePath={basePath}
+              storeName={storeName}
+              shareUrl={productUrl}
+              priceLabel={priceLabel}
               embedded
               layout="page"
             />
           </Box>
 
           {product.related?.length > 0 && (
-            <Box sx={{ mt: 4 }}>
+            <Box sx={{ mt: 4 }} component="section" aria-label="Related products">
               <Typography
                 component="h2"
                 fontWeight={750}

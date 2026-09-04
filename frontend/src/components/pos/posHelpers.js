@@ -74,7 +74,7 @@ export function buildOfflineReceiptData({
     || (payments.length === 1 ? payments[0].payment_method : payments.length > 1 ? 'split' : null);
 
   return {
-    business: { name: tenant?.name || 'CodexPOS' },
+    business: { name: tenant?.name || 'PosHive' },
     order: {
       order_number: localId ? `OFFLINE-${String(localId).slice(-8).toUpperCase()}` : 'OFFLINE-PENDING',
       status: 'pending',

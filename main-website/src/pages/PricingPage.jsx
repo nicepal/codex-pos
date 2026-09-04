@@ -17,7 +17,7 @@ export default function PricingPage() {
   usePageMeta({
     title: 'Pricing',
     description:
-      'CodexPOS plans: Starter $29/mo, Professional $79/mo, Enterprise $199/mo. Annual billing saves roughly two months.',
+      'PosHive plans: Starter $29/mo, Professional $79/mo, Enterprise $199/mo. Annual billing saves roughly two months.',
     path: '/pricing',
   });
 

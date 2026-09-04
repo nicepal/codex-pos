@@ -18,7 +18,7 @@ export default function SetupComplete({ summary }) {
         You&apos;re ready to sell
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Your Codex POS starter catalog is set up. Open the POS to make a sale, or explore the dashboard.
+        Your PosHive starter catalog is set up. Open the POS to make a sale, or explore the dashboard.
       </Typography>
 
       <Paper

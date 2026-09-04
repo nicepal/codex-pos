@@ -1,5 +1,5 @@
 /**
- * Codex POS onboarding — supported business types (UI labels + copy).
+ * PosHive onboarding — supported business types (UI labels + copy).
  * Keys must match tenants.business_type CHECK constraint.
  */
 

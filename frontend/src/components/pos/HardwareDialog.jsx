@@ -43,7 +43,7 @@ export default function HardwareDialog({ open, onClose }) {
       <Stack gap="md">
         <Alert color="blue">
           Receipts print via browser dialog or a print-agent claiming jobs from this queue.
-          CodexPOS does not drive a payment terminal in this build — card sales remain record-only.
+          PosHive does not drive a payment terminal in this build — card sales remain record-only.
         </Alert>
         {error && (
           <Alert color="red">

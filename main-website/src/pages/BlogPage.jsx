@@ -5,7 +5,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 export default function BlogPage() {
   usePageMeta({
     title: 'Blog',
-    description: 'Notes on POS, inventory, Shopify import, AI insights, and the CodexPOS developer platform.',
+    description: 'Notes on POS, inventory, Shopify import, AI insights, and the PosHive developer platform.',
     path: '/blog',
   });
 

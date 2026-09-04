@@ -8,10 +8,12 @@ import { Close, Add, Check } from '@mui/icons-material';
 import { addToCart } from '../../features/storefront/cartSlice';
 import ProductImage from './ProductImage';
 import QuantitySelector from './QuantitySelector';
+import ProductShare from './ProductShare';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 import { useStorefrontUI } from '../../contexts/StorefrontUIContext';
 import { resolveProductImageSrc } from '../../utils/imageUrl';
 import { customerFacingDescription } from '../../utils/storefrontContent';
+import { sanitizeRichTextHtml, looksLikeHtml } from '../../utils/richText';
 import { SF } from './storefrontTheme';
 
 /**
@@ -27,6 +29,9 @@ export default function ProductDetails({
   primaryColor,
   showStock = true,
   basePath,
+  storeName,
+  shareUrl,
+  priceLabel,
   embedded = false,
   layout = 'drawer', // 'drawer' | 'page'
 }) {
@@ -92,6 +97,9 @@ export default function ProductDetails({
     ? product.images
     : (product.image_url ? [{ url: product.image_url }] : []);
   const description = customerFacingDescription(product.description);
+  const descriptionHtml = looksLikeHtml(product.description)
+    ? sanitizeRichTextHtml(product.description)
+    : '';
   const lineTotal = price * qty;
   const isPage = layout === 'page' || embedded;
 
@@ -256,11 +264,23 @@ export default function ProductDetails({
         </Typography>
       )}
 
-      {description && (
+      {descriptionHtml ? (
+        <Box
+          color="text.secondary"
+          sx={{
+            fontSize: 14.5,
+            lineHeight: 1.65,
+            '& p': { m: '0 0 0.6em' },
+            '& ul, & ol': { m: '0.25em 0 0.6em', pl: '1.25em' },
+            '& a': { color: 'primary.main' },
+          }}
+          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+        />
+      ) : description ? (
         <Typography color="text.secondary" sx={{ fontSize: 14.5, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
           {description}
         </Typography>
-      )}
+      ) : null}
 
       {variants.length > 0 && (
         <Box>
@@ -383,6 +403,18 @@ export default function ProductDetails({
           }}
         >
           {info}
+          {isPage && (
+            <ProductShare
+              url={shareUrl || (typeof window !== 'undefined' && product?.slug
+                ? `${window.location.origin}${basePath}/product/${product.slug}`
+                : undefined)}
+              productName={product.name}
+              storeName={storeName}
+              priceLabel={priceLabel || formatMoney(price)}
+              description={description}
+              primaryColor={primaryColor}
+            />
+          )}
           <Divider sx={{ borderColor: SF.colors.borderSubtle }} />
           {actions}
         </Box>

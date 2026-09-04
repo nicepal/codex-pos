@@ -273,6 +273,25 @@ class ProductService {
   async importCsv(tenantId, rows, { mode = 'create' } = {}) {
     const { ValidationError } = require('../../shared/errors');
     if (!Array.isArray(rows) || !rows.length) throw new ValidationError('No rows to import');
+
+    const resolveCategoryId = async (name) => {
+      if (!name) return null;
+      const found = await db.query(
+        `SELECT id FROM categories WHERE tenant_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`,
+        [tenantId, String(name).trim()]
+      );
+      return found.rows[0]?.id || null;
+    };
+
+    const resolveBrandId = async (name) => {
+      if (!name) return null;
+      const found = await db.query(
+        `SELECT id FROM brands WHERE tenant_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`,
+        [tenantId, String(name).trim()]
+      );
+      return found.rows[0]?.id || null;
+    };
+
     const created = [];
     const updated = [];
     const errors = [];
@@ -283,6 +302,9 @@ class ProductService {
           errors.push({ row: i + 1, message: 'name or sku required' });
           continue;
         }
+        const categoryId = await resolveCategoryId(row.category || row.category_name);
+        const brandId = await resolveBrandId(row.brand || row.brand_name);
+
         if (mode === 'update' && row.sku) {
           const existing = await db.query(
             'SELECT id FROM products WHERE tenant_id = $1 AND sku = $2',
@@ -291,16 +313,22 @@ class ProductService {
           if (existing.rows[0]) {
             const product = await this.update(tenantId, existing.rows[0].id, {
               name: row.name || undefined,
-              sale_price: row.sale_price != null ? parseFloat(row.sale_price) : undefined,
-              cost_price: row.cost_price != null ? parseFloat(row.cost_price) : undefined,
-              stock_quantity: row.stock_quantity != null ? parseInt(row.stock_quantity, 10) : undefined,
+              sale_price: row.sale_price != null && row.sale_price !== '' ? parseFloat(row.sale_price) : undefined,
+              cost_price: row.cost_price != null && row.cost_price !== '' ? parseFloat(row.cost_price) : undefined,
+              stock_quantity: row.stock_quantity != null && row.stock_quantity !== ''
+                ? parseInt(row.stock_quantity, 10)
+                : undefined,
               status: row.status || undefined,
+              barcode: row.barcode || undefined,
+              description: row.description || undefined,
+              category_id: categoryId || undefined,
+              brand_id: brandId || undefined,
             });
             updated.push(product);
             continue;
           }
         }
-        if (!row.name || row.sale_price == null) {
+        if (!row.name || row.sale_price == null || row.sale_price === '') {
           errors.push({ row: i + 1, message: 'name and sale_price required for create' });
           continue;
         }
@@ -308,11 +336,14 @@ class ProductService {
           name: String(row.name).trim(),
           sku: row.sku || null,
           barcode: row.barcode || null,
+          description: row.description || null,
           sale_price: parseFloat(row.sale_price) || 0,
           cost_price: parseFloat(row.cost_price) || 0,
           stock_quantity: parseInt(row.stock_quantity, 10) || 0,
           product_type: row.product_type || 'simple',
           status: row.status || 'active',
+          category_id: categoryId,
+          brand_id: brandId,
         });
         created.push(product);
       } catch (err) {

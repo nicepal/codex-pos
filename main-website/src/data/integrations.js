@@ -40,11 +40,11 @@ export const integrations = [
 export const shopifyPage = {
   title: 'Shopify product import',
   description:
-    'Bring your Shopify catalog into CodexPOS with bulk GraphQL operations, background jobs, and mapping — without pretending we are a full Shopify clone.',
+    'Bring your Shopify catalog into PosHive with bulk GraphQL operations, background jobs, and mapping — without pretending we are a full Shopify clone.',
   steps: [
     'Connect your Shopify store from Business → Integrations → Shopify.',
     'Start a bulk import; progress streams via workers (and realtime where enabled).',
-    'Review mapping and continue selling in CodexPOS POS / inventory.',
+    'Review mapping and continue selling in PosHive POS / inventory.',
   ],
   notes: [
     'Focused on product import workflows, not full order bi-sync.',

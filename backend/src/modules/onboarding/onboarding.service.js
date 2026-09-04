@@ -219,7 +219,7 @@ class OnboardingService {
               product_id: productId,
               quantity: prod.stock || 25,
               reference_type: 'onboarding',
-              notes: 'Codex POS starter stock',
+              notes: 'PosHive starter stock',
             }, 'stock_in', userId, client);
             counters.stock_seeded += 1;
           } else if (prod.variants?.length) {
@@ -237,7 +237,7 @@ class OnboardingService {
                   variant_id: v.id,
                   quantity: seedQty,
                   reference_type: 'onboarding',
-                  notes: 'Codex POS starter stock',
+                  notes: 'PosHive starter stock',
                 }, 'stock_in', userId, client);
                 counters.stock_seeded += 1;
               }
@@ -351,7 +351,7 @@ class OnboardingService {
         tenantId,
         category.name,
         slug,
-        `Codex POS starter category (${businessType})`,
+        `PosHive starter category (${businessType})`,
         category.sort_order || 0,
       ]
     );

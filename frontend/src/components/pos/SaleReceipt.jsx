@@ -236,7 +236,7 @@ export default function SaleReceipt({
 
       <footer className="sale-receipt__footer">
         <p>{footer || 'Thank you for your purchase!'}</p>
-        <p className="sale-receipt__powered">Powered by CodexPOS</p>
+        <p className="sale-receipt__powered">Powered by PosHive</p>
       </footer>
     </article>
   );

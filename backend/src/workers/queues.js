@@ -253,7 +253,7 @@ async function processScheduledReports() {
     for (const row of due.rows) {
       try {
         const tenant = await db.query('SELECT name FROM tenants WHERE id = $1', [row.tenant_id]);
-        const tenantName = tenant.rows[0]?.name || 'CodexPOS';
+        const tenantName = tenant.rows[0]?.name || 'PosHive';
         const to = new Date().toISOString();
         const from = row.schedule === 'monthly'
           ? new Date(Date.now() - 30 * 86400000).toISOString()
@@ -277,7 +277,7 @@ async function processScheduledReports() {
         await emailService.send({
           to: row.email,
           subject,
-          html: `<p>Your scheduled <strong>${row.report_type}</strong> report from CodexPOS.</p><pre style="white-space:pre-wrap;font-size:12px">${String(body).replace(/</g, '&lt;')}</pre>`,
+          html: `<p>Your scheduled <strong>${row.report_type}</strong> report from PosHive.</p><pre style="white-space:pre-wrap;font-size:12px">${String(body).replace(/</g, '&lt;')}</pre>`,
           text: body,
           tenantId: row.tenant_id,
           type: 'scheduled_report',

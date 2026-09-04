@@ -26,7 +26,7 @@ REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 
 # Public HTTPS origin (TLS terminates in front of Nginx :8502)
-APP_NAME=Poshive
+APP_NAME=PosHive
 APP_URL=https://app.poshive.store
 API_URL=https://poshive.store
 PLATFORM_DOMAIN=poshive.store

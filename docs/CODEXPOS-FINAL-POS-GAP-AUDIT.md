@@ -1,4 +1,4 @@
-# CodexPOS Final POS Gap Audit
+# PosHive Final POS Gap Audit
 Date: 2026-08-12
 
 ## Executive Summary (counts table)
@@ -77,7 +77,7 @@ Pass 1–3 audit fixes and POS implementation-log items confirmed in current cod
 | BUG-SHIFT-001 | Shifts use `employees.name` | `shifts.service.js` (~52–55, ~80) |
 | BUG-EMP-001 | PIN verify uses `employees.name` | `employees.routes.js` verify-pin handler |
 | BUG-PAY-001 | Production defaults `PAYMENT_PROVIDER=stripe`; stub gated | `config/index.js` (~73–77) |
-| BUG-NGX-001 | Tenant vhost `*.codexpos.store` | `docker/nginx/conf.d/eyz.conf` |
+| BUG-NGX-001 | Tenant vhost `*.poshive.store` | `docker/nginx/conf.d/eyz.conf` |
 | BUG-INV-003 | Product create/update syncs `branch_stock` | `products.service.js` via branch-stock service |
 | BUG-INV-004 | Stock-take uniqueness includes `variant_id` | `inventory.service.js` |
 | BUG-AUTH-003 | Logout revokes refresh server-side | `authSlice.js` + `POST /auth/logout` |
@@ -176,7 +176,7 @@ Spot-checks of Pass 1–3 fixes and POS implementation-log claims found **no reg
 | Split `payment_status` | OK | `derivePaymentFields` → `paid` + `split` |
 | Shifts/PIN SQL | OK | `e.name` in shifts + employees routes |
 | Drawer expected cash | OK | `computeExpected` includes tenders, refunds, movements |
-| Nginx subdomain | OK | `*.codexpos.store` in `eyz.conf` |
+| Nginx subdomain | OK | `*.poshive.store` in `eyz.conf` |
 | Offline receipt | OK | `buildOfflineReceiptData` + `SaleSuccessDialog` offline print |
 | SW API cache | OK | No cache when `authorization` or tenant headers present |
 | Return tender reversal | OK | `returnOrder` GC credit + loyalty restore/clawback |
@@ -209,7 +209,7 @@ Spot-checks of Pass 1–3 fixes and POS implementation-log claims found **no reg
 | VERIFY-RACE | POS | Two registers selling last unit — expect one failure |
 | VERIFY-REG-GATE | POS | With `staff_pro`, cannot complete sale until register open; attempt API bypass without shift |
 | VERIFY-SSO | Enterprise | Real IdP OIDC; stub disabled in production |
-| VERIFY-SUBDOMAIN | Deploy | `{slug}.codexpos.store` storefront on Docker nginx |
+| VERIFY-SUBDOMAIN | Deploy | `{slug}.poshive.store` storefront on Docker nginx |
 
 ---
 

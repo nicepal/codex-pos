@@ -10,7 +10,7 @@ export default function BlogArticlePage() {
 
   usePageMeta({
     title: post?.title || 'Article',
-    description: post?.excerpt || 'CodexPOS blog article',
+    description: post?.excerpt || 'PosHive blog article',
     path: `/blog/${slug}`,
     type: 'article',
   });

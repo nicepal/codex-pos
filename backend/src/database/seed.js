@@ -136,7 +136,7 @@ async function seed() {
   const adminHash = await hashPassword('Admin@123456');
   const adminResult = await db.query(
     `INSERT INTO users (email, password_hash, first_name, last_name, email_verified_at, status)
-     VALUES ('admin@codexpos.store', $1, 'Super', 'Admin', NOW(), 'active')
+     VALUES ('admin@poshive.store', $1, 'Super', 'Admin', NOW(), 'active')
      ON CONFLICT DO NOTHING
      RETURNING id`,
     [adminHash]
@@ -152,7 +152,7 @@ async function seed() {
 
   const demoTenant = await db.query(
     `INSERT INTO tenants (name, slug, email, phone, address, timezone, currency, status, trial_ends_at)
-     VALUES ('Demo Store', 'demo', 'owner@demo.codexpos.store', '+1234567890', '123 Main St', 'America/New_York', 'USD', 'active', NOW() + INTERVAL '14 days')
+     VALUES ('Demo Store', 'demo', 'owner@demo.poshive.store', '+1234567890', '123 Main St', 'America/New_York', 'USD', 'active', NOW() + INTERVAL '14 days')
      ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
      RETURNING id`,
   );
@@ -161,7 +161,7 @@ async function seed() {
 
   await db.query(
     `INSERT INTO tenant_domains (tenant_id, domain, domain_type, is_primary, verification_status)
-     VALUES ($1, 'demo.codexpos.store', 'subdomain', true, 'verified')
+     VALUES ($1, 'demo.poshive.store', 'subdomain', true, 'verified')
      ON CONFLICT (domain) DO NOTHING`,
     [tenantId]
   );
@@ -177,7 +177,7 @@ async function seed() {
   const ownerHash = await hashPassword('Owner@123456');
   const ownerResult = await db.query(
     `INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, email_verified_at, status)
-     VALUES ($1, 'owner@demo.codexpos.store', $2, 'John', 'Doe', NOW(), 'active')
+     VALUES ($1, 'owner@demo.poshive.store', $2, 'John', 'Doe', NOW(), 'active')
      ON CONFLICT DO NOTHING
      RETURNING id`,
     [tenantId, ownerHash]
@@ -224,8 +224,8 @@ async function seed() {
   }
 
   logger.info('Database seed completed');
-  logger.info('Super Admin: admin@codexpos.store / Admin@123456');
-  logger.info('Business Owner: owner@demo.codexpos.store / Owner@123456');
+  logger.info('Super Admin: admin@poshive.store / Admin@123456');
+  logger.info('Business Owner: owner@demo.poshive.store / Owner@123456');
 }
 
 if (require.main === module) {

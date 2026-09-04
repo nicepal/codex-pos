@@ -1,6 +1,6 @@
 # Built into the SPA at `npm run build`. Use same-origin paths so Nginx
 # on :8502 can proxy /api and /socket.io without CORS issues.
 VITE_API_URL=/api/v1
-VITE_APP_NAME=Poshive
+VITE_APP_NAME=PosHive
 VITE_PLATFORM_DOMAIN=poshive.store
 VITE_SOCKET_URL=

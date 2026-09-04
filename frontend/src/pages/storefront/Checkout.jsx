@@ -97,7 +97,7 @@ export default function CheckoutPage() {
   const subtotal = useSelector(selectStoreCartTotal);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { basePath, slug, primaryColor } = useOutletContext();
+  const { basePath, slug, primaryColor, isRestaurant = false } = useOutletContext();
   const [showDiscounts, setShowDiscounts] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -129,11 +129,17 @@ export default function CheckoutPage() {
     queryFn: () => api.get('/storefront/branches').then((r) => r.data.data),
   });
 
-  const hasPickup = Array.isArray(branches) && branches.length > 0;
+  const hasPickup = isRestaurant && Array.isArray(branches) && branches.length > 0;
 
-  // Prefer pickup when locations exist; otherwise delivery. Honor saved header preference.
+  // Restaurant shops: honor pickup/delivery preference. Other shops skip fulfillment UI.
   useEffect(() => {
     if (branchesLoading) return;
+    if (!isRestaurant) {
+      setForm((f) => (f.fulfillment_type === 'delivery' && !f.pickup_branch_id
+        ? f
+        : { ...f, fulfillment_type: 'delivery', pickup_branch_id: '', delivery_address: '' }));
+      return;
+    }
     const storageKey = `storefront-fulfillment-${slug}`;
     let preferred = null;
     try {
@@ -153,12 +159,12 @@ export default function CheckoutPage() {
     } else {
       setForm((f) => (f.fulfillment_type === 'delivery' ? f : { ...f, fulfillment_type: 'delivery', pickup_branch_id: '' }));
     }
-  }, [branchesLoading, hasPickup, branches, slug]);
+  }, [branchesLoading, hasPickup, branches, slug, isRestaurant]);
 
   const checkout = useMutation({
     mutationFn: () => {
       const noteParts = [];
-      if (form.fulfillment_type === 'delivery' && form.delivery_address.trim()) {
+      if (isRestaurant && form.fulfillment_type === 'delivery' && form.delivery_address.trim()) {
         noteParts.push(`Delivery address: ${form.delivery_address.trim()}`);
       }
       return api.post('/storefront/checkout', {
@@ -172,8 +178,10 @@ export default function CheckoutPage() {
         customer_email: form.email.trim() || undefined,
         customer_phone: form.phone.trim() || undefined,
         payment_method: form.payment_method,
-        fulfillment_type: form.fulfillment_type,
-        pickup_branch_id: form.fulfillment_type === 'pickup' ? (form.pickup_branch_id || undefined) : undefined,
+        fulfillment_type: isRestaurant ? form.fulfillment_type : undefined,
+        pickup_branch_id: isRestaurant && form.fulfillment_type === 'pickup'
+          ? (form.pickup_branch_id || undefined)
+          : undefined,
         coupon_code: form.coupon_code.trim() || undefined,
         gift_card_code: form.gift_card_code.trim() || undefined,
         loyalty_points_to_redeem: form.loyalty_points_to_redeem > 0 ? form.loyalty_points_to_redeem : undefined,
@@ -194,8 +202,8 @@ export default function CheckoutPage() {
   };
 
   const nameOk = form.name.trim().length >= 1;
-  const pickupInvalid = form.fulfillment_type === 'pickup' && (!hasPickup || !form.pickup_branch_id);
-  const deliveryInvalid = form.fulfillment_type === 'delivery' && !form.delivery_address.trim();
+  const pickupInvalid = isRestaurant && form.fulfillment_type === 'pickup' && (!hasPickup || !form.pickup_branch_id);
+  const deliveryInvalid = isRestaurant && form.fulfillment_type === 'delivery' && !form.delivery_address.trim();
   const canSubmit = nameOk && !pickupInvalid && !deliveryInvalid && !checkout.isPending;
 
   const errorMessage = useMemo(() => {
@@ -311,6 +319,7 @@ export default function CheckoutPage() {
             </Grid>
           </Section>
 
+          {isRestaurant && (
           <Section title="How would you like your order?">
             <Stack spacing={1.25}>
               <ChoiceCard
@@ -368,11 +377,16 @@ export default function CheckoutPage() {
               />
             )}
           </Section>
+          )}
 
           <Section title="Payment">
             <Stack spacing={1.25}>
               {[
-                { value: 'cash', title: 'Pay at pickup / cash on delivery', subtitle: 'Pay when you receive your order' },
+                {
+                  value: 'cash',
+                  title: isRestaurant ? 'Pay at pickup / cash on delivery' : 'Cash on delivery / pay in store',
+                  subtitle: 'Pay when you receive your order',
+                },
                 { value: 'card', title: 'Card', subtitle: 'Pay by card with the store' },
                 { value: 'bank', title: 'Bank transfer', subtitle: 'Transfer and share proof if requested' },
               ].map((opt) => (

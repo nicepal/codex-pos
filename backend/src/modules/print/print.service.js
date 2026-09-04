@@ -169,7 +169,7 @@ function buildReceiptHtml(data) {
     ` : ''}
     <div class="footer center">
       <div>${esc(footer || 'Thank you for your purchase!')}</div>
-      <div class="powered">Powered by CodexPOS</div>
+      <div class="powered">Powered by PosHive</div>
     </div>
   </div>
 </body>
@@ -219,7 +219,7 @@ class PrintService {
     }
     if (order.customer?.name) lines.push(`Customer: ${order.customer.name}\n`);
     lines.push(`\n${receipt.footer || 'Thank you!'}\n`);
-    lines.push('Powered by CodexPOS\n');
+    lines.push('Powered by PosHive\n');
     lines.push('\x1D\x56\x00'); // partial cut
 
     const html = buildReceiptHtml({

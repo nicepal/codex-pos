@@ -1,5 +1,5 @@
 /**
- * PM2 process file for Codex POS.
+ * PM2 process file for PosHive.
  *
  * Public traffic enters Nginx on 8502. Node only binds loopback ports
  * inside the assigned range 8502–8900.

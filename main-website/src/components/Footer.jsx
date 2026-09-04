@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import CodexPOSLogo from './CodexPOSLogo';
+import PosHiveLogo from './PosHiveLogo';
 import { footerLinks } from '../data/navigation';
 import { site, registerUrl } from '../data/site';
 import './Footer.css';
@@ -9,7 +9,7 @@ export default function Footer() {
     <footer className="site-footer">
       <div className="container footer-grid">
         <div className="footer-brand">
-          <CodexPOSLogo variant="dark" size="md" />
+          <PosHiveLogo variant="dark" size="md" />
           <p>{site.tagline}</p>
           <a className="btn btn-on-dark" href={registerUrl}>
             Get Started
@@ -50,7 +50,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="container footer-bottom">
-        <p>© {new Date().getFullYear()} CodexPOS. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} PosHive. All rights reserved.</p>
         <p>Multi-tenant retail software for growing shops.</p>
       </div>
     </footer>

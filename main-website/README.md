@@ -1,6 +1,6 @@
-# CodexPOS Marketing Website
+# PosHive Marketing Website
 
-Standalone React + Vite marketing site for **CodexPOS** (`codexpos.store`).
+Standalone React + Vite marketing site for **PosHive** (`poshive.store`).
 
 ## Scripts
 
@@ -19,7 +19,7 @@ Copy `.env.example` to `.env`:
 |----------|---------|
 | `VITE_APP_URL` | Business app base (Login / Get Started → `/login`, `/register`) |
 | `VITE_API_URL` | Optional API base for contact form |
-| `VITE_SITE_URL` | Canonical site URL for SEO (`https://codexpos.store`) |
+| `VITE_SITE_URL` | Canonical site URL for SEO (`https://poshive.store`) |
 
 ## Brand assets
 
@@ -27,7 +27,7 @@ Copy `.env.example` to `.env`:
 - `public/brand/wordmark.svg` — light lockup
 - `public/brand/logo-dark.svg` — dark lockup
 - `public/favicon.svg`, `public/og-default.svg`
-- React: `<CodexPOSLogo variant="light\|dark" size="sm\|md\|lg" />`
+- React: `<PosHiveLogo variant="light\|dark" size="sm\|md\|lg" />`
 
 ## Notes
 

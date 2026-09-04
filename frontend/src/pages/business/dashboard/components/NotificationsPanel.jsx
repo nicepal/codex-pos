@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../../services/api';
 import DashboardSection from './DashboardSection';
 import EmptyState from '../../../../components/EmptyState';
+import { stripHtmlToText } from '../../../../utils/displayText';
 
 const GROUPS = [
   { key: 'inventory', label: 'Inventory' },
@@ -67,10 +68,10 @@ export default function NotificationsPanel({ notifications, loading, error, onRe
               onClick={() => !n.readAt && markRead.mutate(n.id)}
             >
               <Text size="sm" fw={n.readAt ? 400 : 700}>
-                {n.title || n.type}
+                {stripHtmlToText(n.title || n.type)}
               </Text>
               <Text size="xs" c="dimmed">
-                {n.message} · {new Date(n.createdAt).toLocaleString()}
+                {stripHtmlToText(n.message)} · {new Date(n.createdAt).toLocaleString()}
               </Text>
             </Box>
           ))}

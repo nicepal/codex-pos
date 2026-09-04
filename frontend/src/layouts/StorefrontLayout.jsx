@@ -2,9 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Box, ThemeProvider, Drawer, useMediaQuery, CssBaseline,
+  Box, ThemeProvider, Drawer, CssBaseline,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import { useSelector } from 'react-redux';
 import api from '../services/api';
 import { resolveProductImageSrc } from '../utils/imageUrl';
@@ -23,6 +22,7 @@ import {
 import useStorefrontCartPersistence from '../hooks/useStorefrontCartPersistence';
 import useDebounce from '../hooks/useDebounce';
 import { StorefrontUIContext } from '../contexts/StorefrontUIContext';
+import { applyDocumentSeo } from '../utils/documentSeo';
 
 export { useStorefrontUI } from '../contexts/StorefrontUIContext';
 
@@ -55,28 +55,17 @@ function useStorefrontFont() {
   }, []);
 }
 
-function useStoreSeo({ storeName, description }) {
+function useStoreSeo({ storeName, description, enabled = true }) {
   useEffect(() => {
-    if (!storeName) return undefined;
-    const prevTitle = document.title;
-    document.title = `${storeName} — Order Online`;
-
-    let meta = document.querySelector('meta[name="description"]');
-    const prevDesc = meta?.getAttribute('content');
-    if (description) {
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.name = 'description';
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute('content', description.slice(0, 160));
-    }
-
-    return () => {
-      document.title = prevTitle;
-      if (meta && prevDesc != null) meta.setAttribute('content', prevDesc);
-    };
-  }, [storeName, description]);
+    if (!enabled || !storeName) return undefined;
+    return applyDocumentSeo({
+      title: `${storeName} — Order Online`,
+      description,
+      type: 'website',
+      siteName: storeName,
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
+    });
+  }, [storeName, description, enabled]);
 }
 
 function StorefrontShell() {
@@ -85,8 +74,6 @@ function StorefrontShell() {
   useStorefrontCartPersistence(slug);
   const location = useLocation();
   const navigate = useNavigate();
-  const muiTheme = useTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const basePath = `/store/${slug}`;
   const cartCount = useSelector(selectStoreCartCount);
   const cartTotal = useSelector(selectStoreCartTotal);
@@ -142,8 +129,11 @@ function StorefrontShell() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const hasPickup = Array.isArray(branches) && branches.length > 0;
-  const hasDelivery = true;
+  const hasPickupBranches = Array.isArray(branches) && branches.length > 0;
+  // Pickup / delivery toggle is restaurant-only (Foodora-style menus).
+  const isRestaurant = store?.business_type === 'restaurant';
+  const hasPickup = isRestaurant && hasPickupBranches;
+  const hasDelivery = isRestaurant;
 
   const [fulfillmentType, setFulfillmentType] = useState(() => loadFulfillmentPref(slug, false));
 
@@ -175,7 +165,11 @@ function StorefrontShell() {
     || store?.address
     || `Order online from ${storeName}`;
 
-  useStoreSeo({ storeName, description: seoDescription });
+  useStoreSeo({
+    storeName,
+    description: seoDescription,
+    enabled: !location.pathname.includes('/product/'),
+  });
 
   const storefrontTheme = useMemo(
     () => createStorefrontTheme({ primaryColor, backgroundColor }),
@@ -189,12 +183,9 @@ function StorefrontShell() {
   const openProductDetails = useCallback((productOrSlug) => {
     const s = typeof productOrSlug === 'string' ? productOrSlug : productOrSlug?.slug;
     if (!s) return;
-    if (isMobile) {
-      navigate(`${basePath}/product/${s}`);
-      return;
-    }
-    setDetailSlug(s);
-  }, [isMobile, navigate, basePath]);
+    // Always use the product page URL so items are shareable / SEO-friendly.
+    navigate(`${basePath}/product/${s}`);
+  }, [navigate, basePath]);
 
   const closeProductDetails = useCallback(() => setDetailSlug(null), []);
 
@@ -240,12 +231,13 @@ function StorefrontShell() {
     clearSearch,
     hasPickup,
     hasDelivery,
+    isRestaurant,
     fulfillmentType,
     onFulfillmentChange: handleFulfillmentChange,
   }), [
     basePath, slug, primaryColor, storeName, currency, themeSettings,
     logoUrl, store, categories, openCart, openProductDetails,
-    debouncedHeaderSearch, clearSearch, hasPickup, hasDelivery,
+    debouncedHeaderSearch, clearSearch, hasPickup, hasDelivery, isRestaurant,
     fulfillmentType, handleFulfillmentChange,
   ]);
 
@@ -328,7 +320,7 @@ function StorefrontShell() {
             onOpen={openCart}
           />
 
-          {/* Desktop product detail drawer */}
+          {/* Optional quick-view drawer (kept for deep links / future use) */}
           <Drawer
             anchor="right"
             open={Boolean(detailSlug)}
@@ -349,6 +341,7 @@ function StorefrontShell() {
               primaryColor={primaryColor}
               showStock={themeSettings.show_stock !== false}
               basePath={basePath}
+              storeName={storeName}
             />
           </Drawer>
         </Box>

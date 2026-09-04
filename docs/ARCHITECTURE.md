@@ -1,8 +1,8 @@
-# Codex POS — System Architecture
+# PosHive — System Architecture
 
 ## Overview
 
-Codex POS is a multi-tenant SaaS platform designed to serve 10,000+ businesses with strict data isolation, horizontal scalability, and enterprise security.
+PosHive is a multi-tenant SaaS platform designed to serve 10,000+ businesses with strict data isolation, horizontal scalability, and enterprise security.
 
 ## Design Principles
 

@@ -35,7 +35,7 @@ export default function CardPaymentDialog({
         </Box>
 
         <Alert color="blue" variant="light" title="Record only">
-          CodexPOS does not capture card payments from a payment terminal in this build.
+          PosHive does not capture card payments from a payment terminal in this build.
           Confirm the charge on your external terminal or gateway, then complete the sale.
         </Alert>
 

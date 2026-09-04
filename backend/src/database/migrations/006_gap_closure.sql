@@ -1,4 +1,4 @@
--- Codex POS: Universal Gap Closure — catalog, tax, inventory, staff, omnichannel, analytics
+-- PosHive: Universal Gap Closure — catalog, tax, inventory, staff, omnichannel, analytics
 
 -- Product types extension
 ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(20) DEFAULT 'simple'

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { SF, storefrontContainerSx } from './storefrontTheme';
 
 /**
- * Minimal store footer — merchant name + subtle Powered by CodexPOS.
+ * Minimal store footer — merchant name + subtle Powered by PosHive.
  */
 export default function StorefrontFooter({ storeName, basePath, footerText }) {
   return (
@@ -64,7 +64,7 @@ export default function StorefrontFooter({ storeName, basePath, footerText }) {
             color="text.disabled"
             sx={{ fontSize: 11, letterSpacing: '0.02em' }}
           >
-            Powered by CodexPOS
+            Powered by PosHive
           </Typography>
         </Stack>
       </Box>

@@ -146,10 +146,10 @@ export default function POSHeader({
           </Box>
           <Box style={{ minWidth: 0 }}>
             <Text fw={800} size="sm" lineClamp={1} lh={1.2}>
-              {businessName || 'CodexPOS'}
+              {businessName || 'PosHive'}
             </Text>
             <Text size="xs" c="dimmed" lineClamp={1}>
-              CodexPOS · Register
+              PosHive · Register
             </Text>
           </Box>
 

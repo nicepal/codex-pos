@@ -1,7 +1,7 @@
 import { createTheme } from '@mantine/core';
 
 /**
- * CodexPOS operational theme (POS / Restaurant / KDS / Customer Display).
+ * PosHive operational theme (POS / Restaurant / KDS / Customer Display).
  * Aligns with existing brand blue from AppThemeProvider; light-first, dark-ready.
  *
  * CSS variables are emitted by MantineProvider. Prefer tokens over hard-coded hex
@@ -23,7 +23,7 @@ export const CODEX_BLUE = [
 ];
 
 export const CODEX_TOKENS = {
-  brand: 'CodexPOS',
+  brand: 'PosHive',
   primary: '#2563eb',
   primaryDark: '#1d4ed8',
   primaryLight: '#3b82f6',

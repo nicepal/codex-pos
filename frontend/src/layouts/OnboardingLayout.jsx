@@ -36,7 +36,7 @@ export default function OnboardingLayout() {
             <PointOfSale fontSize="small" />
           </Box>
           <Typography variant="h6" fontWeight={800} letterSpacing="-0.02em">
-            Codex POS
+            PosHive
           </Typography>
         </Stack>
         <Outlet />

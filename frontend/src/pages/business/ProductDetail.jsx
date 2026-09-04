@@ -5,13 +5,14 @@ import {
   Box, Typography, Tabs, Tab, Grid, TextField, Button, IconButton, Chip, Avatar,
   Card, CardContent, MenuItem, Divider, Checkbox, FormControlLabel, Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
-import { ArrowBack, Add, Delete, Save } from '@mui/icons-material';
+import { ArrowBack, Add, Delete, Save, Close } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import api from '../../services/api';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import PageHeader from '../../components/PageHeader';
 import LoadingState from '../../components/LoadingState';
 import RHFTextField from '../../components/RHFTextField';
+import RHFRichTextEditor from '../../components/RHFRichTextEditor';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteToolbar from '../../components/BulkDeleteToolbar';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
@@ -38,7 +39,7 @@ export default function ProductDetailPage() {
   const { moneyLabel } = useBusinessCurrency();
   const { hasFeature } = useTenantFeatures();
   const catalogPro = hasFeature('catalog_pro');
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, control } = useForm();
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['product', id],
@@ -80,7 +81,11 @@ export default function ProductDetailPage() {
 
   const deleteVariantMutation = useMutation({
     mutationFn: (variantId) => api.delete(`/products/${id}/variants/${variantId}`),
-    onSuccess: () => queryClient.invalidateQueries(['product', id]),
+    onSuccess: (_data, variantId) => {
+      setVariants((prev) => prev.filter((v) => v.id !== variantId));
+      setSelectedVariantIds((prev) => prev.filter((x) => x !== variantId));
+      queryClient.invalidateQueries(['product', id]);
+    },
   });
 
   const bulkDeleteImagesMutation = useMutation({
@@ -166,6 +171,16 @@ export default function ProductDetailPage() {
     setVariants(next);
   };
 
+  const removeVariant = (idx) => {
+    const variant = variants[idx];
+    if (!variant) return;
+    if (variant.id) {
+      deleteVariantMutation.mutate(variant.id);
+      return;
+    }
+    setVariants((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const saveGeneral = handleSubmit((d) => updateMutation.mutate({
     name: d.name,
     description: d.description,
@@ -216,7 +231,9 @@ export default function ProductDetailPage() {
           <Grid container spacing={2}>
             <Grid item xs={12} md={8}>
               <RHFTextField register={register} name="name" rules={{ required: true }} label="Name" sx={{ mb: 2 }} />
-              <TextField fullWidth label="Description" multiline rows={4} sx={{ mb: 2 }} {...register('description')} />
+              <Box sx={{ mb: 2 }}>
+                <RHFRichTextEditor control={control} name="description" label="Description" minHeight={160} />
+              </Box>
               <TextField fullWidth label="Meta Title" sx={{ mb: 2 }} {...register('meta_title')} />
               <TextField fullWidth label="Meta Description" multiline rows={2} {...register('meta_description')} />
             </Grid>
@@ -284,7 +301,7 @@ export default function ProductDetailPage() {
                     />
                   </Grid>
                 )}
-                <Grid item xs={12} sm={3}>
+                <Grid item xs={12} sm>
                   <TextField fullWidth label="Name" value={v.name} onChange={(e) => updateVariant(idx, 'name', e.target.value)} />
                 </Grid>
                 <Grid item xs={6} sm={2}>
@@ -296,10 +313,15 @@ export default function ProductDetailPage() {
                 <Grid item xs={6} sm={2}>
                   <TextField fullWidth label="Stock" type="number" value={v.stock_quantity} onChange={(e) => updateVariant(idx, 'stock_quantity', e.target.value)} />
                 </Grid>
-                <Grid item xs={6} sm={3} sx={{ textAlign: 'right' }}>
-                  {v.id && (
-                    <IconButton color="error" onClick={() => deleteVariantMutation.mutate(v.id)}><Delete /></IconButton>
-                  )}
+                <Grid item xs="auto">
+                  <IconButton
+                    color="error"
+                    aria-label={`Remove variant ${v.name || idx + 1}`}
+                    onClick={() => removeVariant(idx)}
+                    disabled={deleteVariantMutation.isPending}
+                  >
+                    <Close />
+                  </IconButton>
                 </Grid>
               </Grid>
             </CardContent>

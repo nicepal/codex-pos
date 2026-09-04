@@ -49,7 +49,7 @@ export default function AdminLayout() {
 
   return (
     <ResponsiveDrawer
-      title="Codex POS Admin"
+      title="PosHive Admin"
       subtitle="Super Admin Panel"
       navGroups={navGroups}
       user={{ email: 'admin', initial: 'A' }}

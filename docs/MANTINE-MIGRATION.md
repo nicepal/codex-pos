@@ -1,6 +1,6 @@
-# CodexPOS Mantine Migration
+# PosHive Mantine Migration
 
-**Brand:** CodexPOS  
+**Brand:** PosHive  
 **Started:** 2026-08-12  
 **Updated:** 2026-08-13  
 **Related:** [MANTINE-MIGRATION-AUDIT.md](./MANTINE-MIGRATION-AUDIT.md) · [MANTINE-MIGRATION-ISSUES.md](./MANTINE-MIGRATION-ISSUES.md)
@@ -36,7 +36,7 @@ main.jsx
 | Icons | Keep `@mui/icons-material` for now |
 | Toasts (ops) | `@mantine/notifications` via `posNotify*` |
 
-### Theme tokens (CodexPOS)
+### Theme tokens (PosHive)
 
 - Primary blue: `#2563eb` (Mantine palette `codex`, shade 6)
 - Success / warning / error aligned with existing palette
@@ -55,7 +55,7 @@ POS layout/shell/dialogs, Restaurant pages, KDS, Customer Display — see prior 
 | Area | Files |
 |------|--------|
 | App shell | `ResponsiveDrawer.jsx` → Mantine `AppShell` (sidebar, header, dark mode, user menu) |
-| Business layout | `BusinessLayout.jsx` (title **CodexPOS**) |
+| Business layout | `BusinessLayout.jsx` (title **PosHive**) |
 | Notifications | `NotificationBell.jsx` |
 | Shared chrome | `PageHeader`, `EmptyState`, `EmptyStateIllustration`, `ConfirmDialog`, `FeatureGate`, `DataTable`, `StatCard`, `LoadingState`, `BulkDeleteToolbar`, `FormDialog`, `RHFTextField`, `RHFControllerField`, `ImageUpload` |
 

@@ -1,4 +1,4 @@
--- Codex POS: Core platform tables (users, roles, permissions, tenants)
+-- PosHive: Core platform tables (users, roles, permissions, tenants)
 -- Migration: 001_core_platform
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

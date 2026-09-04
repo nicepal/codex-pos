@@ -1,4 +1,4 @@
-# CodexPOS Audit Fixes Changelog
+# PosHive Audit Fixes Changelog
 
 **Date:** 2026-08-12  
 **Source:** `docs/CODEXPOS-SYSTEM-AUDIT.md`
@@ -12,7 +12,7 @@
 | BUG-SHIFT-001 | Shifts SELECT uses `employees.name` as `employee_name`. |
 | BUG-EMP-001 | PIN verify SELECT uses `employees.name`. |
 | BUG-PAY-001 | Production defaults `PAYMENT_PROVIDER=stripe`; stub confirm gated by `ALLOW_PAYMENT_STUB`; Stripe confirm verifies session. |
-| BUG-NGX-001 | Tenant vhost `*.codexpos.store`. |
+| BUG-NGX-001 | Tenant vhost `*.poshive.store`. |
 
 ## P1 — High
 
@@ -29,7 +29,7 @@
 | BUG-ROLE-001 | `users.custom_role_id` + auth merges custom role permissions; assign/unassign routes. |
 | FEAT-POS-GC | Gift card tender dialog + POS button (uses `/gift-cards/balance/:code`). |
 | FEAT-POS-LOY | Loyalty tender dialog; backend redeems points on `payments[].method=loyalty`. |
-| BRAND-EYZ | MFA `CodexPOS:`, API keys `cdx_` (legacy `eyz_` verify), offline DB name, logger, nginx domain. |
+| BRAND-EYZ | MFA `PosHive:`, API keys `cdx_` (legacy `eyz_` verify), offline DB name, logger, nginx domain. |
 | Reports | Tax + payment-mix tabs wired to existing APIs. |
 
 ## Pass 2 — tests, honesty, P2 surgical fixes (2026-08-12)

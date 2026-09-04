@@ -1,8 +1,8 @@
-# Codex POS — Smart Business Onboarding
+# PosHive — Smart Business Onboarding
 
 ## What it does
 
-After a **new** business registers, owners go through a Codex POS onboarding wizard:
+After a **new** business registers, owners go through a PosHive onboarding wizard:
 
 1. Welcome  
 2. Select business type  

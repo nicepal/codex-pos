@@ -11,7 +11,7 @@ export default function StorefrontSection() {
           <div className="sf-browser">
             <div className="sf-chrome">
               <span /><span /><span />
-              <code>yourshop.codexpos.store</code>
+              <code>yourshop.poshive.store</code>
             </div>
             <div className="sf-body">
               <div className="sf-hero-block" />
@@ -25,12 +25,12 @@ export default function StorefrontSection() {
           <p className="section-label">Storefront</p>
           <h2 className="section-title">Sell online on your subdomain</h2>
           <p className="section-lead">
-            Tenant storefronts on {'{slug}'}.codexpos.store with cart, checkout, accounts,
+            Tenant storefronts on {'{slug}'}.poshive.store with cart, checkout, accounts,
             wishlists, and reviews. Custom domains via Omnichannel (Professional+ defaults).
             Starter seed features omit storefront.
           </p>
           <ul className="sf-list">
-            <li>Not a full Shopify clone — import catalogs, run CodexPOS commerce</li>
+            <li>Not a full Shopify clone — import catalogs, run PosHive commerce</li>
             <li>Marketplace channels are stubs today — not live Amazon/eBay networks</li>
           </ul>
           <Link className="text-link" to="/features/ecommerce">

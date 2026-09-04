@@ -170,7 +170,7 @@ export default function OnboardingWizard() {
       {step === 'welcome' && (
         <Box maxWidth={640} mx="auto">
           <Typography variant="h3" fontWeight={800} letterSpacing="-0.04em" gutterBottom>
-            Welcome to Codex POS
+            Welcome to PosHive
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 1.5, fontSize: '1.1rem' }}>
             Hi{user?.first_name ? ` ${user.first_name}` : ''} — let&apos;s get {tenant?.name || 'your business'} ready to sell.
@@ -243,7 +243,7 @@ export default function OnboardingWizard() {
 
       {STEPS.includes(step) && step !== 'complete' && step !== 'progress' && (
         <Typography variant="caption" color="text.secondary" display="block" textAlign="center" sx={{ mt: 6 }}>
-          Step {Math.max(1, STEPS.indexOf(step))} of {STEPS.length - 2} · Codex POS smart onboarding
+          Step {Math.max(1, STEPS.indexOf(step))} of {STEPS.length - 2} · PosHive smart onboarding
         </Typography>
       )}
     </Box>

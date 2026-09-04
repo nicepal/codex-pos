@@ -12,7 +12,7 @@ export function usePageMeta({
   image = `${SITE_URL}/og-default.svg`,
 }) {
   useEffect(() => {
-    const fullTitle = title.includes('CodexPOS') ? title : `${title} · CodexPOS`;
+    const fullTitle = title.includes('PosHive') ? title : `${title} · PosHive`;
     document.title = fullTitle;
 
     const canonical = `${SITE_URL}${path === '/' ? '' : path}`;

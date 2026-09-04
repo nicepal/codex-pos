@@ -1,4 +1,4 @@
-# Codex POS API Documentation
+# PosHive API Documentation
 
 Base URL: `http://localhost:5000/api/v1`
 

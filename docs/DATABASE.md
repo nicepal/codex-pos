@@ -1,4 +1,4 @@
-# Codex POS Database Schema
+# PosHive Database Schema
 
 ## Entity Relationship Overview
 

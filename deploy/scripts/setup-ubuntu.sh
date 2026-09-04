@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time Ubuntu setup for Codex POS (PM2 + Nginx).
+# One-time Ubuntu setup for PosHive (PM2 + Nginx).
 # Run as a sudo-capable user. Does not overwrite existing .env files.
 set -euo pipefail
 

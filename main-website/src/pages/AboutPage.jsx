@@ -6,7 +6,7 @@ export default function AboutPage() {
   usePageMeta({
     title: 'About',
     description:
-      'CodexPOS is a multi-tenant SaaS for POS, inventory, and storefronts — with strict tenant isolation.',
+      'PosHive is a multi-tenant SaaS for POS, inventory, and storefronts — with strict tenant isolation.',
     path: '/about',
   });
 
@@ -17,7 +17,7 @@ export default function AboutPage() {
           <p className="section-label">About</p>
           <h1>Built for multi-tenant retail</h1>
           <p>
-            CodexPOS ({site.domain}) is a production multi-tenant platform where super admins run
+            PosHive ({site.domain}) is a production multi-tenant platform where super admins run
             the platform and each business runs POS, inventory, and optional storefronts on shared
             infrastructure — isolated by tenant_id.
           </p>

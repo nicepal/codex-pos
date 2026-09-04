@@ -4,48 +4,37 @@ import {
   Stepper, Step, StepLabel, Alert, Box, Table, TableHead, TableRow, TableCell, TableBody,
   MenuItem, Stack,
 } from '@mui/material';
-import { UploadFile } from '@mui/icons-material';
+import { UploadFile, Download, TableChart } from '@mui/icons-material';
 import api from '../services/api';
-
-const TEMPLATE = 'name,sku,barcode,sale_price,cost_price,stock_quantity,status\nExample Product,SKU-001,,9.99,5.00,100,active';
-
-function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) return { rows: [], errors: ['CSV must include a header row and at least one data row'] };
-
-  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-  const rows = [];
-  const errors = [];
-
-  for (let i = 1; i < lines.length; i += 1) {
-    const cols = lines[i].split(',').map((c) => c.trim());
-    const row = {};
-    headers.forEach((h, idx) => {
-      if (cols[idx] !== undefined && cols[idx] !== '') row[h] = cols[idx];
-    });
-    if (!row.name && !row.sku) {
-      errors.push(`Row ${i + 1}: name or sku required`);
-      continue;
-    }
-    rows.push(row);
-  }
-  return { rows, errors };
-}
+import {
+  downloadProductImportSampleExcel,
+  parseProductImportCsv,
+  parseProductImportFile,
+  PRODUCT_IMPORT_COLUMNS,
+} from '../utils/productImport';
 
 export default function ProductsImportWizard({ open, onClose, onSuccess }) {
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState('create');
   const [csvText, setCsvText] = useState('');
+  const [fileRows, setFileRows] = useState(null);
+  const [fileErrors, setFileErrors] = useState([]);
+  const [fileName, setFileName] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const parsed = useMemo(() => parseCsv(csvText), [csvText]);
+  const pasted = useMemo(() => parseProductImportCsv(csvText), [csvText]);
+  const rows = fileRows?.length ? fileRows : pasted.rows;
+  const parseErrors = fileRows?.length ? fileErrors : pasted.errors;
 
   const reset = () => {
     setStep(0);
     setMode('create');
     setCsvText('');
+    setFileRows(null);
+    setFileErrors([]);
+    setFileName('');
     setResult(null);
     setError('');
   };
@@ -55,11 +44,27 @@ export default function ProductsImportWizard({ open, onClose, onSuccess }) {
     onClose();
   };
 
+  const handleFile = async (file) => {
+    if (!file) return;
+    setError('');
+    setFileName(file.name);
+    try {
+      const parsed = await parseProductImportFile(file);
+      setFileRows(parsed.rows);
+      setFileErrors(parsed.errors || []);
+      setCsvText('');
+    } catch (err) {
+      setFileRows(null);
+      setFileErrors([]);
+      setError(err.message || 'Could not read file');
+    }
+  };
+
   const runImport = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/products/import', { rows: parsed.rows, mode });
+      const res = await api.post('/products/import', { rows, mode });
       setResult(res.data.data);
       setStep(2);
       onSuccess?.();
@@ -72,11 +77,11 @@ export default function ProductsImportWizard({ open, onClose, onSuccess }) {
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>Import Products</DialogTitle>
+      <DialogTitle>Bulk Import Products</DialogTitle>
       <DialogContent>
         <Stepper activeStep={step} sx={{ mb: 3 }}>
-          <Step><StepLabel>Mode</StepLabel></Step>
-          <Step><StepLabel>Upload CSV</StepLabel></Step>
+          <Step><StepLabel>Setup</StepLabel></Step>
+          <Step><StepLabel>Upload file</StepLabel></Step>
           <Step><StepLabel>Results</StepLabel></Step>
         </Stepper>
 
@@ -85,41 +90,81 @@ export default function ProductsImportWizard({ open, onClose, onSuccess }) {
         {step === 0 && (
           <Stack spacing={2}>
             <Typography color="text.secondary">
-              Import new products or update existing ones by SKU. Requires Catalog Pro.
+              Download the sample Excel file, fill in your products, then upload it.
+              Supported columns: {PRODUCT_IMPORT_COLUMNS.join(', ')}.
             </Typography>
+            <Alert severity="info" icon={<TableChart />}>
+              Required for new products: <strong>name</strong> and <strong>sale_price</strong>.
+              For updates, include <strong>sku</strong> and choose “Update existing by SKU”.
+            </Alert>
+            <Button
+              variant="contained"
+              startIcon={<Download />}
+              onClick={downloadProductImportSampleExcel}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              Download sample Excel
+            </Button>
             <TextField select label="Import mode" value={mode} onChange={(e) => setMode(e.target.value)}>
               <MenuItem value="create">Create new products only</MenuItem>
               <MenuItem value="update">Update existing by SKU</MenuItem>
             </TextField>
-            <Button variant="outlined" onClick={() => setCsvText(TEMPLATE)}>Load template</Button>
           </Stack>
         )}
 
         {step === 1 && (
           <Stack spacing={2}>
-            <Button variant="outlined" component="label" startIcon={<UploadFile />}>
-              Upload CSV file
-              <input type="file" hidden accept=".csv,text/csv" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => setCsvText(String(reader.result || ''));
-                reader.readAsText(file);
-                e.target.value = '';
-              }} />
-            </Button>
-            <TextField fullWidth multiline rows={10} label="Or paste CSV" value={csvText}
-              onChange={(e) => setCsvText(e.target.value)} placeholder={TEMPLATE} />
-            {parsed.errors.length > 0 && (
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={downloadProductImportSampleExcel}
+              >
+                Download sample Excel
+              </Button>
+              <Button variant="outlined" component="label" startIcon={<UploadFile />}>
+                Upload Excel / CSV
+                <input
+                  type="file"
+                  hidden
+                  accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    handleFile(file);
+                    e.target.value = '';
+                  }}
+                />
+              </Button>
+            </Stack>
+            {fileName && (
+              <Typography variant="body2" color="text.secondary">
+                Selected file: {fileName}
+              </Typography>
+            )}
+            <TextField
+              fullWidth
+              multiline
+              rows={8}
+              label="Or paste CSV"
+              value={csvText}
+              onChange={(e) => {
+                setCsvText(e.target.value);
+                setFileRows(null);
+                setFileErrors([]);
+                setFileName('');
+              }}
+              placeholder="name,sku,barcode,sale_price,cost_price,stock_quantity,status"
+            />
+            {parseErrors.length > 0 && (
               <Alert severity="warning">
-                {parsed.errors.map((e) => <div key={e}>{e}</div>)}
+                {parseErrors.map((e) => <div key={e}>{e}</div>)}
               </Alert>
             )}
-            {parsed.rows.length > 0 && (
-              <Typography variant="body2">{parsed.rows.length} row(s) ready to import</Typography>
+            {rows.length > 0 && (
+              <Typography variant="body2">{rows.length} row(s) ready to import</Typography>
             )}
-            {parsed.rows.length > 0 && (
-              <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+            {rows.length > 0 && (
+              <Box sx={{ maxHeight: 220, overflow: 'auto' }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -130,8 +175,8 @@ export default function ProductsImportWizard({ open, onClose, onSuccess }) {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {parsed.rows.slice(0, 5).map((r, i) => (
-                      <TableRow key={i}>
+                    {rows.slice(0, 8).map((r, i) => (
+                      <TableRow key={`${r.sku || r.name}-${i}`}>
                         <TableCell>{r.name}</TableCell>
                         <TableCell>{r.sku}</TableCell>
                         <TableCell>{r.sale_price}</TableCell>
@@ -140,8 +185,10 @@ export default function ProductsImportWizard({ open, onClose, onSuccess }) {
                     ))}
                   </TableBody>
                 </Table>
-                {parsed.rows.length > 5 && (
-                  <Typography variant="caption" color="text.secondary">…and {parsed.rows.length - 5} more</Typography>
+                {rows.length > 8 && (
+                  <Typography variant="caption" color="text.secondary">
+                    …and {rows.length - 8} more
+                  </Typography>
                 )}
               </Box>
             )}
@@ -174,8 +221,8 @@ export default function ProductsImportWizard({ open, onClose, onSuccess }) {
         {step === 1 && (
           <>
             <Button onClick={() => setStep(0)}>Back</Button>
-            <Button variant="contained" disabled={!parsed.rows.length || loading} onClick={runImport}>
-              {loading ? 'Importing…' : `Import ${parsed.rows.length} row(s)`}
+            <Button variant="contained" disabled={!rows.length || loading} onClick={runImport}>
+              {loading ? 'Importing…' : `Import ${rows.length} row(s)`}
             </Button>
           </>
         )}

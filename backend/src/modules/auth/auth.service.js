@@ -235,7 +235,7 @@ class AuthService {
   async setupMfa(userId) {
     const speakeasy = require('speakeasy');
     const user = await userRepo.findById(userId);
-    const secret = speakeasy.generateSecret({ name: `CodexPOS:${user?.email || userId}` });
+    const secret = speakeasy.generateSecret({ name: `PosHive:${user?.email || userId}` });
     await userRepo.update(userId, { mfa_secret: secret.base32 });
     return { secret: secret.base32, otpauth: secret.otpauth_url };
   }
