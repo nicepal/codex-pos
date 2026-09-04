@@ -150,7 +150,7 @@ export default function Navbar() {
   return (
     <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`} ref={navRef}>
       <div className="container site-header-inner">
-        <PosHiveLogo size="md" variant="light" />
+        <PosHiveLogo size="md" variant="light" preferIconOnMobile />
         <nav className="nav-desktop" aria-label="Primary">
           {DESKTOP_MENUS.map((menu) => (
             <Dropdown

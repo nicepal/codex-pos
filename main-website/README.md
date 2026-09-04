@@ -23,11 +23,21 @@ Copy `.env.example` to `.env`:
 
 ## Brand assets
 
-- `public/brand/mark.svg` — mark only
-- `public/brand/wordmark.svg` — light lockup
-- `public/brand/logo-dark.svg` — dark lockup
-- `public/favicon.svg`, `public/og-default.svg`
-- React: `<PosHiveLogo variant="light\|dark" size="sm\|md\|lg" />`
+All logos live in `public/assets/images/branding/`:
+
+| File | Use |
+|------|-----|
+| `poshive-logo-light.svg` / `poshive-logo.svg` | Horizontal lockup (light backgrounds) |
+| `poshive-logo-dark.svg` | Horizontal lockup (dark backgrounds) |
+| `poshive-logo-stacked.svg` | Icon above wordmark |
+| `poshive-icon.svg` | Icon / favicon (light backgrounds) |
+| `poshive-icon-dark.svg` | Icon on dark backgrounds |
+| `poshive-logo-monochrome-*.svg` | Black / white lockups |
+| `poshive-favicon-32.png` / `64.png` | Favicons |
+| `poshive-apple-touch-icon-180.png` | Apple touch icon |
+| `poshive-og-image-1200x630.png` | Open Graph / Twitter |
+
+React: `<PosHiveLogo variant="light\|dark" size="sm\|md\|lg" preferIconOnMobile />`
 
 ## Notes
 

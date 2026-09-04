@@ -90,11 +90,14 @@ export function applyDocumentSeo({
     ensureMeta('property', 'og:type', type),
     ensureMeta('property', 'og:url', absUrl),
     ensureMeta('property', 'og:image', absImage),
+    ensureMeta('property', 'og:image:alt', title),
     ensureMeta('property', 'og:site_name', siteName),
+    ensureMeta('property', 'og:locale', 'en_US'),
     ensureMeta('name', 'twitter:card', absImage ? 'summary_large_image' : 'summary'),
     ensureMeta('name', 'twitter:title', title),
     ensureMeta('name', 'twitter:description', desc),
     ensureMeta('name', 'twitter:image', absImage),
+    ensureMeta('name', 'twitter:image:alt', title),
     ensureLink('canonical', absUrl),
   ].filter(Boolean);
 

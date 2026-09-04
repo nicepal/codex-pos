@@ -1,27 +1,45 @@
-.codexpos-logo-link {
+.poshive-logo-link {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
   color: inherit;
 }
 
-.codexpos-logo {
+.poshive-logo {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
-  color: var(--color-ink);
+  line-height: 0;
 }
 
-.codexpos-logo--dark {
-  color: var(--color-on-dark);
-}
-
-.codexpos-logo-mark {
-  flex-shrink: 0;
+.poshive-logo-mark,
+.poshive-logo-lockup {
   display: block;
+  height: auto;
+  max-width: 100%;
 }
 
-.codexpos-logo-word {
-  display: block;
-  overflow: visible;
+.poshive-logo-lockup {
+  width: auto;
+  height: 36px;
+}
+
+.poshive-logo--sm .poshive-logo-lockup {
+  height: 28px;
+}
+
+.poshive-logo--md .poshive-logo-lockup {
+  height: 36px;
+}
+
+.poshive-logo--lg .poshive-logo-lockup {
+  height: 44px;
+}
+
+/* Legacy class aliases during transition */
+.codexpos-logo-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
 }

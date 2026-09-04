@@ -10,6 +10,7 @@ const { success } = require('../../shared/response');
 const db = require('../../config/database');
 const reviewsService = require('../reviews/reviews.service');
 const { service: storefrontCustomers, authenticateStorefrontCustomer } = require('./storefront-customers.service');
+const { buildShopOg, buildProductOg } = require('./storefront.og.service');
 
 async function resolveProductId(tenantId, slug) {
   const result = await db.query(
@@ -25,6 +26,26 @@ function optionalStorefrontAuth(req, res, next) {
   if (!req.headers.authorization) return next();
   return authenticateStorefrontCustomer(req, res, (err) => next(err && err.statusCode === 401 ? null : err));
 }
+
+/**
+ * Crawler / social-share Open Graph HTML (no tenant header required).
+ * Nginx routes bot requests for /store/:slug to these endpoints.
+ */
+router.get('/og/:slug/product/:productSlug', asyncHandler(async (req, res) => {
+  const html = await buildProductOg(req, req.params.slug, req.params.productSlug);
+  if (!html) throw new NotFoundError('Product not found');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  return res.status(200).send(html);
+}));
+
+router.get('/og/:slug', asyncHandler(async (req, res) => {
+  const html = await buildShopOg(req, req.params.slug);
+  if (!html) throw new NotFoundError('Store not found');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  return res.status(200).send(html);
+}));
 
 /**
  * Public shop access is controlled by Settings → "Enable online shop"

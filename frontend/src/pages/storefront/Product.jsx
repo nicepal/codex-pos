@@ -33,7 +33,11 @@ export default function StoreProduct() {
   }, [basePath, product?.slug]);
 
   const imageUrl = useMemo(
-    () => toAbsoluteUrl(resolveProductImageSrc(product) || product?.images?.[0]?.url),
+    () => toAbsoluteUrl(
+      resolveProductImageSrc(product)
+        || product?.images?.[0]?.url
+        || '/og-store-default.png'
+    ),
     [product],
   );
 

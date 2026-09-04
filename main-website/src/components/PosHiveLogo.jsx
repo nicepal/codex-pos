@@ -1,85 +1,83 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import './PosHiveLogo.css';
 
+const BRAND = '/assets/images/branding';
+
 const SIZES = {
-  sm: { mark: 28, word: 16 },
-  md: { mark: 36, word: 20 },
-  lg: { mark: 44, word: 24 },
+  sm: { icon: 28, height: 28 },
+  md: { icon: 36, height: 36 },
+  lg: { icon: 44, height: 44 },
 };
 
-function Mark({ size, variant }) {
-  const ring = variant === 'dark' ? '#0B1F2A' : '#14B8A6';
-  const tile = variant === 'dark' ? '#14B8A6' : '#0B1F2A';
-  const glyph = variant === 'dark' ? '#0B1F2A' : '#F5B942';
-
-  return (
-    <svg
-      className="codexpos-logo-mark"
-      viewBox="0 0 64 64"
-      width={size}
-      height={size}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <rect width="64" height="64" rx="16" fill={tile} />
-      <path
-        d="M44.5 20.2C41.2 16.6 36.4 14.5 31.2 14.5c-10.2 0-18.5 8.3-18.5 18.5s8.3 18.5 18.5 18.5c5.2 0 10-2.1 13.3-5.7"
-        stroke={ring}
-        strokeWidth="5.5"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path d="M30 24.5h8.5v4.2H34.2v3.1H38v4.2h-8V24.5z" fill={glyph} />
-      <path d="M38.8 36.8h9.2v4.5H34.5v-12.2h4.3v7.7z" fill={glyph} />
-    </svg>
+function useIsMobile(breakpoint = 960) {
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches : false
   );
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const onChange = () => setMobile(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [breakpoint]);
+  return mobile;
 }
 
 /**
- * Official PosHive brand lockup.
- * @param {'light'|'dark'} variant
+ * Official PosHive.store brand lockup.
+ * @param {'light'|'dark'} variant — light = for light backgrounds; dark = for dark backgrounds
  * @param {'sm'|'md'|'lg'} size
- * @param {boolean} link — wrap in home Link (default true)
- * @param {boolean} markOnly — hide wordmark
+ * @param {boolean} link
+ * @param {boolean} markOnly — force icon-only
+ * @param {boolean} preferIconOnMobile — navbar: icon on small screens, full lockup on desktop
  */
 export default function PosHiveLogo({
   variant = 'light',
   size = 'md',
   link = true,
   markOnly = false,
+  preferIconOnMobile = false,
   className = '',
 }) {
+  const isMobile = useIsMobile();
   const dims = SIZES[size] || SIZES.md;
-  const content = (
-    <span className={`codexpos-logo codexpos-logo--${variant} codexpos-logo--${size} ${className}`.trim()}>
-      <Mark size={dims.mark} variant={variant} />
-      {!markOnly && (
-        <svg
-          className="codexpos-logo-word"
-          viewBox="0 0 168 28"
-          height={dims.word}
-          aria-hidden="true"
-          focusable="false"
-        >
-          <text
-            x="0"
-            y="22"
-            fontFamily="Inter, system-ui, sans-serif"
-            fontSize="24"
-            fontWeight="700"
-            letterSpacing="-0.04em"
-            fill="currentColor"
-          >
-            PosHive
-          </text>
-        </svg>
-      )}
+  const useIcon = markOnly || (preferIconOnMobile && isMobile);
+
+  const iconSrc = variant === 'dark'
+    ? `${BRAND}/poshive-icon-dark.svg`
+    : `${BRAND}/poshive-icon.svg`;
+
+  const logoSrc = variant === 'dark'
+    ? `${BRAND}/poshive-logo-dark.svg`
+    : `${BRAND}/poshive-logo-light.svg`;
+
+  const content = useIcon ? (
+    <span className={`poshive-logo poshive-logo--${variant} poshive-logo--${size} ${className}`.trim()}>
+      <img
+        src={iconSrc}
+        alt=""
+        width={dims.icon}
+        height={dims.icon}
+        className="poshive-logo-mark"
+        decoding="async"
+      />
+    </span>
+  ) : (
+    <span className={`poshive-logo poshive-logo--lockup poshive-logo--${variant} poshive-logo--${size} ${className}`.trim()}>
+      <img
+        src={logoSrc}
+        alt="PosHive.store"
+        height={dims.height}
+        className="poshive-logo-lockup"
+        decoding="async"
+      />
     </span>
   );
 
   if (!link) return content;
   return (
-    <Link to="/" className="codexpos-logo-link" aria-label="PosHive home">
+    <Link to="/" className="poshive-logo-link" aria-label="PosHive.store home">
       {content}
     </Link>
   );

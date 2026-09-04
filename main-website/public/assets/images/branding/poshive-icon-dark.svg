@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="PosHive">
+  <rect width="64" height="64" rx="16" fill="#FFFFFF"/>
+  <path d="M32 12l8.66 5v10L32 32l-8.66-5V17L32 12z" fill="#F3F4F6"/>
+  <path d="M20.5 28.5l8.66 5v10l-8.66 5-8.66-5v-10l8.66-5z" fill="#F3F4F6"/>
+  <path d="M43.5 28.5l8.66 5v10l-8.66 5-8.66-5v-10l8.66-5z" fill="#F3F4F6"/>
+  <path d="M32 18l7.5 4.33v8.66L32 35.32l-7.5-4.33v-8.66L32 18z" fill="#FBBF24"/>
+  <path d="M22 30h20l-1.8 18.5c-.2 1.8-1.7 3.1-3.5 3.1H27.3c-1.8 0-3.3-1.3-3.5-3.1L22 30z" fill="#111827"/>
+  <path d="M21 30h22v2.5H21V30z" fill="#FBBF24"/>
+  <path d="M28 30v-3.2c0-2.2 1.8-4 4-4s4 1.8 4 4V30" stroke="#FBBF24" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <rect x="27" y="38" width="10" height="2.2" rx="1.1" fill="#FBBF24"/>
+  <rect x="27" y="42.5" width="10" height="2.2" rx="1.1" fill="#FBBF24"/>
+  <path d="M38.5 36.5c2.8-1.2 5.2.4 5.8 2.8" stroke="#F97316" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+</svg>

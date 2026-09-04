@@ -9,7 +9,7 @@ export function usePageMeta({
   description,
   path = '/',
   type = 'website',
-  image = `${SITE_URL}/og-default.svg`,
+  image = `${SITE_URL}/assets/images/branding/poshive-og-image-1200x630.png`,
 }) {
   useEffect(() => {
     const fullTitle = title.includes('PosHive') ? title : `${title} · PosHive`;

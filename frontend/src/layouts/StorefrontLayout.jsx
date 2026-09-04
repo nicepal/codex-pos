@@ -55,17 +55,33 @@ function useStorefrontFont() {
   }, []);
 }
 
-function useStoreSeo({ storeName, description, enabled = true }) {
+function useStoreSeo({
+  storeName,
+  description,
+  image,
+  url,
+  enabled = true,
+}) {
   useEffect(() => {
     if (!enabled || !storeName) return undefined;
     return applyDocumentSeo({
       title: `${storeName} — Order Online`,
       description,
+      image,
+      url,
       type: 'website',
       siteName: storeName,
-      url: typeof window !== 'undefined' ? window.location.href : undefined,
+      jsonLdId: 'storefront-shop',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Store',
+        name: storeName,
+        description: description || undefined,
+        url,
+        image: image || undefined,
+      },
     });
-  }, [storeName, description, enabled]);
+  }, [storeName, description, image, url, enabled]);
 }
 
 function StorefrontShell() {
@@ -165,9 +181,16 @@ function StorefrontShell() {
     || store?.address
     || `Order online from ${storeName}`;
 
+  const shopUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${basePath}`
+    : basePath;
+  const shopImage = logoUrl || '/og-store-default.png';
+
   useStoreSeo({
     storeName,
     description: seoDescription,
+    image: shopImage,
+    url: shopUrl,
     enabled: !location.pathname.includes('/product/'),
   });
 
