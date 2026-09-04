@@ -4,7 +4,7 @@ const { isRestaurantBusinessType, isPosBusinessType } = require('../modules/onbo
 /** Feature pack keys and metadata */
 const FEATURE_PACKS = {
   pos_pro: { label: 'POS Pro', description: 'Variants at POS, returns, quick keys, manager overrides' },
-  catalog_pro: { label: 'Catalog Pro', description: 'Bundles, serials, batches, CSV import' },
+  catalog_pro: { label: 'Catalog Pro', description: 'Bundles, serials, batches' },
   tax_advanced: { label: 'Advanced Tax', description: 'Category tax rules, tax-exempt customers' },
   inventory_pro: { label: 'Inventory Pro', description: 'Transfers, stock take, PO receiving' },
   staff_pro: { label: 'Staff Pro', description: 'PIN login, drawer sessions, unified team' },

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Box, Typography, Tabs, Tab, Grid, TextField, Button, IconButton, Chip, Avatar,
+  Box, Typography, Tabs, Tab, Grid, TextField, Button, IconButton, Chip,
   Card, CardContent, MenuItem, Divider, Checkbox, FormControlLabel, Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
 import { ArrowBack, Add, Delete, Save, Close } from '@mui/icons-material';
@@ -15,6 +15,7 @@ import RHFTextField from '../../components/RHFTextField';
 import RHFRichTextEditor from '../../components/RHFRichTextEditor';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteToolbar from '../../components/BulkDeleteToolbar';
+import ProductImageUploader from '../../components/ProductImageUploader';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import useTenantFeatures from '../../hooks/useTenantFeatures';
 import { formatDisplayText } from '../../utils/displayText';
@@ -59,12 +60,16 @@ export default function ProductDetailPage() {
   });
 
   const uploadImageMutation = useMutation({
-    mutationFn: (file) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      const hasImages = (product?.images?.length || 0) > 0;
-      formData.append('is_primary', hasImages ? 'false' : 'true');
-      return api.post(`/products/${id}/images`, formData);
+    mutationFn: async (input) => {
+      const files = Array.isArray(input) ? input : [input];
+      let uploaded = product?.images?.length || 0;
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('is_primary', uploaded === 0 ? 'true' : 'false');
+        await api.post(`/products/${id}/images`, formData);
+        uploaded += 1;
+      }
     },
     onSuccess: () => {
       setUploadError('');
@@ -337,35 +342,98 @@ export default function ProductDetailPage() {
           onDelete={() => setBulkDeleteImagesOpen(true)}
           label="images selected"
         />
-        <Button variant="outlined" component="label" sx={{ mb: 2 }} disabled={uploadImageMutation.isPending}>
-          {uploadImageMutation.isPending ? 'Uploading...' : 'Upload Image'}
-          <input type="file" hidden accept="image/*" onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) uploadImageMutation.mutate(file);
-            e.target.value = '';
-          }} />
-        </Button>
-        {uploadError && <Typography color="error" variant="body2" sx={{ mb: 2 }}>{uploadError}</Typography>}
+        <ProductImageUploader
+          active={tab === 2}
+          uploading={uploadImageMutation.isPending}
+          error={uploadError}
+          onUpload={(files) => uploadImageMutation.mutateAsync(files)}
+        />
         <Grid container spacing={2}>
           {(product.images || []).map((img) => (
             <Grid item xs={6} sm={4} md={3} key={img.id}>
-              <Card variant="outlined" sx={{ position: 'relative' }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: 2,
+                  '&:hover .product-image-actions': { opacity: 1 },
+                }}
+              >
                 <Checkbox
                   checked={selectedImageIds.includes(img.id)}
                   onChange={() => toggleImageSelection(img.id)}
-                  sx={{ position: 'absolute', top: 8, left: 8, zIndex: 1, bgcolor: 'background.paper', borderRadius: 1 }}
+                  size="small"
+                  sx={{
+                    position: 'absolute',
+                    top: 6,
+                    left: 6,
+                    zIndex: 2,
+                    bgcolor: 'rgba(255,255,255,0.9)',
+                    borderRadius: 1,
+                    p: 0.25,
+                  }}
                 />
-                <Avatar variant="rounded" src={resolveImageUrl(img.url)} sx={{ width: '100%', height: 140, borderRadius: 0 }} />
-                <CardContent sx={{ py: 1 }}>
-                  {img.is_primary && <Chip label="Primary" size="small" color="primary" sx={{ mb: 1 }} />}
-                  <IconButton size="small" color="error" onClick={() => setDeleteImageId(img.id)}><Delete fontSize="small" /></IconButton>
-                </CardContent>
+                {img.is_primary && (
+                  <Chip
+                    label="Primary"
+                    size="small"
+                    color="primary"
+                    sx={{ position: 'absolute', top: 8, right: 8, zIndex: 2, height: 24 }}
+                  />
+                )}
+                <Box
+                  sx={{
+                    position: 'relative',
+                    pt: '100%',
+                    bgcolor: 'grey.100',
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={resolveImageUrl(img.url)}
+                    alt={img.alt_text || product.name || 'Product'}
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                  <Box
+                    className="product-image-actions"
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      justifyContent: 'flex-end',
+                      p: 1,
+                      background: 'linear-gradient(transparent 50%, rgba(0,0,0,0.45))',
+                      opacity: { xs: 1, sm: 0 },
+                      transition: 'opacity 0.15s ease',
+                    }}
+                  >
+                    <IconButton
+                      size="small"
+                      aria-label="Delete image"
+                      onClick={() => setDeleteImageId(img.id)}
+                      sx={{ bgcolor: 'background.paper', '&:hover': { bgcolor: 'error.light', color: 'error.contrastText' } }}
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
               </Card>
             </Grid>
           ))}
         </Grid>
         {!product.images?.length && (
-          <Typography color="text.secondary">No images yet. Upload one above.</Typography>
+          <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+            No images yet. Drop, paste, or select files above.
+          </Typography>
         )}
       </TabPanel>
 

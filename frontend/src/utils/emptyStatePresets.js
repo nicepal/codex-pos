@@ -12,13 +12,13 @@ export const EMPTY_PRESETS = {
   },
   products: {
     title: 'No products yet',
-    message: "You haven't added any products. Create your first product to start selling.",
+    message: 'Create a product, or use Bulk Import to load many from Excel.',
     actionLabel: 'Add Product',
     illustration: 'products',
     benefits: [
       { icon: 'tag', title: 'Build your catalog', description: 'Add items with pricing, SKU, and stock levels.' },
       { icon: 'chart', title: 'Sell in-store & online', description: 'Products sync across POS and your storefront.' },
-      { icon: 'inventory', title: 'Track inventory', description: 'Monitor stock and get alerts when items run low.' },
+      { icon: 'inventory', title: 'Bulk import', description: 'Download Sample Excel, fill rows, then Bulk Import.' },
     ],
   },
   categories: {

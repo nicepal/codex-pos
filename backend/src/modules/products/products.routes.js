@@ -24,7 +24,7 @@ router.get('/:id/batches', authorize('business.products'), requireFeature('catal
 router.post('/:id/batches', authorize('business.products'), requireFeature('catalog_pro'), controller.addBatch);
 router.delete('/:id/batches/:batchId', authorize('business.products'), requireFeature('catalog_pro'), controller.removeBatch);
 router.get('/:id', authorize('business.products'), controller.getById);
-router.post('/import', authorize('business.products'), requireFeature('catalog_pro'), controller.importCsv);
+router.post('/import', authorize('business.products'), controller.importCsv);
 router.post('/', authorize('business.products'), auditLog('product.create', 'product'), validate(createProductSchema), controller.create);
 router.post('/:id/images', authorize('business.products'), upload.single('file'), controller.uploadImage);
 router.post('/:id/duplicate', authorize('business.products'), auditLog('product.create', 'product'), controller.duplicate);

@@ -27,7 +27,6 @@ import useBulkDelete from '../../hooks/useBulkDelete';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import { formatDisplayText } from '../../utils/displayText';
-import useTenantFeatures from '../../hooks/useTenantFeatures';
 import ProductsImportWizard from '../../components/ProductsImportWizard';
 import { downloadProductImportSampleExcel } from '../../utils/productImport';
 
@@ -83,7 +82,6 @@ export default function ProductsPage() {
   const [limit, setLimit] = useState(20);
   const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { hasFeature } = useTenantFeatures();
   const { register, handleSubmit, reset, control } = useForm();
 
   const queryParams = {
@@ -260,15 +258,13 @@ export default function ProductsPage() {
             >
               Sample Excel
             </MuiButton>
-            {hasFeature('catalog_pro') && (
-              <MuiButton
-                variant="outlined"
-                startIcon={<UploadFile />}
-                onClick={() => setImportOpen(true)}
-              >
-                Bulk Import
-              </MuiButton>
-            )}
+            <MuiButton
+              variant="outlined"
+              startIcon={<UploadFile />}
+              onClick={() => setImportOpen(true)}
+            >
+              Bulk Import
+            </MuiButton>
             <MuiButton variant="contained" startIcon={<Add />} onClick={() => openForm()}>
               Add Product
             </MuiButton>
@@ -360,6 +356,7 @@ export default function ProductsPage() {
       <FormDialog
         open={open}
         title={editing ? 'Edit Product' : 'Add Product'}
+        maxWidth="xl"
         onClose={() => {
           setOpen(false);
           setEditing(null);
