@@ -4,30 +4,65 @@ const orderService = require('../orders/orders.service');
 const loyaltyService = require('../loyalty/loyalty.service');
 const { toStorefrontMediaUrl } = require('../../services/upload.service');
 
+function formatShippingAddress(ship = {}) {
+  const lines = [
+    ship.line1,
+    ship.line2,
+    [ship.city, ship.postal_code].filter(Boolean).join(' '),
+    ship.country,
+  ].filter(Boolean);
+  return {
+    lines,
+    formatted: lines.join(', '),
+    line1: ship.line1 || null,
+    line2: ship.line2 || null,
+    city: ship.city || null,
+    postal_code: ship.postal_code || null,
+    country: ship.country || null,
+  };
+}
+
 class StorefrontCheckoutService {
   async checkout(tenantId, data) {
+    const customerService = require('../customers/customers.service');
+    const ship = data.shipping_address || {};
+    const shipping = formatShippingAddress(ship);
+    const email = data.customer_email ? String(data.customer_email).trim() : null;
+    const phone = data.customer_phone ? String(data.customer_phone).trim() : null;
+    const name = data.customer_name ? String(data.customer_name).trim() : null;
+    const street = [ship.line1, ship.line2].filter(Boolean).join(', ') || null;
+
     let customerId = data.customer_id || null;
-    if (!customerId && data.customer_email) {
+    if (!customerId && email) {
       const row = await db.query(
         `SELECT id FROM customers WHERE tenant_id = $1 AND LOWER(email) = LOWER($2) LIMIT 1`,
-        [tenantId, String(data.customer_email).trim()]
+        [tenantId, email]
       );
       customerId = row.rows[0]?.id || null;
     }
 
-    const ship = data.shipping_address || {};
-    const addressLines = [
-      ship.line1,
-      ship.line2,
-      [ship.city, ship.postal_code].filter(Boolean).join(' '),
-      ship.country,
-    ].filter(Boolean);
+    const customerPayload = {
+      name: name || email || 'Online Customer',
+      email: email || null,
+      phone: phone || null,
+      address: street,
+      city: ship.city || null,
+      postal_code: ship.postal_code || null,
+      country: ship.country || null,
+    };
+
+    if (customerId) {
+      await customerService.update(tenantId, customerId, customerPayload);
+    } else if (email || name || phone) {
+      const created = await customerService.create(tenantId, customerPayload);
+      customerId = created.id;
+    }
 
     const customerNote = [
-      data.customer_name && `Name: ${data.customer_name}`,
-      data.customer_email && `Email: ${data.customer_email}`,
-      data.customer_phone && `Phone: ${data.customer_phone}`,
-      addressLines.length ? `Ship to: ${addressLines.join(', ')}` : null,
+      name && `Name: ${name}`,
+      email && `Email: ${email}`,
+      phone && `Phone: ${phone}`,
+      shipping.lines.length ? `Ship to: ${shipping.formatted}` : null,
     ].filter(Boolean).join(' | ');
 
     const notes = [data.notes, customerNote].filter(Boolean).join('\n');
@@ -68,17 +103,10 @@ class StorefrontCheckoutService {
 
     return {
       ...order,
-      customer_name: data.customer_name || null,
-      customer_email: data.customer_email || null,
-      customer_phone: data.customer_phone || null,
-      shipping_address: addressLines.length ? {
-        line1: ship.line1 || null,
-        line2: ship.line2 || null,
-        city: ship.city || null,
-        postal_code: ship.postal_code || null,
-        country: ship.country || null,
-        formatted: addressLines.join(', '),
-      } : null,
+      customer_name: name,
+      customer_email: email,
+      customer_phone: phone,
+      shipping_address: shipping.lines.length ? shipping : null,
       fulfillment_type: data.fulfillment_type || null,
     };
   }

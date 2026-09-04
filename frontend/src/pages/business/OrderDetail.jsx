@@ -4,9 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Grid, Card, CardContent, Table, TableBody, TableCell, TableHead, TableRow,
   Chip, Button, Divider, MenuItem, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  FormControlLabel, Checkbox, Alert,
+  FormControlLabel, Checkbox, Alert, Stack,
 } from '@mui/material';
-import { ArrowBack } from '@mui/icons-material';
+import { ArrowBack, ReceiptLong } from '@mui/icons-material';
 import api from '../../services/api';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import useTenantFeatures from '../../hooks/useTenantFeatures';
@@ -14,6 +14,27 @@ import { formatDisplayText } from '../../utils/displayText';
 import { downloadBlob, fileNameFromDisposition } from '../../utils/fileDownload';
 
 const statusColors = { pending: 'warning', paid: 'success', completed: 'success', cancelled: 'error', on_hold: 'info', refunded: 'default' };
+
+function DetailLine({ label, value }) {
+  if (!value) return null;
+  return (
+    <Box sx={{ mb: 1 }}>
+      <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
+      <Typography variant="body2">{value}</Typography>
+    </Box>
+  );
+}
+
+function formatShipAddress(addr) {
+  if (!addr) return null;
+  if (addr.formatted) return addr.formatted;
+  return [
+    addr.line1,
+    addr.line2,
+    [addr.city, addr.state, addr.postal_code].filter(Boolean).join(', '),
+    addr.country,
+  ].filter(Boolean).join(', ') || null;
+}
 
 export default function OrderDetailPage() {
   const { formatMoney } = useBusinessCurrency();
@@ -76,16 +97,33 @@ export default function OrderDetailPage() {
   if (isLoading) return <Typography>Loading...</Typography>;
   if (!order) return <Typography>Order not found</Typography>;
 
+  const customer = order.customer;
+  const shipTo = formatShipAddress(order.shipping_address);
+  const customerAddress = customer
+    ? [
+      customer.address,
+      [customer.city, customer.state, customer.postal_code].filter(Boolean).join(', '),
+      customer.country,
+    ].filter(Boolean).join(', ')
+    : null;
+
   return (
     <Box>
       <Button startIcon={<ArrowBack />} onClick={() => navigate('/orders')} sx={{ mb: 2 }}>Back to Orders</Button>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1 }}>
         <Box>
           <Typography variant="h5" fontWeight={700}>{order.order_number}</Typography>
           <Typography color="text.secondary">{new Date(order.created_at).toLocaleString()}</Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            startIcon={<ReceiptLong />}
+            onClick={() => navigate(`/orders/${id}/invoice`)}
+          >
+            Invoice
+          </Button>
           {['paid', 'completed'].includes(order.status) && (
             <Button variant="outlined" onClick={() => taxInvoiceMutation.mutate()} disabled={taxInvoiceMutation.isPending}>
               Tax Invoice
@@ -143,24 +181,55 @@ export default function OrderDetailPage() {
         <Grid item xs={12} md={4}>
           <Card sx={{ mb: 2 }}>
             <CardContent>
+              <Typography variant="h6" gutterBottom>Customer</Typography>
+              {customer ? (
+                <Stack spacing={0.5}>
+                  <DetailLine label="Name" value={customer.name} />
+                  <DetailLine label="Email" value={customer.email} />
+                  <DetailLine label="Phone" value={customer.phone} />
+                  <DetailLine label="Address" value={customerAddress} />
+                  {customer.id && (
+                    <Button size="small" sx={{ mt: 1, alignSelf: 'flex-start' }} onClick={() => navigate(`/customers/${customer.id}`)}>
+                      View Customer
+                    </Button>
+                  )}
+                </Stack>
+              ) : (
+                <Typography color="text.secondary">Walk-in / no customer linked</Typography>
+              )}
+            </CardContent>
+          </Card>
+
+          {(shipTo || order.pickup_branch) && (
+            <Card sx={{ mb: 2 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  {order.pickup_branch ? 'Pickup' : 'Shipping'}
+                </Typography>
+                {order.pickup_branch ? (
+                  <>
+                    <DetailLine label="Location" value={order.pickup_branch.name} />
+                    <DetailLine label="Address" value={order.pickup_branch.address} />
+                    <DetailLine label="Phone" value={order.pickup_branch.phone} />
+                  </>
+                ) : (
+                  <DetailLine label="Ship to" value={shipTo} />
+                )}
+                {order.fulfillment_status && order.fulfillment_status !== 'none' && (
+                  <DetailLine label="Fulfillment" value={formatDisplayText(order.fulfillment_status)} />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
               <Typography variant="h6" gutterBottom>Payment</Typography>
               <Typography><strong>Method:</strong> {formatDisplayText(order.payment_method) || 'N/A'}</Typography>
               <Typography><strong>Status:</strong> {formatDisplayText(order.payment_status) || '—'}</Typography>
               <Typography><strong>Type:</strong> {formatDisplayText(order.order_type) || '—'}</Typography>
             </CardContent>
           </Card>
-
-          {order.customer && (
-            <Card sx={{ mb: 2 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>Customer</Typography>
-                <Typography>{order.customer.name}</Typography>
-                <Typography variant="body2" color="text.secondary">{order.customer.email}</Typography>
-                <Typography variant="body2" color="text.secondary">{order.customer.phone}</Typography>
-                <Button size="small" sx={{ mt: 1 }} onClick={() => navigate(`/customers/${order.customer.id}`)}>View Customer</Button>
-              </CardContent>
-            </Card>
-          )}
 
           <Card>
             <CardContent>
@@ -174,7 +243,9 @@ export default function OrderDetailPage() {
                 ))}
               </TextField>
               {order.notes && (
-                <Typography variant="body2" sx={{ mt: 2 }}><strong>Notes:</strong> {order.notes}</Typography>
+                <Typography variant="body2" sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
+                  <strong>Notes:</strong> {order.notes}
+                </Typography>
               )}
             </CardContent>
           </Card>

@@ -12,6 +12,7 @@ import RHFTextField from '../../components/RHFTextField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
+import FeatureGate from '../../components/FeatureGate';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 import { formatDisplayText } from '../../utils/displayText';
 
@@ -20,6 +21,14 @@ const empty = emptyPresetProps('team');
 const ROLES = ['manager', 'cashier'];
 
 export default function TeamPage() {
+  return (
+    <FeatureGate pack="staff_pro">
+      <TeamPageInner />
+    </FeatureGate>
+  );
+}
+
+function TeamPageInner() {
   const [open, setOpen] = useState(false);
   const [removeId, setRemoveId] = useState(null);
   const [inviteError, setInviteError] = useState('');
@@ -29,6 +38,7 @@ export default function TeamPage() {
   const { register, handleSubmit, reset } = useForm();
 
   const [removeError, setRemoveError] = useState('');
+  const [roleError, setRoleError] = useState('');
   const [updatingRoleId, setUpdatingRoleId] = useState(null);
 
   const { data, isLoading } = useQuery({

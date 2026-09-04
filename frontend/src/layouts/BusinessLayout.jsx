@@ -11,6 +11,7 @@ import ResponsiveDrawer from '../components/ResponsiveDrawer';
 import NotificationBell from '../components/NotificationBell';
 import useTenantFeatures from '../hooks/useTenantFeatures';
 import { filterNavGroups, SHOP_FEATURE } from '../config/featureNav';
+import { RouteFeatureGate } from '../components/FeatureGate';
 import { BusinessCurrencyProvider } from '../contexts/BusinessCurrencyContext';
 
 export default function BusinessLayout() {
@@ -114,7 +115,9 @@ export default function BusinessLayout() {
         headerExtra={<NotificationBell />}
         onLogout={() => { dispatch(logout()); navigate('/login'); }}
       >
-        <Outlet />
+        <RouteFeatureGate>
+          <Outlet />
+        </RouteFeatureGate>
       </ResponsiveDrawer>
     </BusinessCurrencyProvider>
   );

@@ -2,12 +2,22 @@ const { AppError, ValidationError } = require('../shared/errors');
 const logger = require('../utils/logger');
 
 function errorHandler(err, req, res, _next) {
+  // Operational AppError (and subclasses such as ShopifyError)
   if (err.isOperational) {
     return res.status(err.statusCode).json({
       success: false,
       code: err.code,
       message: err.message,
       ...(err.details && { details: err.details }),
+    });
+  }
+
+  // Errors that expose statusCode/code but forgot isOperational
+  if (err.statusCode && err.code && err.statusCode < 500) {
+    return res.status(err.statusCode).json({
+      success: false,
+      code: err.code,
+      message: err.message || 'Request failed',
     });
   }
 
@@ -26,6 +36,16 @@ function errorHandler(err, req, res, _next) {
 
   if (err.message === 'Only image files are allowed') {
     return res.status(400).json({ success: false, message: err.message });
+  }
+
+  // Missing relation / migration not applied
+  if (err.code === '42P01') {
+    logger.error('Database table missing', { error: err.message, path: req.path });
+    return res.status(503).json({
+      success: false,
+      code: 'MIGRATION_REQUIRED',
+      message: 'Required database tables are missing. Run migrations and retry.',
+    });
   }
 
   logger.error('Unhandled error', {

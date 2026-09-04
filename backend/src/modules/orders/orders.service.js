@@ -14,6 +14,38 @@ const {
   pickDrawerForBranch,
 } = require('./orders.register-gate');
 
+/** Extract guest contact + ship-to from storefront checkout notes. */
+function parseCustomerDetailsFromNotes(notes) {
+  if (!notes || typeof notes !== 'string') return { guest: null, shipping_address: null };
+  const name = notes.match(/(?:^|\||\n)\s*Name:\s*([^|\n]+)/i)?.[1]?.trim() || null;
+  const email = notes.match(/(?:^|\||\n)\s*Email:\s*([^|\n]+)/i)?.[1]?.trim() || null;
+  const phone = notes.match(/(?:^|\||\n)\s*Phone:\s*([^|\n]+)/i)?.[1]?.trim() || null;
+  const shipTo = notes.match(/(?:^|\||\n)\s*Ship to:\s*([^|\n]+)/i)?.[1]?.trim() || null;
+  return {
+    guest: (name || email || phone) ? { name, email, phone } : null,
+    shipping_address: shipTo ? { formatted: shipTo, line1: shipTo } : null,
+  };
+}
+
+function formatCustomerAddress(customer) {
+  if (!customer) return null;
+  const lines = [
+    customer.address,
+    [customer.city, customer.state, customer.postal_code].filter(Boolean).join(', '),
+    customer.country,
+  ].filter(Boolean);
+  if (!lines.length) return null;
+  return {
+    formatted: lines.join(', '),
+    line1: customer.address || null,
+    line2: null,
+    city: customer.city || null,
+    postal_code: customer.postal_code || null,
+    country: customer.country || null,
+    state: customer.state || null,
+  };
+}
+
 class OrderRepository extends BaseRepository {
   constructor() {
     super('orders');
@@ -454,11 +486,36 @@ class OrderService {
     let customer = null;
     if (order.customer_id) {
       const result = await db.query(
-        'SELECT id, name, email, phone FROM customers WHERE id = $1 AND tenant_id = $2',
+        `SELECT id, name, email, phone, address, city, state, country, postal_code
+         FROM customers WHERE id = $1 AND tenant_id = $2`,
         [order.customer_id, tenantId]
       );
       customer = result.rows[0] || null;
     }
+
+    const parsed = parseCustomerDetailsFromNotes(order.notes);
+    if (!customer && parsed.guest) {
+      customer = {
+        id: null,
+        name: parsed.guest.name,
+        email: parsed.guest.email,
+        phone: parsed.guest.phone,
+        address: null,
+        city: null,
+        state: null,
+        country: null,
+        postal_code: null,
+      };
+    } else if (customer && parsed.guest) {
+      customer = {
+        ...customer,
+        name: customer.name || parsed.guest.name,
+        email: customer.email || parsed.guest.email,
+        phone: customer.phone || parsed.guest.phone,
+      };
+    }
+
+    const shipping_address = parsed.shipping_address || formatCustomerAddress(customer);
 
     let createdBy = null;
     if (order.created_by) {
@@ -484,6 +541,15 @@ class OrderService {
       if (s) serverName = [s.first_name, s.last_name].filter(Boolean).join(' ').trim() || null;
     }
 
+    let pickupBranch = null;
+    if (order.pickup_branch_id) {
+      const branchRes = await db.query(
+        `SELECT id, name, address, phone FROM branches WHERE id = $1 AND tenant_id = $2`,
+        [order.pickup_branch_id, tenantId]
+      );
+      pickupBranch = branchRes.rows[0] || null;
+    }
+
     const kitchenService = require('../kitchen/kitchen.service');
     const itemIds = (order.items || []).map((i) => i.id);
     const kitchenStatuses = itemIds.length
@@ -498,6 +564,8 @@ class OrderService {
       ...order,
       items: itemsWithKitchen,
       customer,
+      shipping_address,
+      pickup_branch: pickupBranch,
       created_by_user: createdBy,
       table_name: tableName,
       server_name: serverName,

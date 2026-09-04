@@ -115,7 +115,9 @@ const authSlice = createSlice({
         syncTenantSlug(action.payload.tenant);
       })
       .addCase(fetchMe.pending, (state) => {
-        state.hydrating = true;
+        // Only blank the app shell on the initial session hydrate — not on later refetches
+        // (avoids white screen when remounting / browser Back).
+        if (!state.user) state.hydrating = true;
       })
       .addCase(fetchMe.fulfilled, (state, action) => {
         state.user = action.payload.user;

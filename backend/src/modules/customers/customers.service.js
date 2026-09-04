@@ -1,7 +1,10 @@
 const BaseRepository = require('../../shared/base.repository');
 const { pickAllowedFields } = require('../../shared/sanitize');
 
-const CUSTOMER_WRITABLE = ['name', 'email', 'phone', 'address', 'notes', 'status', 'loyalty_points', 'tax_exempt', 'tags'];
+const CUSTOMER_WRITABLE = [
+  'name', 'email', 'phone', 'address', 'city', 'state', 'country', 'postal_code',
+  'notes', 'status', 'loyalty_points', 'tax_exempt', 'tags',
+];
 const db = require('../../config/database');
 const { NotFoundError, ValidationError } = require('../../shared/errors');
 

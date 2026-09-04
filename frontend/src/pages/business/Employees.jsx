@@ -19,6 +19,20 @@ const empty = emptyPresetProps('employees');
 const ROLES = ['manager', 'cashier'];
 const STATUSES = ['active', 'inactive'];
 
+/** HTML date inputs need YYYY-MM-DD; API may return ISO timestamps. */
+function toDateInputValue(value) {
+  if (!value) return '';
+  const str = String(value);
+  const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
+  const d = new Date(str);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function EmployeesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -33,7 +47,14 @@ export default function EmployeesPage() {
 
   const openForm = (employee = null) => {
     setEditing(employee);
-    reset(employee || { name: '', email: '', phone: '', role: 'cashier', status: 'active', hired_at: '' });
+    if (employee) {
+      reset({
+        ...employee,
+        hired_at: toDateInputValue(employee.hired_at),
+      });
+    } else {
+      reset({ name: '', email: '', phone: '', role: 'cashier', status: 'active', hired_at: '' });
+    }
     setOpen(true);
   };
 

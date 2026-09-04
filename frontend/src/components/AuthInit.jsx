@@ -5,7 +5,7 @@ import LoadingState from '../components/LoadingState';
 
 export default function AuthInit({ children }) {
   const dispatch = useDispatch();
-  const { accessToken, hydrating } = useSelector(selectAuth);
+  const { accessToken, hydrating, user } = useSelector(selectAuth);
 
   useEffect(() => {
     if (accessToken) {
@@ -13,7 +13,8 @@ export default function AuthInit({ children }) {
     }
   }, [dispatch, accessToken]);
 
-  if (hydrating) {
+  // Keep existing UI mounted once we have a user (e.g. browser Back / remount).
+  if (hydrating && !user) {
     return <LoadingState />;
   }
 

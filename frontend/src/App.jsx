@@ -1,8 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectAuth, selectIsPlatformAdmin } from './features/auth/authSlice';
 import AuthInit from './components/AuthInit';
 import LoadingState from './components/LoadingState';
+import ErrorBoundary from './components/ErrorBoundary';
+import ScrollToTop from './components/ScrollToTop';
 
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -41,6 +43,7 @@ import ProductDetailPage from './pages/business/ProductDetail';
 import CategoriesPage from './pages/business/Categories';
 import OrdersPage from './pages/business/Orders';
 import OrderDetailPage from './pages/business/OrderDetail';
+import OrderInvoicePage from './pages/business/OrderInvoice';
 import CustomersPage from './pages/business/Customers';
 import CustomerDetailPage from './pages/business/CustomerDetail';
 import InventoryPage from './pages/business/Inventory';
@@ -141,6 +144,7 @@ function AppRoutes() {
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/:id" element={<OrderDetailPage />} />
+        <Route path="orders/:id/invoice" element={<OrderInvoicePage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="customers/:id" element={<CustomerDetailPage />} />
         <Route path="inventory" element={<InventoryPage />} />
@@ -205,8 +209,18 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthInit>
-        <AppRoutes />
+        <AppWithBoundary />
       </AuthInit>
     </BrowserRouter>
+  );
+}
+
+function AppWithBoundary() {
+  const location = useLocation();
+  return (
+    <ErrorBoundary resetKey={location.pathname}>
+      <ScrollToTop />
+      <AppRoutes />
+    </ErrorBoundary>
   );
 }

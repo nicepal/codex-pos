@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { Box } from '@mantine/core';
 import { BusinessCurrencyProvider } from '../contexts/BusinessCurrencyContext';
 import { CODEX_TOKENS } from '../design-system/theme/codexTheme';
+import { RouteFeatureGate } from '../components/FeatureGate';
 
 /** Full-screen kitchen display — no admin sidebar. */
 export default function KDSLayout() {
@@ -19,7 +20,9 @@ export default function KDSLayout() {
           flexDirection: 'column',
         }}
       >
-        <Outlet />
+        <RouteFeatureGate>
+          <Outlet />
+        </RouteFeatureGate>
       </Box>
     </BusinessCurrencyProvider>
   );

@@ -1,15 +1,14 @@
 const readline = require('readline');
 const config = require('../../../config');
 const logger = require('../../../utils/logger');
+const { AppError } = require('../../../shared/errors');
 
 const DEFAULT_API_VERSION = config.shopify.apiVersion || '2024-10';
 const MAX_RETRIES = 5;
 
-class ShopifyError extends Error {
+class ShopifyError extends AppError {
   constructor(message, code = 'SHOPIFY_ERROR', statusCode = 502) {
-    super(message);
-    this.code = code;
-    this.statusCode = statusCode;
+    super(message, statusCode, code);
   }
 }
 

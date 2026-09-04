@@ -1,30 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link, useOutletContext } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Rating, Stack, Divider, TextField, Button, Chip, Alert, LinearProgress,
   Collapse,
 } from '@mui/material';
-import api from '../../services/api';
+import storefrontApi from '../../services/storefrontApi';
+import { useStorefrontCustomer } from '../../hooks/useStorefrontCustomer';
+import StorefrontAuthPanel from './StorefrontAuthPanel';
 import { SF } from './storefrontTheme';
+
+function ReviewForm({ form, setForm, onSubmit, pending, submitted, error }) {
+  return (
+    <Stack spacing={1.5}>
+      {submitted && <Alert severity="success">Thanks! Your review will appear once approved.</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
+      <Rating value={form.rating} onChange={(_, v) => setForm((f) => ({ ...f, rating: v || 1 }))} />
+      <TextField
+        label="Display name"
+        size="small"
+        value={form.author_name}
+        onChange={(e) => setForm((f) => ({ ...f, author_name: e.target.value }))}
+        helperText="Shown with your review"
+      />
+      <TextField
+        label="Title (optional)"
+        size="small"
+        value={form.title}
+        onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+      />
+      <TextField
+        label="Your review"
+        size="small"
+        multiline
+        rows={3}
+        value={form.body}
+        onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+      />
+      <Button variant="contained" onClick={onSubmit} disabled={pending} sx={{ alignSelf: 'flex-start' }}>
+        Submit review
+      </Button>
+    </Stack>
+  );
+}
 
 export default function ProductReviews({ productSlug, compactEmpty = false }) {
   const queryClient = useQueryClient();
+  const { basePath, storeName } = useOutletContext() || {};
+  const { isLoggedIn, isLoading: authLoading, displayName } = useStorefrontCustomer();
   const [form, setForm] = useState({ author_name: '', rating: 5, title: '', body: '' });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [writeOpen, setWriteOpen] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+
+  useEffect(() => {
+    if (isLoggedIn && displayName && !form.author_name) {
+      setForm((f) => ({ ...f, author_name: displayName }));
+    }
+  }, [isLoggedIn, displayName, form.author_name]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['storefront-reviews', productSlug],
-    queryFn: () => api.get(`/storefront/products/${productSlug}/reviews`).then((r) => r.data.data),
+    queryFn: () => storefrontApi.get(`/storefront/products/${productSlug}/reviews`).then((r) => r.data.data),
   });
 
   const submitMutation = useMutation({
-    mutationFn: (payload) => api.post(`/storefront/products/${productSlug}/reviews`, payload),
+    mutationFn: (payload) => storefrontApi.post(`/storefront/products/${productSlug}/reviews`, payload),
     onSuccess: () => {
       setSubmitted(true);
       setError('');
-      setForm({ author_name: '', rating: 5, title: '', body: '' });
+      setForm((f) => ({ ...f, title: '', body: '', rating: 5 }));
       queryClient.invalidateQueries(['storefront-reviews', productSlug]);
     },
     onError: (err) => setError(err.response?.data?.message || 'Could not submit review'),
@@ -35,19 +81,66 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
   const empty = !isLoading && reviews.length === 0;
 
   const submit = () => {
-    if (!form.author_name.trim()) { setError('Please enter your name'); return; }
+    if (!isLoggedIn) {
+      setShowAuth(true);
+      setWriteOpen(true);
+      setError('Please sign in to leave a review');
+      return;
+    }
     submitMutation.mutate(form);
   };
 
+  const writeSection = (
+    <Box sx={{ maxWidth: 480, mt: compactEmpty ? 2 : 0 }}>
+      <Typography fontWeight={700} sx={{ mb: 1.5, fontSize: 15 }}>Write a review</Typography>
+      {authLoading ? (
+        <Typography color="text.secondary" sx={{ fontSize: 14 }}>Checking account…</Typography>
+      ) : !isLoggedIn ? (
+        <Box>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Sign in to your {storeName || 'store'} account to leave a review.
+          </Alert>
+          {(showAuth || writeOpen || !compactEmpty) && (
+            <StorefrontAuthPanel
+              compact
+              title="Sign in to review"
+              subtitle={`Create or sign in to your account at ${storeName || 'this store'}`}
+              onAuthed={() => {
+                setShowAuth(false);
+                setError('');
+              }}
+            />
+          )}
+          {compactEmpty && !showAuth && !writeOpen && (
+            <Button variant="contained" onClick={() => { setWriteOpen(true); setShowAuth(true); }}>
+              Sign in to review
+            </Button>
+          )}
+          {basePath && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+              Or go to{' '}
+              <Box component={Link} to={`${basePath}/account`} sx={{ fontWeight: 600 }}>
+                My Account
+              </Box>
+            </Typography>
+          )}
+        </Box>
+      ) : (
+        <ReviewForm
+          form={form}
+          setForm={setForm}
+          onSubmit={submit}
+          pending={submitMutation.isPending}
+          submitted={submitted}
+          error={error}
+        />
+      )}
+    </Box>
+  );
+
   if (compactEmpty && empty) {
     return (
-      <Box
-        sx={{
-          pt: 3,
-          borderTop: '1px solid',
-          borderColor: SF.colors.border,
-        }}
-      >
+      <Box sx={{ pt: 3, borderTop: '1px solid', borderColor: SF.colors.border }}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           alignItems={{ sm: 'center' }}
@@ -63,49 +156,16 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
           <Button
             size="small"
             variant="outlined"
-            onClick={() => setWriteOpen((v) => !v)}
+            onClick={() => {
+              setWriteOpen((v) => !v);
+              if (!isLoggedIn) setShowAuth(true);
+            }}
             sx={{ alignSelf: { xs: 'stretch', sm: 'center' }, fontWeight: 650 }}
           >
-            {writeOpen ? 'Cancel' : 'Write a review'}
+            {writeOpen ? 'Cancel' : (isLoggedIn ? 'Write a review' : 'Sign in to review')}
           </Button>
         </Stack>
-        <Collapse in={writeOpen}>
-          <Box sx={{ mt: 2, maxWidth: 480 }}>
-            {submitted && <Alert severity="success" sx={{ mb: 2 }}>Thanks! Your review will appear once approved.</Alert>}
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            <Stack spacing={1.5}>
-              <Rating value={form.rating} onChange={(_, v) => setForm((f) => ({ ...f, rating: v || 1 }))} />
-              <TextField
-                label="Your name"
-                size="small"
-                value={form.author_name}
-                onChange={(e) => setForm((f) => ({ ...f, author_name: e.target.value }))}
-              />
-              <TextField
-                label="Title (optional)"
-                size="small"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              />
-              <TextField
-                label="Your review"
-                size="small"
-                multiline
-                rows={3}
-                value={form.body}
-                onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-              />
-              <Button
-                variant="contained"
-                onClick={submit}
-                disabled={submitMutation.isPending}
-                sx={{ alignSelf: 'flex-start' }}
-              >
-                Submit review
-              </Button>
-            </Stack>
-          </Box>
-        </Collapse>
+        <Collapse in={writeOpen}>{writeSection}</Collapse>
       </Box>
     );
   }
@@ -152,42 +212,7 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
         )}
       </Stack>
 
-      <Box sx={{ maxWidth: 520 }}>
-        <Typography fontWeight={700} sx={{ mb: 1.5, fontSize: 15 }}>Write a review</Typography>
-        {submitted && <Alert severity="success" sx={{ mb: 2 }}>Thanks! Your review will appear once approved.</Alert>}
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <Stack spacing={1.5}>
-          <Rating value={form.rating} onChange={(_, v) => setForm((f) => ({ ...f, rating: v || 1 }))} />
-          <TextField
-            label="Your name"
-            size="small"
-            value={form.author_name}
-            onChange={(e) => setForm((f) => ({ ...f, author_name: e.target.value }))}
-          />
-          <TextField
-            label="Title (optional)"
-            size="small"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-          />
-          <TextField
-            label="Your review"
-            size="small"
-            multiline
-            rows={3}
-            value={form.body}
-            onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-          />
-          <Button
-            variant="contained"
-            onClick={submit}
-            disabled={submitMutation.isPending}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            Submit review
-          </Button>
-        </Stack>
-      </Box>
+      {writeSection}
     </Box>
   );
 }

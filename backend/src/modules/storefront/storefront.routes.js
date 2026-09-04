@@ -96,9 +96,9 @@ router.get('/products/:slug/reviews', asyncHandler(async (req, res) => {
   return success(res, result);
 }));
 
-router.post('/products/:slug/reviews', optionalStorefrontAuth, asyncHandler(async (req, res) => {
+router.post('/products/:slug/reviews', authenticateStorefrontCustomer, asyncHandler(async (req, res) => {
   const productId = await resolveProductId(req.tenant.id, req.params.slug);
-  const result = await reviewsService.submit(req.tenant.id, productId, req.body, req.storefrontCustomerId || null);
+  const result = await reviewsService.submit(req.tenant.id, productId, req.body, req.storefrontCustomerId);
   return success(res, result, 'Review submitted', 201);
 }));
 

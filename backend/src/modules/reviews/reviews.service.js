@@ -1,5 +1,5 @@
 const db = require('../../config/database');
-const { NotFoundError, ValidationError } = require('../../shared/errors');
+const { NotFoundError, ValidationError, UnauthorizedError } = require('../../shared/errors');
 
 class ReviewsService {
   async productSummary(tenantId, productId) {
@@ -30,34 +30,57 @@ class ReviewsService {
   }
 
   async submit(tenantId, productId, data, storefrontCustomerId = null) {
+    if (!storefrontCustomerId) {
+      throw new UnauthorizedError('Please sign in to leave a review');
+    }
+
     const product = await db.query(
       `SELECT id FROM products WHERE id = $1 AND tenant_id = $2 AND status = 'active'`,
       [productId, tenantId]
     );
     if (!product.rows[0]) throw new NotFoundError('Product not found');
 
+    const account = await db.query(
+      `SELECT id, first_name, last_name, email FROM storefront_customers
+       WHERE id = $1 AND tenant_id = $2 AND status = 'active'`,
+      [storefrontCustomerId, tenantId]
+    );
+    const customer = account.rows[0];
+    if (!customer) throw new UnauthorizedError('Please sign in to leave a review');
+
     const rating = parseInt(data.rating, 10);
     if (!rating || rating < 1 || rating > 5) throw new ValidationError('Rating must be between 1 and 5');
-    if (!data.author_name?.trim()) throw new ValidationError('Your name is required');
+
+    const authorName = (data.author_name || '').trim()
+      || [customer.first_name, customer.last_name].filter(Boolean).join(' ').trim()
+      || customer.email;
+    if (!authorName) throw new ValidationError('Your name is required');
+
+    const existing = await db.query(
+      `SELECT id FROM product_reviews
+       WHERE tenant_id = $1 AND product_id = $2 AND storefront_customer_id = $3
+       LIMIT 1`,
+      [tenantId, productId, storefrontCustomerId]
+    );
+    if (existing.rows[0]) {
+      throw new ValidationError('You have already reviewed this product');
+    }
 
     // Mark as verified purchase if this customer has a paid order for the product
-    let verified = false;
-    if (storefrontCustomerId) {
-      const purchase = await db.query(
-        `SELECT 1 FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         JOIN storefront_customers sc ON sc.customer_id = o.customer_id
-         WHERE sc.id = $1 AND oi.product_id = $2 AND o.status IN ('paid','completed') LIMIT 1`,
-        [storefrontCustomerId, productId]
-      );
-      verified = Boolean(purchase.rows[0]);
-    }
+    const purchase = await db.query(
+      `SELECT 1 FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id
+       JOIN storefront_customers sc ON sc.customer_id = o.customer_id
+       WHERE sc.id = $1 AND oi.product_id = $2 AND o.status IN ('paid','completed') LIMIT 1`,
+      [storefrontCustomerId, productId]
+    );
+    const verified = Boolean(purchase.rows[0]);
 
     const result = await db.query(
       `INSERT INTO product_reviews
          (tenant_id, product_id, storefront_customer_id, author_name, rating, title, body, status, verified_purchase)
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8) RETURNING id, status`,
-      [tenantId, productId, storefrontCustomerId, data.author_name.trim(), rating,
+      [tenantId, productId, storefrontCustomerId, authorName, rating,
         data.title || null, data.body || null, verified]
     );
     return { ...result.rows[0], message: 'Review submitted for approval' };

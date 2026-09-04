@@ -41,27 +41,57 @@ class ShopifyService {
     // Verify the credentials before storing anything
     const shopInfo = await client.verifyConnection(shop, access_token, { apiVersion });
 
-    const encrypted = encrypt(access_token);
-    const existing = await this.getConnectionRow(tenantId);
-
-    if (existing) {
-      const updated = await db.query(
-        `UPDATE shopify_connections
-           SET store_name = $1, shop_url = $2, access_token = $3, api_version = $4,
-               status = 'connected', connected_at = NOW(), updated_at = NOW()
-         WHERE tenant_id = $5 RETURNING *`,
-        [shopInfo.name, shop, encrypted, apiVersion, tenantId]
+    let encrypted;
+    try {
+      encrypted = encrypt(access_token);
+    } catch (err) {
+      throw new AppError(
+        'Server encryption is not configured. Set ENCRYPTION_KEY (or JWT_ACCESS_SECRET) in the API environment.',
+        500,
+        'ENCRYPTION_NOT_CONFIGURED'
       );
-      return publicConnection(updated.rows[0]);
     }
 
-    const inserted = await db.query(
-      `INSERT INTO shopify_connections
-         (tenant_id, store_name, shop_url, access_token, api_version, status, connected_at)
-       VALUES ($1, $2, $3, $4, $5, 'connected', NOW()) RETURNING *`,
-      [tenantId, shopInfo.name, shop, encrypted, apiVersion]
-    );
-    return publicConnection(inserted.rows[0]);
+    const existing = await this.getConnectionRow(tenantId).catch((err) => {
+      if (err.code === '42P01') {
+        throw new AppError(
+          'Shopify integration tables are missing. Run database migrations (013_shopify_integration).',
+          503,
+          'SHOPIFY_NOT_MIGRATED'
+        );
+      }
+      throw err;
+    });
+
+    try {
+      if (existing) {
+        const updated = await db.query(
+          `UPDATE shopify_connections
+             SET store_name = $1, shop_url = $2, access_token = $3, api_version = $4,
+                 status = 'connected', connected_at = NOW(), updated_at = NOW()
+           WHERE tenant_id = $5 RETURNING *`,
+          [shopInfo.name, shop, encrypted, apiVersion, tenantId]
+        );
+        return publicConnection(updated.rows[0]);
+      }
+
+      const inserted = await db.query(
+        `INSERT INTO shopify_connections
+           (tenant_id, store_name, shop_url, access_token, api_version, status, connected_at)
+         VALUES ($1, $2, $3, $4, $5, 'connected', NOW()) RETURNING *`,
+        [tenantId, shopInfo.name, shop, encrypted, apiVersion]
+      );
+      return publicConnection(inserted.rows[0]);
+    } catch (err) {
+      if (err.code === '42P01') {
+        throw new AppError(
+          'Shopify integration tables are missing. Run database migrations (013_shopify_integration).',
+          503,
+          'SHOPIFY_NOT_MIGRATED'
+        );
+      }
+      throw err;
+    }
   }
 
   async getStatus(tenantId) {

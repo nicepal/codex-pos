@@ -1,121 +1,70 @@
-import { useState, useEffect } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Box, Card, CardContent, Typography, TextField, Button, Tabs, Tab, Alert, Stack, Divider, Chip,
+  Box, Card, CardContent, Typography, Button, Alert, Stack, Divider, Chip, Paper,
 } from '@mui/material';
-import storefrontApi, { getStoreToken, setStoreToken, clearStoreToken } from '../../services/storefrontApi';
+import storefrontApi from '../../services/storefrontApi';
+import { useStorefrontCustomer } from '../../hooks/useStorefrontCustomer';
+import StorefrontAuthPanel from '../../components/storefront/StorefrontAuthPanel';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 
-function AuthForms({ onAuthed }) {
-  const [tab, setTab] = useState(0);
-  const [login, setLogin] = useState({ email: '', password: '' });
-  const [reg, setReg] = useState({ first_name: '', last_name: '', email: '', phone: '', password: '' });
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const submitLogin = async () => {
-    setBusy(true); setError('');
-    try {
-      const res = await storefrontApi.post('/storefront/account/login', login);
-      setStoreToken(res.data.data.token);
-      onAuthed();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
-    } finally { setBusy(false); }
-  };
-
-  const submitRegister = async () => {
-    setBusy(true); setError('');
-    try {
-      const res = await storefrontApi.post('/storefront/account/register', reg);
-      setStoreToken(res.data.data.token);
-      onAuthed();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-    } finally { setBusy(false); }
-  };
-
-  return (
-    <Card sx={{ maxWidth: 460, mx: 'auto' }}>
-      <CardContent>
-        <Tabs value={tab} onChange={(_, v) => { setTab(v); setError(''); }} sx={{ mb: 2 }}>
-          <Tab label="Sign in" />
-          <Tab label="Create account" />
-        </Tabs>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {tab === 0 ? (
-          <Stack spacing={2}>
-            <TextField label="Email" type="email" value={login.email} onChange={(e) => setLogin((s) => ({ ...s, email: e.target.value }))} />
-            <TextField label="Password" type="password" value={login.password} onChange={(e) => setLogin((s) => ({ ...s, password: e.target.value }))} />
-            <Button variant="contained" onClick={submitLogin} disabled={busy}>Sign in</Button>
-          </Stack>
-        ) : (
-          <Stack spacing={2}>
-            <Stack direction="row" spacing={2}>
-              <TextField label="First name" fullWidth value={reg.first_name} onChange={(e) => setReg((s) => ({ ...s, first_name: e.target.value }))} />
-              <TextField label="Last name" fullWidth value={reg.last_name} onChange={(e) => setReg((s) => ({ ...s, last_name: e.target.value }))} />
-            </Stack>
-            <TextField label="Email" type="email" value={reg.email} onChange={(e) => setReg((s) => ({ ...s, email: e.target.value }))} />
-            <TextField label="Phone (optional)" value={reg.phone} onChange={(e) => setReg((s) => ({ ...s, phone: e.target.value }))} />
-            <TextField label="Password" type="password" value={reg.password} onChange={(e) => setReg((s) => ({ ...s, password: e.target.value }))} />
-            <Button variant="contained" onClick={submitRegister} disabled={busy}>Create account</Button>
-          </Stack>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function StoreAccount() {
-  const { basePath } = useOutletContext();
+  const { basePath, storeName } = useOutletContext();
   const { formatMoney } = useStoreCurrency();
-  const queryClient = useQueryClient();
-  const [authed, setAuthed] = useState(Boolean(getStoreToken()));
-
-  const { data: me } = useQuery({
-    queryKey: ['storefront-me'],
-    queryFn: () => storefrontApi.get('/storefront/account/me').then((r) => r.data.data),
-    enabled: authed,
-    retry: false,
-  });
+  const { isLoggedIn, isLoading, customer, displayName, logout } = useStorefrontCustomer();
 
   const { data: orders } = useQuery({
     queryKey: ['storefront-my-orders'],
     queryFn: () => storefrontApi.get('/storefront/account/orders').then((r) => r.data.data),
-    enabled: authed,
+    enabled: isLoggedIn,
   });
 
   const { data: wishlist } = useQuery({
     queryKey: ['storefront-wishlist'],
     queryFn: () => storefrontApi.get('/storefront/account/wishlist').then((r) => r.data.data),
-    enabled: authed,
+    enabled: isLoggedIn,
   });
 
-  useEffect(() => {
-    if (authed) queryClient.invalidateQueries(['storefront-me']);
-  }, [authed, queryClient]);
+  if (isLoading) {
+    return (
+      <Box sx={{ py: 6, textAlign: 'center' }}>
+        <Typography color="text.secondary">Loading your account…</Typography>
+      </Box>
+    );
+  }
 
-  const logout = () => { clearStoreToken(); setAuthed(false); };
-
-  if (!authed) {
+  if (!isLoggedIn) {
     return (
       <Box sx={{ py: 4 }}>
-        <Typography variant="h5" fontWeight={800} textAlign="center" gutterBottom>My Account</Typography>
-        <AuthForms onAuthed={() => setAuthed(true)} />
+        <Typography variant="h5" fontWeight={800} textAlign="center" gutterBottom>
+          {storeName ? `Sign in to ${storeName}` : 'My Account'}
+        </Typography>
+        <Typography color="text.secondary" textAlign="center" sx={{ mb: 3, fontSize: 14 }}>
+          Track orders, save favorites, and leave product reviews
+        </Typography>
+        <StorefrontAuthPanel
+          title={null}
+          subtitle={null}
+        />
       </Box>
     );
   }
 
   return (
     <Box sx={{ py: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-        <Box>
-          <Typography variant="h5" fontWeight={800}>My Account</Typography>
-          {me && <Typography color="text.secondary">{me.first_name} {me.last_name} · {me.email}</Typography>}
-        </Box>
-        <Button variant="outlined" onClick={logout}>Sign out</Button>
-      </Stack>
+      <Paper variant="outlined" sx={{ p: 2.5, mb: 3, borderRadius: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2} alignItems={{ sm: 'center' }}>
+          <Box>
+            <Typography variant="overline" color="text.secondary">Signed in</Typography>
+            <Typography variant="h5" fontWeight={800}>{displayName || 'Customer'}</Typography>
+            <Typography color="text.secondary">{customer?.email}</Typography>
+            {customer?.phone && (
+              <Typography variant="body2" color="text.secondary">{customer.phone}</Typography>
+            )}
+          </Box>
+          <Button variant="outlined" onClick={logout}>Sign out</Button>
+        </Stack>
+      </Paper>
 
       <Typography variant="h6" fontWeight={700} gutterBottom>Order history</Typography>
       <Stack spacing={1} sx={{ mb: 4 }}>
@@ -133,7 +82,14 @@ export default function StoreAccount() {
             </CardContent>
           </Card>
         ))}
-        {orders && orders.length === 0 && <Typography color="text.secondary">No orders yet.</Typography>}
+        {orders && orders.length === 0 && (
+          <Alert severity="info">
+            No orders yet.{' '}
+            <Box component={Link} to={`${basePath}/shop`} sx={{ fontWeight: 600 }}>
+              Continue shopping
+            </Box>
+          </Alert>
+        )}
       </Stack>
 
       <Divider sx={{ mb: 3 }} />
@@ -150,7 +106,9 @@ export default function StoreAccount() {
             </Card>
           </Box>
         ))}
-        {wishlist && wishlist.length === 0 && <Typography color="text.secondary">Your wishlist is empty.</Typography>}
+        {wishlist && wishlist.length === 0 && (
+          <Typography color="text.secondary">Your wishlist is empty.</Typography>
+        )}
       </Stack>
     </Box>
   );
