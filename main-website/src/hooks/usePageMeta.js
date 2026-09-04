@@ -41,6 +41,10 @@ export function usePageMeta({
     setMeta('meta[property="og:url"]', 'content', canonical);
     setMeta('meta[property="og:type"]', 'content', type);
     setMeta('meta[property="og:image"]', 'content', image);
+    setMeta('meta[property="og:image:secure_url"]', 'content', image);
+    setMeta('meta[property="og:image:type"]', 'content', 'image/png');
+    setMeta('meta[property="og:image:width"]', 'content', '1200');
+    setMeta('meta[property="og:image:height"]', 'content', '630');
     setMeta('meta[property="og:site_name"]', 'content', site.name);
 
     setMeta('meta[name="twitter:card"]', 'content', 'summary_large_image');

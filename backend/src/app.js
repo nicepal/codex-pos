@@ -152,6 +152,30 @@ function createApp() {
   api.use('/employees', employeeRoutes);
   api.use('/expenses', expenseRoutes);
   api.use('/reports', reportRoutes);
+
+  // Social crawler Open Graph HTML (no tenant header). Keep before /storefront router.
+  const { buildShopOg, buildProductOg } = require('./modules/storefront/storefront.og.service');
+  api.get('/storefront/og/:slug/product/:productSlug', asyncHandler(async (req, res) => {
+    const html = await buildProductOg(req, req.params.slug, req.params.productSlug);
+    if (!html) {
+      const { NotFoundError } = require('./shared/errors');
+      throw new NotFoundError('Product not found');
+    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    return res.status(200).send(html);
+  }));
+  api.get('/storefront/og/:slug', asyncHandler(async (req, res) => {
+    const html = await buildShopOg(req, req.params.slug);
+    if (!html) {
+      const { NotFoundError } = require('./shared/errors');
+      throw new NotFoundError('Store not found');
+    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    return res.status(200).send(html);
+  }));
+
   api.use('/storefront', storefrontRoutes);
   api.use('/settings', settingsRoutes);
   api.use('/upload', uploadRoutes);
