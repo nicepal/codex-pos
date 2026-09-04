@@ -4,6 +4,7 @@ import {
 import { CheckCircleOutline, ArrowForward, LocalShippingOutlined, StoreOutlined } from '@mui/icons-material';
 import { Link, useLocation, useOutletContext, Navigate } from 'react-router-dom';
 import { ProductThumb } from '../../components/storefront/ProductImage';
+import ProductNameLink from '../../components/storefront/ProductNameLink';
 import { SF } from '../../components/storefront/storefrontTheme';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 
@@ -255,9 +256,14 @@ export default function OrderConfirmationPage() {
                     />
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography noWrap fontWeight={650} sx={{ fontSize: 14, lineHeight: 1.3 }}>
-                      {item.name}
-                    </Typography>
+                    <ProductNameLink
+                      slug={item.slug}
+                      name={item.name}
+                      basePath={basePath}
+                      noWrap
+                      fontWeight={650}
+                      sx={{ fontSize: 14, lineHeight: 1.3, display: 'block' }}
+                    />
                   </Box>
                   <Typography fontWeight={700} sx={{ fontSize: 14, flexShrink: 0 }}>
                     {formatMoney((item.sale_price || 0) * (item.quantity || 1))}

@@ -9,6 +9,7 @@ import {
 } from '../../features/storefront/cartSlice';
 import QuantitySelector from './QuantitySelector';
 import { ProductThumb } from './ProductImage';
+import ProductNameLink from './ProductNameLink';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 import { SF } from './storefrontTheme';
 
@@ -109,9 +110,14 @@ export default function CartDrawer({ open, onClose, basePath, primaryColor }) {
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
                       <Box sx={{ minWidth: 0 }}>
-                        <Typography fontWeight={650} sx={{ fontSize: 14, lineHeight: 1.3 }}>
-                          {item.name}
-                        </Typography>
+                        <ProductNameLink
+                          slug={item.slug}
+                          name={item.name}
+                          basePath={basePath}
+                          fontWeight={650}
+                          sx={{ fontSize: 14, lineHeight: 1.3, display: 'block' }}
+                          onClick={onClose}
+                        />
                         {(item.variant_name || item.category_name) && (
                           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.15 }}>
                             {item.variant_name || item.category_name}

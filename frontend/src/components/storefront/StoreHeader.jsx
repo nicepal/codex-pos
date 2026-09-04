@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Box, AppBar, Toolbar, Typography, IconButton, Drawer, List, ListItemButton, ListItemText,
   Divider, Stack, Badge, Button, alpha, Menu, MenuItem, ListItemIcon,
@@ -9,6 +9,7 @@ import {
 } from '@mui/icons-material';
 import { resolveProductImageSrc } from '../../utils/imageUrl';
 import { useStorefrontCustomer } from '../../hooks/useStorefrontCustomer';
+import { storeAccountLoginPath } from '../../utils/storefrontAuthRedirect';
 import StoreSearch from './StoreSearch';
 import FulfillmentSegment from './FulfillmentSegment';
 import { SF, storefrontContainerSx } from './storefrontTheme';
@@ -41,10 +42,13 @@ export default function StoreHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const [accountAnchor, setAccountAnchor] = useState(null);
+  const location = useLocation();
   const { isLoggedIn, displayName, customer, logout, isLoading: authLoading } = useStorefrontCustomer();
   const resolvedLogo = logoUrl && !logoFailed ? resolveProductImageSrc(logoUrl) : null;
   const initial = (storeName || 'S').trim().charAt(0).toUpperCase();
   const accountInitial = (displayName || customer?.email || 'A').trim().charAt(0).toUpperCase();
+  const returnPath = `${location.pathname}${location.search}`;
+  const signInPath = storeAccountLoginPath(basePath, returnPath);
 
   const closeAccountMenu = () => setAccountAnchor(null);
 
@@ -55,7 +59,8 @@ export default function StoreHeader({
           if (isLoggedIn) setAccountAnchor(e.currentTarget);
         }}
         component={!isLoggedIn ? Link : undefined}
-        to={!isLoggedIn ? `${basePath}/account` : undefined}
+        to={!isLoggedIn ? signInPath : undefined}
+        state={!isLoggedIn ? { from: returnPath } : undefined}
         aria-label={isLoggedIn ? 'Account menu' : 'Sign in'}
         startIcon={
           isLoggedIn ? (
@@ -449,7 +454,7 @@ export default function StoreHeader({
               </ListItemButton>
             </>
           ) : (
-            <ListItemButton component={Link} to={`${basePath}/account`} onClick={() => setMenuOpen(false)}>
+            <ListItemButton component={Link} to={signInPath} state={{ from: returnPath }} onClick={() => setMenuOpen(false)}>
               <ListItemText primary="Sign in" primaryTypographyProps={{ fontWeight: 600 }} />
             </ListItemButton>
           )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link, useOutletContext, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Rating, Stack, Divider, TextField, Button, Chip, Alert, LinearProgress,
@@ -8,6 +8,7 @@ import {
 import storefrontApi from '../../services/storefrontApi';
 import { useStorefrontCustomer } from '../../hooks/useStorefrontCustomer';
 import StorefrontAuthPanel from './StorefrontAuthPanel';
+import { storeAccountLoginPath } from '../../utils/storefrontAuthRedirect';
 import { SF } from './storefrontTheme';
 
 function ReviewForm({ form, setForm, onSubmit, pending, submitted, error }) {
@@ -47,6 +48,11 @@ function ReviewForm({ form, setForm, onSubmit, pending, submitted, error }) {
 export default function ProductReviews({ productSlug, compactEmpty = false }) {
   const queryClient = useQueryClient();
   const { basePath, storeName } = useOutletContext() || {};
+  const location = useLocation();
+  const accountLoginHref = storeAccountLoginPath(
+    basePath,
+    `${location.pathname}${location.search}`
+  );
   const { isLoggedIn, isLoading: authLoading, displayName } = useStorefrontCustomer();
   const [form, setForm] = useState({ author_name: '', rating: 5, title: '', body: '' });
   const [submitted, setSubmitted] = useState(false);
@@ -61,7 +67,7 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
   }, [isLoggedIn, displayName, form.author_name]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['storefront-reviews', productSlug],
+    queryKey: ['storefront-reviews', productSlug, isLoggedIn],
     queryFn: () => storefrontApi.get(`/storefront/products/${productSlug}/reviews`).then((r) => r.data.data),
   });
 
@@ -72,6 +78,7 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
       setError('');
       setForm((f) => ({ ...f, title: '', body: '', rating: 5 }));
       queryClient.invalidateQueries(['storefront-reviews', productSlug]);
+      queryClient.invalidateQueries(['storefront-my-orders']);
     },
     onError: (err) => setError(err.response?.data?.message || 'Could not submit review'),
   });
@@ -79,12 +86,21 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
   const summary = data?.summary || { count: 0, average: 0 };
   const reviews = data?.reviews || [];
   const empty = !isLoading && reviews.length === 0;
+  const canReview = Boolean(data?.can_review);
+  const hasPurchased = Boolean(data?.has_purchased);
+  const alreadyReviewed = Boolean(data?.already_reviewed);
 
   const submit = () => {
     if (!isLoggedIn) {
       setShowAuth(true);
       setWriteOpen(true);
       setError('Please sign in to leave a review');
+      return;
+    }
+    if (!canReview) {
+      setError(alreadyReviewed
+        ? 'You already reviewed this product'
+        : 'Only customers who purchased this product can leave a review');
       return;
     }
     submitMutation.mutate(form);
@@ -98,16 +114,17 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
       ) : !isLoggedIn ? (
         <Box>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Sign in to your {storeName || 'store'} account to leave a review.
+            Sign in with the email you used at checkout. Only purchased products can be reviewed.
           </Alert>
           {(showAuth || writeOpen || !compactEmpty) && (
             <StorefrontAuthPanel
               compact
               title="Sign in to review"
-              subtitle={`Create or sign in to your account at ${storeName || 'this store'}`}
+              subtitle={`Use your ${storeName || 'store'} account (same email as your order)`}
               onAuthed={() => {
                 setShowAuth(false);
                 setError('');
+                queryClient.invalidateQueries(['storefront-reviews', productSlug]);
               }}
             />
           )}
@@ -119,12 +136,19 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
           {basePath && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
               Or go to{' '}
-              <Box component={Link} to={`${basePath}/account`} sx={{ fontWeight: 600 }}>
+              <Box component={Link} to={accountLoginHref} state={{ from: `${location.pathname}${location.search}` }} sx={{ fontWeight: 600 }}>
                 My Account
               </Box>
             </Typography>
           )}
         </Box>
+      ) : alreadyReviewed ? (
+        <Alert severity="success">You already submitted a review for this product.</Alert>
+      ) : !hasPurchased ? (
+        <Alert severity="info">
+          Purchase this product to leave a review. After checkout, you can also review it from{' '}
+          <Box component={Link} to={`${basePath}/account`} sx={{ fontWeight: 600 }}>My Account</Box>.
+        </Alert>
       ) : (
         <ReviewForm
           form={form}
@@ -162,7 +186,7 @@ export default function ProductReviews({ productSlug, compactEmpty = false }) {
             }}
             sx={{ alignSelf: { xs: 'stretch', sm: 'center' }, fontWeight: 650 }}
           >
-            {writeOpen ? 'Cancel' : (isLoggedIn ? 'Write a review' : 'Sign in to review')}
+            {writeOpen ? 'Cancel' : (canReview ? 'Write a review' : (isLoggedIn ? 'Reviews' : 'Sign in to review'))}
           </Button>
         </Stack>
         <Collapse in={writeOpen}>{writeSection}</Collapse>

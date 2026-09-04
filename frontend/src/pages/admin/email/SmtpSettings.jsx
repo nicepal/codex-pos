@@ -7,6 +7,7 @@ import {
 import { Save, Send } from '@mui/icons-material';
 import api from '../../../services/api';
 import PageHeader from '../../../components/PageHeader';
+import PasswordField from '../../../components/PasswordField';
 import TestConnectionDialog from './components/TestConnectionDialog';
 
 const ENCRYPTION_OPTIONS = [
@@ -110,9 +111,8 @@ export default function SmtpSettingsPage() {
               <TextField fullWidth label="SMTP Username" placeholder="noreply@domain.com" value={form.username} onChange={setField('username')} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
+              <PasswordField
                 fullWidth
-                type="password"
                 label="SMTP Password"
                 placeholder="********"
                 value={form.password}

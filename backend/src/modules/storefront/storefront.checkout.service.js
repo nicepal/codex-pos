@@ -23,7 +23,7 @@ function formatShippingAddress(ship = {}) {
 }
 
 class StorefrontCheckoutService {
-  async checkout(tenantId, data) {
+  async checkout(tenantId, data, storefrontCustomerId = null) {
     const customerService = require('../customers/customers.service');
     const ship = data.shipping_address || {};
     const shipping = formatShippingAddress(ship);
@@ -33,9 +33,20 @@ class StorefrontCheckoutService {
     const street = [ship.line1, ship.line2].filter(Boolean).join(', ') || null;
 
     let customerId = data.customer_id || null;
+
+    if (!customerId && storefrontCustomerId) {
+      const sc = await db.query(
+        `SELECT customer_id, email FROM storefront_customers
+         WHERE id = $1 AND tenant_id = $2 AND status = 'active'`,
+        [storefrontCustomerId, tenantId]
+      );
+      if (sc.rows[0]?.customer_id) customerId = sc.rows[0].customer_id;
+    }
+
     if (!customerId && email) {
       const row = await db.query(
-        `SELECT id FROM customers WHERE tenant_id = $1 AND LOWER(email) = LOWER($2) LIMIT 1`,
+        `SELECT id FROM customers WHERE tenant_id = $1 AND LOWER(email) = LOWER($2)
+         ORDER BY created_at ASC LIMIT 1`,
         [tenantId, email]
       );
       customerId = row.rows[0]?.id || null;
@@ -56,6 +67,20 @@ class StorefrontCheckoutService {
     } else if (email || name || phone) {
       const created = await customerService.create(tenantId, customerPayload);
       customerId = created.id;
+    }
+
+    if (storefrontCustomerId && customerId) {
+      await db.query(
+        `UPDATE storefront_customers SET customer_id = $1, updated_at = NOW()
+         WHERE id = $2 AND tenant_id = $3`,
+        [customerId, storefrontCustomerId, tenantId]
+      );
+    } else if (email && customerId) {
+      await db.query(
+        `UPDATE storefront_customers SET customer_id = $1, updated_at = NOW()
+         WHERE tenant_id = $2 AND LOWER(email) = LOWER($3)`,
+        [customerId, tenantId, email]
+      );
     }
 
     const customerNote = [

@@ -19,6 +19,7 @@ import useTenantFeatures from '../../hooks/useTenantFeatures';
 import TaxRulesSection from './settings/TaxRulesSection';
 import WebhooksSection from './settings/WebhooksSection';
 import DomainsSection from './settings/DomainsSection';
+import PasswordField from '../../components/PasswordField';
 
 function MfaSection() {
   const [secret, setSecret] = useState('');
@@ -44,7 +45,7 @@ function MfaSection() {
       <Button variant="contained" fullWidth sx={{ mt: 1 }} onClick={enable} disabled={!token}>Enable MFA</Button>
       <Divider sx={{ my: 2 }} />
       <Typography variant="subtitle2" gutterBottom>Disable MFA</Typography>
-      <TextField fullWidth label="Password" type="password" value={disablePassword} onChange={(e) => setDisablePassword(e.target.value)} sx={{ mb: 1 }} />
+      <PasswordField fullWidth label="Password" value={disablePassword} onChange={(e) => setDisablePassword(e.target.value)} sx={{ mb: 1 }} />
       <TextField fullWidth label="Authenticator Code" value={disableToken} onChange={(e) => setDisableToken(e.target.value)} sx={{ mb: 1 }} />
       <Button variant="outlined" color="warning" fullWidth onClick={disable} disabled={!disablePassword || !disableToken}>
         Disable MFA
@@ -168,15 +169,19 @@ export default function SettingsPage() {
 
   const mutation = useMutation({
     mutationFn: (payload) => api.put('/settings', payload),
-    onSuccess: (res) => {
+    onSuccess: (res, variables) => {
       const saved = res.data.data;
       if (saved?.features) setFeatureFlags(saved.features);
       if (saved?.plan_features) setPlanFeatures(saved.plan_features);
       setCappedFeatures(saved?.features_capped || []);
       queryClient.invalidateQueries(['business-settings']);
       queryClient.invalidateQueries({ queryKey: ['storefront-theme'] });
-      if (variables?.profile?.currency) {
-        dispatch(setTenantProfile({ currency: variables.profile.currency }));
+      if (variables?.profile) {
+        dispatch(setTenantProfile({
+          ...(variables.profile.currency ? { currency: variables.profile.currency } : {}),
+          ...(variables.profile.name ? { name: variables.profile.name } : {}),
+          ...(variables.profile.logo_url !== undefined ? { logo_url: variables.profile.logo_url || null } : {}),
+        }));
       }
       dispatch(fetchMe());
     },

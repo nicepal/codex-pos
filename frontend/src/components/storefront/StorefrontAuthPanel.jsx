@@ -3,6 +3,7 @@ import {
   Box, Card, CardContent, Typography, TextField, Button, Tabs, Tab, Alert, Stack,
 } from '@mui/material';
 import { useStorefrontCustomer } from '../../hooks/useStorefrontCustomer';
+import PasswordField from '../PasswordField';
 
 /**
  * Shop customer sign-in / register panel (storefront only — not business login).
@@ -82,9 +83,8 @@ export default function StorefrontAuthPanel({
             onChange={(e) => setLoginForm((s) => ({ ...s, email: e.target.value }))}
             fullWidth
           />
-          <TextField
+          <PasswordField
             label="Password"
-            type="password"
             size={compact ? 'small' : 'medium'}
             value={loginForm.password}
             onChange={(e) => setLoginForm((s) => ({ ...s, password: e.target.value }))}
@@ -128,9 +128,8 @@ export default function StorefrontAuthPanel({
             value={reg.phone}
             onChange={(e) => setReg((s) => ({ ...s, phone: e.target.value }))}
           />
-          <TextField
+          <PasswordField
             label="Password"
-            type="password"
             size={compact ? 'small' : 'medium'}
             fullWidth
             value={reg.password}

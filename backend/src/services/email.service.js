@@ -2,6 +2,7 @@ const db = require('../config/database');
 const config = require('../config');
 const logger = require('../utils/logger');
 const { addNotificationJob } = require('../workers/queues');
+const { wrapEmailHtml, htmlToPlainText } = require('./email.layout');
 
 /**
  * Centralized EmailService.
@@ -14,14 +15,20 @@ const { addNotificationJob } = require('../workers/queues');
  */
 
 const SUPPORTED_VARIABLES = [
-  'business_name', 'user_name', 'customer_name', 'invoice_number', 'order_number',
-  'reset_link', 'verification_link', 'subscription_name', 'expiry_date',
-  'owner_name', 'purchase_order_number', 'amount', 'app_name', 'app_url',
+  'business_name', 'branch_name', 'brand_name', 'user_name', 'customer_name',
+  'invoice_number', 'order_number', 'reset_link', 'verification_link',
+  'subscription_name', 'expiry_date', 'owner_name', 'purchase_order_number',
+  'amount', 'app_name', 'app_url',
 ];
 
 function renderTemplate(text, variables = {}) {
   if (!text) return '';
-  const vars = { app_name: config.app.name, app_url: config.app.url, ...variables };
+  const vars = {
+    app_name: config.app.name,
+    app_url: config.app.url,
+    brand_name: variables.brand_name || config.app.name,
+    ...variables,
+  };
   return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => (vars[key] != null ? String(vars[key]) : ''));
 }
 
@@ -67,8 +74,13 @@ async function markLog(logId, status, { error, messageId } = {}) {
 
 /**
  * Core send. Renders nothing (expects subject/html), logs, and enqueues.
+ * HTML fragments are wrapped in the branded layout at SMTP delivery time.
  */
-async function send({ to, subject, html, text, replyTo, tenantId, userId, type = 'email', templateSlug = null }) {
+async function send({
+  to, subject, html, text, replyTo, tenantId, userId,
+  type = 'email', templateSlug = null,
+  brandName, businessName, branchName, skipLayout = false,
+}) {
   if (!to) return { sent: false, reason: 'no_recipient' };
 
   const logId = await createLog({ to, subject, templateSlug, type, tenantId });
@@ -80,10 +92,14 @@ async function send({ to, subject, html, text, replyTo, tenantId, userId, type =
     email: to,
     title: subject,
     message: html,
-    text,
+    text: text || htmlToPlainText(html),
     replyTo,
     type,
     emailLogId: logId,
+    brandName,
+    businessName,
+    branchName,
+    skipLayout,
   };
 
   try {
@@ -91,7 +107,10 @@ async function send({ to, subject, html, text, replyTo, tenantId, userId, type =
     return { queued: true, logId };
   } catch (err) {
     logger.warn('Queue unavailable, sending email inline', { error: err.message });
-    return sendInline({ to, subject, html, text, replyTo, tenantId, logId });
+    return sendInline({
+      to, subject, html, text: payload.text, replyTo, tenantId, logId,
+      brandName, businessName, branchName, skipLayout,
+    });
   }
 }
 
@@ -104,7 +123,10 @@ async function queue(args) {
   return send(args);
 }
 
-async function sendInline({ to, subject, html, text, replyTo, tenantId, logId }) {
+async function sendInline({
+  to, subject, html, text, replyTo, tenantId, logId,
+  brandName, businessName, branchName, skipLayout = false,
+}) {
   const smtpService = require('../modules/platform/email/smtp.service');
   try {
     const cfg = await smtpService.getActiveConfig(tenantId);
@@ -113,7 +135,10 @@ async function sendInline({ to, subject, html, text, replyTo, tenantId, logId })
       await markLog(logId, 'failed', { error: 'SMTP not configured' });
       return { sent: false, dev: true };
     }
-    const { messageId } = await smtpService.sendNow({ to, subject, html, text, replyTo, tenantId });
+    const { messageId } = await smtpService.sendNow({
+      to, subject, html, text, replyTo, tenantId,
+      brandName, businessName, branchName, skipLayout,
+    });
     await markLog(logId, 'sent', { messageId });
     return { sent: true };
   } catch (err) {
@@ -129,21 +154,40 @@ async function sendInline({ to, subject, html, text, replyTo, tenantId, logId })
  */
 async function sendTemplate(slug, to, variables = {}, { tenantId, userId, fallbackSubject, fallbackHtml } = {}) {
   const template = await getTemplate(slug, tenantId);
+  const vars = {
+    brand_name: variables.brand_name || config.app.name,
+    ...variables,
+  };
 
   let subject;
   let html;
+  let text;
   if (template) {
-    subject = renderTemplate(template.subject, variables);
-    html = renderTemplate(template.body_html, variables);
+    subject = renderTemplate(template.subject, vars);
+    html = renderTemplate(template.body_html, vars);
+    text = template.body_text ? renderTemplate(template.body_text, vars) : htmlToPlainText(html);
   } else if (fallbackSubject || fallbackHtml) {
-    subject = renderTemplate(fallbackSubject || slug, variables);
-    html = renderTemplate(fallbackHtml || '', variables);
+    subject = renderTemplate(fallbackSubject || slug, vars);
+    html = renderTemplate(fallbackHtml || '', vars);
+    text = htmlToPlainText(html);
   } else {
     logger.warn(`Email template not found: ${slug}`);
     return { sent: false, reason: 'template_not_found' };
   }
 
-  return send({ to, subject, html, tenantId, userId, type: slug, templateSlug: slug });
+  return send({
+    to,
+    subject,
+    html,
+    text,
+    tenantId,
+    userId,
+    type: slug,
+    templateSlug: slug,
+    brandName: vars.brand_name || config.app.name,
+    businessName: vars.business_name || null,
+    branchName: vars.branch_name || null,
+  });
 }
 
 // Backwards-compatible name.
@@ -156,13 +200,14 @@ async function sendTemplatedEmail(slug, to, variables, ctx = {}) {
 async function sendWelcomeEmail(user, tenant) {
   return sendTemplate('welcome', user.email, {
     business_name: tenant.name,
+    brand_name: config.app.name,
     user_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
     owner_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
   }, {
     tenantId: tenant.id,
     userId: user.id,
     fallbackSubject: 'Welcome to {{business_name}}!',
-    fallbackHtml: '<p>Hello {{user_name}}, welcome to {{app_name}}!</p>',
+    fallbackHtml: '<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Welcome aboard</h1><p style="margin:0 0 14px;">Hello {{user_name}},</p><p style="margin:0;">Welcome to {{business_name}} on {{brand_name}}!</p>',
   });
 }
 
@@ -175,7 +220,7 @@ async function sendPasswordReset(user, resetLink, tenant = null) {
     tenantId: user.tenant_id || tenant?.id || null,
     userId: user.id,
     fallbackSubject: 'Reset your password',
-    fallbackHtml: '<p>Hello {{user_name}},</p><p>Click the link below to reset your password:</p><p><a href="{{reset_link}}">{{reset_link}}</a></p><p>This link expires in 1 hour.</p>',
+    fallbackHtml: '<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Reset your password</h1><p style="margin:0 0 14px;">Hello {{user_name}},</p><p style="margin:0 0 18px;">Click the button below to reset your password:</p><p style="margin:0 0 18px;"><a href="{{reset_link}}" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">Reset password</a></p><p style="margin:0;font-size:13px;color:#64748b;">This link expires in 1 hour.</p>',
   });
 }
 
@@ -253,4 +298,6 @@ module.exports = {
   sendSubscriptionActivated,
   sendSubscriptionExpired,
   sendTestEmail,
+  wrapEmailHtml,
+  htmlToPlainText,
 };

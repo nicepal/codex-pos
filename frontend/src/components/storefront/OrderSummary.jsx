@@ -2,6 +2,7 @@ import { Box, Typography, Button, Divider, Stack, alpha } from '@mui/material';
 import { Lock } from '@mui/icons-material';
 import { calcOrderTotals } from '../../utils/storefrontPricing';
 import { ProductThumb } from './ProductImage';
+import ProductNameLink from './ProductNameLink';
 import { SF } from './storefrontTheme';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 
@@ -14,6 +15,7 @@ export default function OrderSummary({
   checkoutLoading = false,
   primaryColor,
   note,
+  basePath,
 }) {
   const { formatMoney } = useStoreCurrency();
   const { total } = calcOrderTotals(subtotal);
@@ -48,9 +50,14 @@ export default function OrderSummary({
             >
               <ProductThumb src={item.image_url} alt={item.name} size={48} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap fontWeight={600} sx={{ fontSize: 13.5, lineHeight: 1.3 }}>
-                  {item.name}
-                </Typography>
+                <ProductNameLink
+                  slug={item.slug}
+                  name={item.name}
+                  basePath={basePath}
+                  noWrap
+                  fontWeight={600}
+                  sx={{ fontSize: 13.5, lineHeight: 1.3, display: 'block' }}
+                />
                 <Typography variant="caption" color="text.secondary">
                   Qty {item.quantity}
                 </Typography>

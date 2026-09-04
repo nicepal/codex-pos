@@ -36,7 +36,11 @@ module.exports = {
   }),
 
   checkout: asyncHandler(async (req, res) => {
-    const order = await checkoutService.checkout(req.tenant.id, req.body);
+    const order = await checkoutService.checkout(
+      req.tenant.id,
+      req.body,
+      req.storefrontCustomerId || null
+    );
     return success(res, order, 'Order placed');
   }),
 

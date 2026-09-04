@@ -11,6 +11,7 @@ import QuantitySelector from './QuantitySelector';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 import { customerFacingDescription } from '../../utils/storefrontContent';
 import { resolveProductImageSrc } from '../../utils/imageUrl';
+import { storeNotifyCartAdded } from '../../utils/storeNotify';
 import { SF } from './storefrontTheme';
 
 function cartPayload(product) {
@@ -60,6 +61,7 @@ export default function ProductCard({
       return;
     }
     dispatch(addToCart(cartPayload(product)));
+    storeNotifyCartAdded(product.name, 1);
   };
 
   const handleQty = (q) => {

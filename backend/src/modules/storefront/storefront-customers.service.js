@@ -31,14 +31,30 @@ class StorefrontCustomersService {
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
-      // Link to / create a CRM customer record so storefront orders tie into CRM
+      // Reuse existing CRM customer by email (so prior guest orders appear in account)
       let customerId = null;
-      const crm = await client.query(
-        `INSERT INTO customers (tenant_id, name, email, phone)
-         VALUES ($1, $2, $3, $4) RETURNING id`,
-        [tenantId, `${data.first_name || ''} ${data.last_name || ''}`.trim() || email, email, data.phone || null]
+      const existingCrm = await client.query(
+        `SELECT id FROM customers WHERE tenant_id = $1 AND LOWER(email) = LOWER($2) LIMIT 1`,
+        [tenantId, email]
       );
-      customerId = crm.rows[0].id;
+      if (existingCrm.rows[0]) {
+        customerId = existingCrm.rows[0].id;
+        await client.query(
+          `UPDATE customers SET
+             name = COALESCE(NULLIF($3, ''), name),
+             phone = COALESCE(NULLIF($4, ''), phone),
+             updated_at = NOW()
+           WHERE id = $1 AND tenant_id = $2`,
+          [customerId, tenantId, `${data.first_name || ''} ${data.last_name || ''}`.trim(), data.phone || null]
+        );
+      } else {
+        const crm = await client.query(
+          `INSERT INTO customers (tenant_id, name, email, phone)
+           VALUES ($1, $2, $3, $4) RETURNING id`,
+          [tenantId, `${data.first_name || ''} ${data.last_name || ''}`.trim() || email, email, data.phone || null]
+        );
+        customerId = crm.rows[0].id;
+      }
 
       const passwordHash = await hashPassword(data.password);
       const account = await client.query(
@@ -58,15 +74,65 @@ class StorefrontCustomersService {
   }
 
   async login(tenantId, email, password) {
+    const normalized = (email || '').trim().toLowerCase();
     const result = await db.query(
       'SELECT * FROM storefront_customers WHERE tenant_id = $1 AND email = $2',
-      [tenantId, (email || '').trim().toLowerCase()]
+      [tenantId, normalized]
     );
     const account = result.rows[0];
     if (!account || account.status !== 'active') throw new UnauthorizedError('Invalid credentials');
     const valid = await comparePassword(password, account.password_hash);
     if (!valid) throw new UnauthorizedError('Invalid credentials');
-    return { customer: sanitize(account), token: issueToken(account) };
+
+    // Heal link if guest checkout created a different CRM row for the same email
+    await this._syncCustomerLink(tenantId, account);
+
+    const refreshed = await db.query(
+      'SELECT * FROM storefront_customers WHERE id = $1 AND tenant_id = $2',
+      [account.id, tenantId]
+    );
+    return { customer: sanitize(refreshed.rows[0] || account), token: issueToken(refreshed.rows[0] || account) };
+  }
+
+  async _syncCustomerLink(tenantId, account) {
+    if (!account?.email) return account;
+    const email = String(account.email).trim().toLowerCase();
+
+    // Prefer the CRM customer that already has the most orders for this email
+    const crm = await db.query(
+      `SELECT c.id, COUNT(o.id)::int AS order_count
+       FROM customers c
+       LEFT JOIN orders o ON o.customer_id = c.id AND o.tenant_id = c.tenant_id
+       WHERE c.tenant_id = $1 AND LOWER(TRIM(c.email)) = $2
+       GROUP BY c.id
+       ORDER BY COUNT(o.id) DESC, c.created_at ASC
+       LIMIT 1`,
+      [tenantId, email]
+    );
+    const crmId = crm.rows[0]?.id;
+    if (!crmId) return account;
+
+    if (crmId !== account.customer_id) {
+      await db.query(
+        `UPDATE storefront_customers SET customer_id = $1, updated_at = NOW()
+         WHERE id = $2 AND tenant_id = $3`,
+        [crmId, account.id, tenantId]
+      );
+      account.customer_id = crmId;
+    }
+
+    // Point sibling CRM rows' orders at the linked customer so history is complete
+    await db.query(
+      `UPDATE orders SET customer_id = $1
+       WHERE tenant_id = $2
+         AND customer_id IN (
+           SELECT id FROM customers
+           WHERE tenant_id = $2 AND LOWER(TRIM(email)) = $3 AND id <> $1
+         )`,
+      [crmId, tenantId, email]
+    );
+
+    return account;
   }
 
   async getById(tenantId, id) {
@@ -75,19 +141,93 @@ class StorefrontCustomersService {
       [id, tenantId]
     );
     if (!result.rows[0]) throw new NotFoundError('Account not found');
-    return sanitize(result.rows[0]);
+    await this._syncCustomerLink(tenantId, result.rows[0]);
+    const refreshed = await db.query(
+      'SELECT * FROM storefront_customers WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    );
+    return sanitize(refreshed.rows[0]);
   }
 
   async orders(tenantId, id) {
-    const result = await db.query(
-      `SELECT o.id, o.order_number, o.total_amount, o.status, o.fulfillment_status, o.created_at
-       FROM orders o
-       JOIN storefront_customers sc ON sc.customer_id = o.customer_id
-       WHERE sc.id = $1 AND o.tenant_id = $2
-       ORDER BY o.created_at DESC LIMIT 100`,
+    const account = await db.query(
+      'SELECT id, customer_id, email FROM storefront_customers WHERE id = $1 AND tenant_id = $2',
       [id, tenantId]
     );
-    return result.rows;
+    let sc = account.rows[0];
+    if (!sc) throw new NotFoundError('Account not found');
+    await this._syncCustomerLink(tenantId, sc);
+    const refreshed = await db.query(
+      'SELECT id, customer_id, email FROM storefront_customers WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    );
+    sc = refreshed.rows[0] || sc;
+
+    const email = sc.email ? String(sc.email).trim().toLowerCase() : null;
+
+    const result = await db.query(
+      `SELECT DISTINCT o.id, o.order_number, o.total_amount, o.status, o.fulfillment_status,
+              o.payment_method, o.created_at
+       FROM orders o
+       LEFT JOIN customers c ON c.id = o.customer_id AND c.tenant_id = o.tenant_id
+       WHERE o.tenant_id = $1
+         AND (
+           ($2::uuid IS NOT NULL AND o.customer_id = $2)
+           OR ($3::text IS NOT NULL AND c.email IS NOT NULL AND LOWER(TRIM(c.email)) = $3)
+           OR ($3::text IS NOT NULL AND o.customer_id IN (
+                SELECT id FROM customers
+                WHERE tenant_id = $1 AND email IS NOT NULL AND LOWER(TRIM(email)) = $3
+              ))
+       OR ($3::text IS NOT NULL AND o.notes ILIKE '%' || $3 || '%')
+         )
+       ORDER BY o.created_at DESC
+       LIMIT 100`,
+      [tenantId, sc.customer_id || null, email]
+    );
+
+    const orders = result.rows;
+    if (!orders.length) return [];
+
+    const orderIds = orders.map((o) => o.id);
+    const items = await db.query(
+      `SELECT oi.order_id, oi.product_id, oi.product_name, oi.quantity, oi.unit_price, oi.total,
+              p.slug AS product_slug,
+              EXISTS (
+                SELECT 1 FROM product_reviews pr
+                WHERE pr.tenant_id = oi.tenant_id
+                  AND pr.product_id = oi.product_id
+                  AND pr.storefront_customer_id = $2
+              ) AS already_reviewed
+       FROM order_items oi
+       LEFT JOIN products p ON p.id = oi.product_id AND p.tenant_id = oi.tenant_id
+       WHERE oi.tenant_id = $1 AND oi.order_id = ANY($3::uuid[])
+       ORDER BY oi.id`,
+      [tenantId, id, orderIds]
+    );
+
+    const byOrder = {};
+    for (const row of items.rows) {
+      if (!byOrder[row.order_id]) byOrder[row.order_id] = [];
+      const canReview = ['paid', 'completed'].includes(
+        orders.find((o) => o.id === row.order_id)?.status
+      ) && row.product_id && row.product_slug && !row.already_reviewed;
+
+      byOrder[row.order_id].push({
+        product_id: row.product_id,
+        product_name: row.product_name,
+        product_slug: row.product_slug,
+        quantity: row.quantity,
+        unit_price: row.unit_price,
+        total: row.total,
+        already_reviewed: row.already_reviewed,
+        can_review: Boolean(canReview),
+      });
+    }
+
+    return orders.map((o) => ({
+      ...o,
+      items: byOrder[o.id] || [],
+    }));
   }
 
   // ---- Addresses ----

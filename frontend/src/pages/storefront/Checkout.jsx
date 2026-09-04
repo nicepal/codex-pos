@@ -9,11 +9,12 @@ import {
 import {
   ArrowBack, LocalShippingOutlined, StoreOutlined, ExpandMore, ExpandLess,
 } from '@mui/icons-material';
-import api from '../../services/api';
+import storefrontApi from '../../services/storefrontApi';
 import { selectStoreCartTotal, clearStoreCart } from '../../features/storefront/cartSlice';
 import OrderSummary from '../../components/storefront/OrderSummary';
 import { calcOrderTotals } from '../../utils/storefrontPricing';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
+import { useStorefrontCustomer } from '../../hooks/useStorefrontCustomer';
 import { SF } from '../../components/storefront/storefrontTheme';
 
 function Section({ title, subtitle, children, sx }) {
@@ -123,12 +124,24 @@ export default function CheckoutPage() {
   const { basePath, slug, primaryColor, isRestaurant = false, storeName } = useOutletContext();
   const [showDiscounts, setShowDiscounts] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const { isLoggedIn, customer } = useStorefrontCustomer();
 
   const setField = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  useEffect(() => {
+    if (!isLoggedIn || !customer) return;
+    setForm((f) => ({
+      ...f,
+      email: f.email || customer.email || '',
+      phone: f.phone || customer.phone || '',
+      first_name: f.first_name || customer.first_name || '',
+      last_name: f.last_name || customer.last_name || '',
+    }));
+  }, [isLoggedIn, customer]);
+
   const { data: loyaltyInfo } = useQuery({
     queryKey: ['storefront-loyalty', slug, form.email],
-    queryFn: () => api.get('/storefront/loyalty-preview', { params: { email: form.email.trim() } }).then((r) => r.data.data),
+    queryFn: () => storefrontApi.get('/storefront/loyalty-preview', { params: { email: form.email.trim() } }).then((r) => r.data.data),
     enabled: Boolean(form.email?.includes('@')),
   });
 
@@ -140,7 +153,7 @@ export default function CheckoutPage() {
 
   const { data: branches, isLoading: branchesLoading } = useQuery({
     queryKey: ['storefront-branches', slug],
-    queryFn: () => api.get('/storefront/branches').then((r) => r.data.data),
+    queryFn: () => storefrontApi.get('/storefront/branches').then((r) => r.data.data),
   });
 
   const hasPickup = isRestaurant && Array.isArray(branches) && branches.length > 0;
@@ -182,7 +195,7 @@ export default function CheckoutPage() {
         const branch = (branches || []).find((b) => b.id === form.pickup_branch_id);
         if (branch) noteParts.push(`Pickup: ${branch.name}${branch.address ? ` — ${branch.address}` : ''}`);
       }
-      return api.post('/storefront/checkout', {
+      return storefrontApi.post('/storefront/checkout', {
         items: items.map((i) => ({
           product_id: i.product_id,
           variant_id: i.variant_id || undefined,
@@ -222,6 +235,7 @@ export default function CheckoutPage() {
               product_id: i.product_id,
               variant_id: i.variant_id,
               name: i.name,
+              slug: i.slug,
               quantity: i.quantity,
               sale_price: i.sale_price,
               image_url: i.image_url,
@@ -621,6 +635,7 @@ export default function CheckoutPage() {
             subtotal={subtotal}
             items={items}
             primaryColor={primaryColor}
+            basePath={basePath}
             onCheckout={() => checkout.mutate()}
             checkoutLabel={`Pay now — ${formatMoney(total)}`}
             checkoutDisabled={!canSubmit}

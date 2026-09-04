@@ -108,8 +108,8 @@ export default function BusinessLayout() {
   return (
     <BusinessCurrencyProvider>
       <ResponsiveDrawer
-        title="PosHive"
-        subtitle={tenant?.name || 'My Business'}
+        title={tenant?.name || 'My Business'}
+        logoUrl={tenant?.logo_url || null}
         navGroups={navGroups}
         user={{ email: user?.email, initial: user?.first_name?.[0] }}
         headerExtra={<NotificationBell />}

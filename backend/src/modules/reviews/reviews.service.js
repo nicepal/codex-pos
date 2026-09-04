@@ -15,7 +15,7 @@ class ReviewsService {
     };
   }
 
-  async listForProduct(tenantId, productId, { page = 1, limit = 10 } = {}) {
+  async listForProduct(tenantId, productId, { page = 1, limit = 10 } = {}, storefrontCustomerId = null) {
     const lim = Math.min(50, parseInt(limit, 10) || 10);
     const offset = ((parseInt(page, 10) || 1) - 1) * lim;
     const rows = await db.query(
@@ -26,7 +26,49 @@ class ReviewsService {
       [tenantId, productId]
     );
     const summary = await this.productSummary(tenantId, productId);
-    return { reviews: rows.rows, summary };
+
+    let can_review = false;
+    let already_reviewed = false;
+    let has_purchased = false;
+    if (storefrontCustomerId) {
+      const purchase = await this._hasPurchased(tenantId, productId, storefrontCustomerId);
+      has_purchased = purchase;
+      const existing = await db.query(
+        `SELECT id FROM product_reviews
+         WHERE tenant_id = $1 AND product_id = $2 AND storefront_customer_id = $3 LIMIT 1`,
+        [tenantId, productId, storefrontCustomerId]
+      );
+      already_reviewed = Boolean(existing.rows[0]);
+      can_review = has_purchased && !already_reviewed;
+    }
+
+    return {
+      reviews: rows.rows,
+      summary,
+      can_review,
+      has_purchased,
+      already_reviewed,
+    };
+  }
+
+  async _hasPurchased(tenantId, productId, storefrontCustomerId) {
+    const purchase = await db.query(
+      `SELECT 1
+       FROM orders o
+       JOIN order_items oi ON oi.order_id = o.id AND oi.tenant_id = o.tenant_id
+       JOIN storefront_customers sc ON sc.id = $1 AND sc.tenant_id = o.tenant_id
+       LEFT JOIN customers c ON c.id = o.customer_id AND c.tenant_id = o.tenant_id
+       WHERE o.tenant_id = $2
+         AND oi.product_id = $3
+         AND o.status IN ('paid', 'completed')
+         AND (
+           (sc.customer_id IS NOT NULL AND o.customer_id = sc.customer_id)
+           OR (c.email IS NOT NULL AND LOWER(c.email) = LOWER(sc.email))
+         )
+       LIMIT 1`,
+      [storefrontCustomerId, tenantId, productId]
+    );
+    return Boolean(purchase.rows[0]);
   }
 
   async submit(tenantId, productId, data, storefrontCustomerId = null) {
@@ -41,12 +83,17 @@ class ReviewsService {
     if (!product.rows[0]) throw new NotFoundError('Product not found');
 
     const account = await db.query(
-      `SELECT id, first_name, last_name, email FROM storefront_customers
+      `SELECT id, first_name, last_name, email, customer_id FROM storefront_customers
        WHERE id = $1 AND tenant_id = $2 AND status = 'active'`,
       [storefrontCustomerId, tenantId]
     );
     const customer = account.rows[0];
     if (!customer) throw new UnauthorizedError('Please sign in to leave a review');
+
+    const purchased = await this._hasPurchased(tenantId, productId, storefrontCustomerId);
+    if (!purchased) {
+      throw new ValidationError('Only customers who purchased this product can leave a review');
+    }
 
     const rating = parseInt(data.rating, 10);
     if (!rating || rating < 1 || rating > 5) throw new ValidationError('Rating must be between 1 and 5');
@@ -66,22 +113,12 @@ class ReviewsService {
       throw new ValidationError('You have already reviewed this product');
     }
 
-    // Mark as verified purchase if this customer has a paid order for the product
-    const purchase = await db.query(
-      `SELECT 1 FROM orders o
-       JOIN order_items oi ON oi.order_id = o.id
-       JOIN storefront_customers sc ON sc.customer_id = o.customer_id
-       WHERE sc.id = $1 AND oi.product_id = $2 AND o.status IN ('paid','completed') LIMIT 1`,
-      [storefrontCustomerId, productId]
-    );
-    const verified = Boolean(purchase.rows[0]);
-
     const result = await db.query(
       `INSERT INTO product_reviews
          (tenant_id, product_id, storefront_customer_id, author_name, rating, title, body, status, verified_purchase)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8) RETURNING id, status`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', true) RETURNING id, status`,
       [tenantId, productId, storefrontCustomerId, authorName, rating,
-        data.title || null, data.body || null, verified]
+        data.title || null, data.body || null]
     );
     return { ...result.rows[0], message: 'Review submitted for approval' };
   }

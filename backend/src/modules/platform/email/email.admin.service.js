@@ -5,6 +5,8 @@ const emailService = require('../../../services/email.service');
 // Sample data for live template preview.
 const SAMPLE_VARS = {
   business_name: 'Acme Store',
+  branch_name: 'Downtown Branch',
+  brand_name: 'PosHive',
   user_name: 'Jane Doe',
   customer_name: 'John Smith',
   owner_name: 'Jane Doe',
@@ -100,9 +102,15 @@ class EmailAdminService {
   // Render arbitrary subject/body (or a stored template) with sample data.
   async preview({ subject, body_html, variables } = {}) {
     const vars = { ...SAMPLE_VARS, ...(variables || {}) };
+    const renderedBody = emailService.renderTemplate(body_html || '', vars);
     return {
       subject: emailService.renderTemplate(subject || '', vars),
-      body_html: emailService.renderTemplate(body_html || '', vars),
+      body_html: emailService.wrapEmailHtml(renderedBody, {
+        brandName: vars.brand_name || vars.app_name,
+        brandUrl: vars.app_url,
+        businessName: vars.business_name || null,
+        branchName: vars.branch_name || null,
+      }),
       sample_variables: vars,
     };
   }

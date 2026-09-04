@@ -48,7 +48,10 @@ async function addShopifyImportJob(data) {
 }
 
 async function processNotification(job) {
-  const { tenantId, userId, channel, title, message, type, phone, email, text, replyTo, emailLogId } = job.data;
+  const {
+    tenantId, userId, channel, title, message, type, phone, email, text, replyTo, emailLogId,
+    brandName, businessName, branchName, skipLayout,
+  } = job.data;
 
   await db.query(
     `INSERT INTO notifications (tenant_id, user_id, type, channel, title, message, status, sent_at)
@@ -67,7 +70,18 @@ async function processNotification(job) {
         logger.info('Email skipped (SMTP not configured)', { to: email, subject: title });
         return;
       }
-      const { messageId } = await smtpService.sendNow({ to: email, subject: title, html: message, text, replyTo, tenantId });
+      const { messageId } = await smtpService.sendNow({
+        to: email,
+        subject: title,
+        html: message,
+        text,
+        replyTo,
+        tenantId,
+        brandName,
+        businessName,
+        branchName,
+        skipLayout,
+      });
       await markLog(emailLogId, 'sent', { messageId });
     } catch (err) {
       // Record the failure reason; rethrow so BullMQ retries (attempts: 3).

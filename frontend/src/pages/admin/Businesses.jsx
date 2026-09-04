@@ -9,6 +9,7 @@ import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
 import RHFTextField from '../../components/RHFTextField';
+import AuthPasswordField from '../../components/AuthPasswordField';
 import { emptyPresetProps } from '../../utils/emptyStatePresets';
 import { formatDisplayText } from '../../utils/displayText';
 
@@ -170,12 +171,11 @@ export default function BusinessesPage() {
           <TextField fullWidth label="Phone" {...register('phone')} />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <RHFTextField
+          <AuthPasswordField
             register={register}
             name="password"
             rules={{ required: true, minLength: 8 }}
             label="Password"
-            type="password"
             helperText="Minimum 8 characters — owner login password"
           />
         </Grid>

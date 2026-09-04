@@ -9,6 +9,7 @@ import PageHeader from '../../components/PageHeader';
 import DataTable from '../../components/DataTable';
 import FormDialog from '../../components/FormDialog';
 import RHFTextField from '../../components/RHFTextField';
+import AuthPasswordField from '../../components/AuthPasswordField';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import BulkDeleteActions from '../../components/BulkDeleteActions';
 import useBulkDelete from '../../hooks/useBulkDelete';
@@ -163,7 +164,14 @@ function TeamPageInner() {
         <Grid item xs={12} sm={6}><TextField fullWidth label="First Name" {...register('first_name')} /></Grid>
         <Grid item xs={12} sm={6}><TextField fullWidth label="Last Name" {...register('last_name')} /></Grid>
         <Grid item xs={12}><RHFTextField register={register} name="email" rules={{ required: true }} label="Email" type="email" /></Grid>
-        <Grid item xs={12}><TextField fullWidth label="Password (optional)" type="password" {...register('password')} helperText="Leave blank to auto-generate" /></Grid>
+        <Grid item xs={12}>
+          <AuthPasswordField
+            register={register}
+            name="password"
+            label="Password (optional)"
+            helperText="Leave blank to auto-generate"
+          />
+        </Grid>
         <Grid item xs={12}>
           <TextField fullWidth select label="Role" defaultValue="cashier" {...register('role')}>
             {ROLES.map((r) => <MenuItem key={r} value={r}>{formatDisplayText(r)}</MenuItem>)}

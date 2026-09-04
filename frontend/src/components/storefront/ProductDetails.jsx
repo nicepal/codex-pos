@@ -14,6 +14,7 @@ import { useStorefrontUI } from '../../contexts/StorefrontUIContext';
 import { resolveProductImageSrc } from '../../utils/imageUrl';
 import { customerFacingDescription } from '../../utils/storefrontContent';
 import { sanitizeRichTextHtml, looksLikeHtml } from '../../utils/richText';
+import { storeNotifyCartAdded } from '../../utils/storeNotify';
 import { SF } from './storefrontTheme';
 
 /**
@@ -119,7 +120,9 @@ export default function ProductDetails({
   const handleAdd = () => {
     if (!inStock) return;
     if (variants.length && !selectedVariant) return;
-    dispatch(addToCart(cartPayload()));
+    const payload = cartPayload();
+    dispatch(addToCart(payload));
+    storeNotifyCartAdded(payload.name, payload.quantity || 1);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1800);
   };

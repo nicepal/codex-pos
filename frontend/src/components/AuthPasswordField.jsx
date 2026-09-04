@@ -1,34 +1,35 @@
-import { useState } from 'react';
-import { IconButton, InputAdornment } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import RHFTextField from './RHFTextField';
+import { PasswordInput } from '@mantine/core';
 
-export default function AuthPasswordField({ register, name = 'password', rules, label = 'Password', helperText, ...rest }) {
-  const [show, setShow] = useState(false);
+/**
+ * react-hook-form password field with built-in show/hide toggle (Mantine PasswordInput).
+ */
+export default function AuthPasswordField({
+  register,
+  name = 'password',
+  rules,
+  label = 'Password',
+  helperText,
+  error,
+  size,
+  InputProps: _inputProps,
+  fullWidth: _fullWidth,
+  ...rest
+}) {
+  const registered = register(name, rules);
+  const isRequired = Boolean(
+    rules?.required === true ||
+      (typeof rules?.required === 'string' && rules.required.length > 0),
+  );
 
   return (
-    <RHFTextField
-      register={register}
-      name={name}
-      rules={rules}
+    <PasswordInput
+      w="100%"
       label={label}
-      type={show ? 'text' : 'password'}
-      helperText={helperText}
-      InputProps={{
-        endAdornment: (
-          <InputAdornment position="end">
-            <IconButton
-              aria-label={show ? 'Hide password' : 'Show password'}
-              onClick={() => setShow((v) => !v)}
-              edge="end"
-              size="small"
-            >
-              {show ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-            </IconButton>
-          </InputAdornment>
-        ),
-      }}
+      required={isRequired}
+      error={(typeof error === 'string' && error) || helperText || undefined}
+      size={size === 'small' ? 'sm' : size === 'large' ? 'lg' : size || 'md'}
       {...rest}
+      {...registered}
     />
   );
 }

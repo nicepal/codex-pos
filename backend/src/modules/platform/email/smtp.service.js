@@ -2,6 +2,7 @@ const db = require('../../../config/database');
 const config = require('../../../config');
 const logger = require('../../../utils/logger');
 const { encrypt, decrypt } = require('../../../utils/crypto');
+const { wrapEmailHtml, htmlToPlainText, buildSmtpTestContent } = require('../../../services/email.layout');
 
 const MASK = '************';
 const CACHE_TTL_MS = 30 * 1000;
@@ -257,15 +258,20 @@ async function sendTestEmail(toEmail, formCfg = null) {
   try {
     const transport = buildTransport(cfg);
     await transport.verify();
+    const brandName = cfg.fromName || config.app.name;
+    const content = buildSmtpTestContent(brandName);
+    const html = wrapEmailHtml(content, {
+      brandName,
+      brandUrl: config.app.url,
+      preheader: `SMTP test from ${brandName} — your configuration is working.`,
+    });
     const info = await transport.sendMail({
       from: fromHeader(cfg),
       to: toEmail,
       replyTo: cfg.replyToEmail || undefined,
-      subject: `${config.app.name} SMTP test email`,
-      html: `<p>This is a test email from <strong>${config.app.name}</strong>.</p>
-             <p>If you received this, your SMTP configuration is working correctly.</p>
-             <p>Sent at ${new Date().toISOString()}</p>`,
-      text: `This is a test email from ${config.app.name}. Your SMTP configuration is working.`,
+      subject: `${brandName} SMTP test email`,
+      html,
+      text: htmlToPlainText(content),
     });
     return { success: true, messageId: info.messageId };
   } catch (err) {
@@ -275,7 +281,10 @@ async function sendTestEmail(toEmail, formCfg = null) {
 }
 
 // Low-level send used by the queue worker. Throws on failure (for retry).
-async function sendNow({ to, subject, html, text, replyTo, tenantId = null }) {
+async function sendNow({
+  to, subject, html, text, replyTo, tenantId = null,
+  brandName, businessName, branchName, skipLayout = false,
+}) {
   const cfg = await getActiveConfig(tenantId);
   if (!cfg) {
     const e = new Error('SMTP not configured');
@@ -283,13 +292,22 @@ async function sendNow({ to, subject, html, text, replyTo, tenantId = null }) {
     throw e;
   }
   const transport = buildTransport(cfg);
+  const resolvedBrand = brandName || cfg.fromName || config.app.name;
+  const finalHtml = skipLayout
+    ? html
+    : wrapEmailHtml(html, {
+      brandName: resolvedBrand,
+      brandUrl: config.app.url,
+      businessName: businessName || null,
+      branchName: branchName || null,
+    });
   const info = await transport.sendMail({
     from: fromHeader(cfg),
     to,
     replyTo: replyTo || cfg.replyToEmail || undefined,
     subject,
-    html,
-    text: text || (html ? String(html).replace(/<[^>]+>/g, '') : ''),
+    html: finalHtml,
+    text: text || htmlToPlainText(html),
   });
   return { messageId: info.messageId };
 }

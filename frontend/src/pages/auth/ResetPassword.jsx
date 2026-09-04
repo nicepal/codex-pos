@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, Link as RouterLink } from 'react-router-dom';
 import {
-  Button, Alert, Stack, TextField, Typography,
+  Button, Alert, Stack, Typography,
 } from '@mui/material';
 import { CheckCircle, ArrowBack } from '@mui/icons-material';
 import api from '../../services/api';
@@ -87,16 +87,17 @@ export default function ResetPasswordPage() {
               error={!!errors.password}
               helperText={errors.password?.message}
             />
-            <TextField
-              fullWidth
-              label="Confirm password"
-              type="password"
-              error={!!errors.confirmPassword}
-              helperText={errors.confirmPassword?.message}
-              {...register('confirmPassword', {
+            <AuthPasswordField
+              register={register}
+              name="confirmPassword"
+              rules={{
                 required: 'Please confirm your password',
                 validate: (v) => v === password || 'Passwords do not match',
-              })}
+              }}
+              label="Confirm password"
+              autoComplete="new-password"
+              error={!!errors.confirmPassword}
+              helperText={errors.confirmPassword?.message}
             />
             <Button
               type="submit"

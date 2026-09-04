@@ -3,6 +3,7 @@ import {
   Card, CardContent, Typography, Button, Chip, Stack, TextField, Box, Alert, Link,
 } from '@mui/material';
 import { Link as LinkIcon, LinkOff, CheckCircle } from '@mui/icons-material';
+import PasswordField from '../../../../components/PasswordField';
 
 export default function ConnectionCard({ status, onConnect, onDisconnect, connecting, disconnecting, connectError }) {
   const connected = status?.connected;
@@ -69,13 +70,12 @@ export default function ConnectionCard({ status, onConnect, onDisconnect, connec
               sx={{ mb: 2 }}
               required
             />
-            <TextField
+            <PasswordField
               fullWidth
               label="Admin API access token"
               placeholder="shpat_..."
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              type="password"
               sx={{ mb: 2 }}
               required
             />

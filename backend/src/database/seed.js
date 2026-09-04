@@ -200,27 +200,145 @@ async function seed() {
   }
 
   const templates = [
-    { slug: 'welcome', name: 'Welcome Email', subject: 'Welcome to {{business_name}}!', body: '<p>Hello {{user_name}}, welcome to {{app_name}}!</p>', vars: ['business_name', 'user_name', 'app_name'] },
-    { slug: 'password_reset', name: 'Password Reset', subject: 'Reset Your Password', body: '<p>Hello {{user_name}},</p><p>Click the link to reset your password:</p><p><a href="{{reset_link}}">{{reset_link}}</a></p><p>This link expires in 1 hour.</p>', vars: ['user_name', 'reset_link'] },
-    { slug: 'email_verification', name: 'Email Verification', subject: 'Verify your email address', body: '<p>Hello {{user_name}},</p><p>Please verify your email address:</p><p><a href="{{verification_link}}">{{verification_link}}</a></p>', vars: ['user_name', 'verification_link'] },
-    { slug: 'invoice', name: 'Invoice Email', subject: 'Invoice {{invoice_number}}', body: '<p>Hello {{customer_name}},</p><p>Your invoice {{invoice_number}} for {{amount}} is ready.</p>', vars: ['customer_name', 'invoice_number', 'amount'] },
-    { slug: 'purchase_order', name: 'Purchase Order', subject: 'Purchase Order {{purchase_order_number}}', body: '<p>Hello,</p><p>Please find purchase order {{purchase_order_number}} from {{business_name}}.</p>', vars: ['purchase_order_number', 'business_name'] },
-    { slug: 'order_confirmation', name: 'Order Confirmation', subject: 'Order {{order_number}} confirmed', body: '<p>Hello {{customer_name}},</p><p>Your order {{order_number}} has been confirmed.</p>', vars: ['customer_name', 'order_number'] },
-    { slug: 'staff_invitation', name: 'Staff Invitation', subject: 'You have been invited to {{business_name}}', body: '<p>Hello {{user_name}},</p><p>You have been invited to join {{business_name}}.</p>', vars: ['user_name', 'business_name'] },
-    { slug: 'support_ticket', name: 'Support Ticket', subject: 'Support ticket update', body: '<p>Hello {{user_name}},</p><p>There is an update on your support ticket.</p>', vars: ['user_name'] },
-    { slug: 'contact_form', name: 'Contact Form', subject: 'New contact form submission', body: '<p>A new contact form submission was received from {{customer_name}}.</p>', vars: ['customer_name'] },
-    { slug: 'subscription_activated', name: 'Subscription Activated', subject: 'Your {{subscription_name}} subscription is active', body: '<p>Hello {{user_name}},</p><p>Your subscription {{subscription_name}} is now active.</p>', vars: ['user_name', 'subscription_name'] },
-    { slug: 'subscription_expired', name: 'Subscription Expired', subject: 'Your subscription has expired', body: '<p>Hello {{user_name}},</p><p>Your subscription {{subscription_name}} expired on {{expiry_date}}.</p>', vars: ['user_name', 'subscription_name', 'expiry_date'] },
-    { slug: 'trial_expiry', name: 'Trial Expiry', subject: 'Your trial is ending soon', body: '<p>Hi {{user_name}}, your trial for {{business_name}} ends soon.</p>', vars: ['user_name', 'business_name'] },
-    { slug: 'subscription_renewal', name: 'Subscription Renewal', subject: 'Subscription Renewed', body: '<p>Your subscription has been renewed.</p>', vars: ['subscription_name'] },
+    {
+      slug: 'welcome',
+      name: 'Welcome Email',
+      subject: 'Welcome to {{business_name}}!',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Welcome aboard</h1>
+<p style="margin:0 0 14px;">Hello {{user_name}},</p>
+<p style="margin:0 0 14px;">Your account for <strong>{{business_name}}</strong> is ready on {{brand_name}}.</p>
+<p style="margin:0;">Sign in anytime to manage sales, inventory, and your storefront.</p>`,
+      vars: ['business_name', 'user_name', 'app_name', 'brand_name'],
+    },
+    {
+      slug: 'password_reset',
+      name: 'Password Reset',
+      subject: 'Reset Your Password',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Reset your password</h1>
+<p style="margin:0 0 14px;">Hello {{user_name}},</p>
+<p style="margin:0 0 18px;">We received a request to reset your password. Click the button below to choose a new one.</p>
+<p style="margin:0 0 18px;"><a href="{{reset_link}}" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">Reset password</a></p>
+<p style="margin:0;font-size:13px;color:#64748b;">This link expires in 1 hour. If you did not request this, you can ignore this email.</p>`,
+      vars: ['user_name', 'reset_link', 'business_name', 'brand_name'],
+    },
+    {
+      slug: 'email_verification',
+      name: 'Email Verification',
+      subject: 'Verify your email address',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Verify your email</h1>
+<p style="margin:0 0 14px;">Hello {{user_name}},</p>
+<p style="margin:0 0 18px;">Please confirm your email address to finish setting up your account.</p>
+<p style="margin:0;"><a href="{{verification_link}}" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">Verify email</a></p>`,
+      vars: ['user_name', 'verification_link', 'brand_name'],
+    },
+    {
+      slug: 'invoice',
+      name: 'Invoice Email',
+      subject: 'Invoice {{invoice_number}}',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Invoice ready</h1>
+<p style="margin:0 0 14px;">Hello {{customer_name}},</p>
+<p style="margin:0;">Your invoice <strong>{{invoice_number}}</strong> for <strong>{{amount}}</strong> is ready.</p>`,
+      vars: ['customer_name', 'invoice_number', 'amount', 'business_name', 'branch_name'],
+    },
+    {
+      slug: 'purchase_order',
+      name: 'Purchase Order',
+      subject: 'Purchase Order {{purchase_order_number}}',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Purchase order</h1>
+<p style="margin:0 0 14px;">Hello,</p>
+<p style="margin:0;">Please find purchase order <strong>{{purchase_order_number}}</strong> from <strong>{{business_name}}</strong>.</p>`,
+      vars: ['purchase_order_number', 'business_name', 'branch_name'],
+    },
+    {
+      slug: 'order_confirmation',
+      name: 'Order Confirmation',
+      subject: 'Order {{order_number}} confirmed',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Order confirmed</h1>
+<p style="margin:0 0 14px;">Hello {{customer_name}},</p>
+<p style="margin:0;">Your order <strong>{{order_number}}</strong> has been confirmed.</p>`,
+      vars: ['customer_name', 'order_number', 'business_name', 'branch_name'],
+    },
+    {
+      slug: 'staff_invitation',
+      name: 'Staff Invitation',
+      subject: 'You have been invited to {{business_name}}',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">You're invited</h1>
+<p style="margin:0 0 14px;">Hello {{user_name}},</p>
+<p style="margin:0;">You have been invited to join <strong>{{business_name}}</strong> on {{brand_name}}.</p>`,
+      vars: ['user_name', 'business_name', 'brand_name', 'branch_name'],
+    },
+    {
+      slug: 'support_ticket',
+      name: 'Support Ticket',
+      subject: 'Support ticket update',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Support update</h1>
+<p style="margin:0 0 14px;">Hello {{user_name}},</p>
+<p style="margin:0;">There is an update on your support ticket.</p>`,
+      vars: ['user_name'],
+    },
+    {
+      slug: 'contact_form',
+      name: 'Contact Form',
+      subject: 'New contact form submission',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">New contact submission</h1>
+<p style="margin:0;">A new contact form submission was received from <strong>{{customer_name}}</strong>.</p>`,
+      vars: ['customer_name'],
+    },
+    {
+      slug: 'subscription_activated',
+      name: 'Subscription Activated',
+      subject: 'Your {{subscription_name}} subscription is active',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Subscription active</h1>
+<p style="margin:0 0 14px;">Hello {{user_name}},</p>
+<p style="margin:0;">Your subscription <strong>{{subscription_name}}</strong> is now active.</p>`,
+      vars: ['user_name', 'subscription_name'],
+    },
+    {
+      slug: 'subscription_expired',
+      name: 'Subscription Expired',
+      subject: 'Your subscription has expired',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Subscription expired</h1>
+<p style="margin:0 0 14px;">Hello {{user_name}},</p>
+<p style="margin:0;">Your subscription <strong>{{subscription_name}}</strong> expired on {{expiry_date}}.</p>`,
+      vars: ['user_name', 'subscription_name', 'expiry_date'],
+    },
+    {
+      slug: 'trial_expiry',
+      name: 'Trial Expiry',
+      subject: 'Your trial is ending soon',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Trial ending soon</h1>
+<p style="margin:0;">Hi {{user_name}}, your trial for <strong>{{business_name}}</strong> ends soon. Upgrade to keep your store running without interruption.</p>`,
+      vars: ['user_name', 'business_name'],
+    },
+    {
+      slug: 'subscription_renewal',
+      name: 'Subscription Renewal',
+      subject: 'Subscription Renewed',
+      body: `<h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;">Subscription renewed</h1>
+<p style="margin:0;">Your <strong>{{subscription_name}}</strong> subscription has been renewed successfully.</p>`,
+      vars: ['subscription_name'],
+    },
   ];
 
   for (const t of templates) {
-    await db.query(
-      `INSERT INTO email_templates (slug, name, subject, body_html, variables)
-       VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
-      [t.slug, t.name, t.subject, t.body, JSON.stringify(t.vars)]
+    const existing = await db.query(
+      'SELECT id FROM email_templates WHERE slug = $1 AND tenant_id IS NULL LIMIT 1',
+      [t.slug]
     );
+    if (existing.rows[0]) {
+      await db.query(
+        `UPDATE email_templates
+            SET name = $1, subject = $2, body_html = $3, variables = $4, updated_at = NOW()
+          WHERE id = $5`,
+        [t.name, t.subject, t.body, JSON.stringify(t.vars), existing.rows[0].id]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO email_templates (slug, name, subject, body_html, variables)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [t.slug, t.name, t.subject, t.body, JSON.stringify(t.vars)]
+      );
+    }
   }
 
   logger.info('Database seed completed');

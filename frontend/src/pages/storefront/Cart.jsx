@@ -8,6 +8,7 @@ import { removeFromCart, updateCartQty, selectStoreCartTotal } from '../../featu
 import OrderSummary from '../../components/storefront/OrderSummary';
 import QuantitySelector from '../../components/storefront/QuantitySelector';
 import { ProductThumb } from '../../components/storefront/ProductImage';
+import ProductNameLink from '../../components/storefront/ProductNameLink';
 import useStoreCurrency from '../../hooks/useStoreCurrency';
 import { SF } from '../../components/storefront/storefrontTheme';
 
@@ -70,7 +71,14 @@ export default function StoreCart() {
               >
                 <ProductThumb src={item.image_url} alt={item.name} size={64} />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography fontWeight={600} noWrap sx={{ fontSize: 14 }}>{item.name}</Typography>
+                  <ProductNameLink
+                    slug={item.slug}
+                    name={item.name}
+                    basePath={basePath}
+                    fontWeight={600}
+                    noWrap
+                    sx={{ fontSize: 14, display: 'block' }}
+                  />
                   {(item.variant_name || item.category_name) && (
                     <Typography variant="caption" color="text.secondary">
                       {item.variant_name || item.category_name}
@@ -102,6 +110,7 @@ export default function StoreCart() {
             subtotal={subtotal}
             items={items}
             primaryColor={primaryColor}
+            basePath={basePath}
             onCheckout={() => navigate(`${basePath}/checkout`)}
             checkoutLabel="Continue to checkout"
           />

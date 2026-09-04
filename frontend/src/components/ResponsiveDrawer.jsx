@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AppShell,
   Avatar,
@@ -24,12 +24,14 @@ import {
   Brightness7,
 } from '@mui/icons-material';
 import { useColorMode } from '../AppThemeProvider';
+import { resolveImageUrl } from '../utils/imageUrl';
 
 const DRAWER_WIDTH = 260;
 
 export default function ResponsiveDrawer({
   title,
   subtitle,
+  logoUrl,
   navGroups,
   user,
   onLogout,
@@ -39,6 +41,13 @@ export default function ResponsiveDrawer({
   const { mode, toggleColorMode } = useColorMode();
   const isMobile = useMediaQuery('(max-width: 48em)');
   const [mobileOpened, setMobileOpened] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
+  const logoSrc = logoUrl && !logoFailed ? resolveImageUrl(logoUrl) : null;
+
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [logoUrl]);
+
   const [expanded, setExpanded] = useState(() => {
     const init = {};
     navGroups.forEach((g) => {
@@ -59,14 +68,34 @@ export default function ResponsiveDrawer({
   const drawerContent = (
     <Stack gap={0} h="100%">
       <Box px="md" pt="md" pb="sm">
-        <Text fw={700} c="codex" size="lg">
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text size="xs" c="dimmed" mt={2}>
-            {subtitle}
-          </Text>
-        ) : null}
+        <Group gap="sm" wrap="nowrap" align="center">
+          {logoSrc ? (
+            <Box
+              component="img"
+              src={logoSrc}
+              alt=""
+              onError={() => setLogoFailed(true)}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                objectFit: 'contain',
+                flexShrink: 0,
+                background: 'var(--mantine-color-default-hover)',
+              }}
+            />
+          ) : null}
+          <Box style={{ minWidth: 0, flex: 1 }}>
+            <Text fw={700} c="codex" size="lg" lineClamp={1}>
+              {title}
+            </Text>
+            {subtitle ? (
+              <Text size="xs" c="dimmed" mt={2} lineClamp={1}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </Box>
+        </Group>
       </Box>
       <Divider />
       <ScrollArea flex={1} type="scroll" offsetScrollbars>
@@ -134,7 +163,7 @@ export default function ResponsiveDrawer({
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+            <Group gap="sm" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
             {isMobile ? (
               <Burger
                 opened={mobileOpened}
@@ -143,8 +172,23 @@ export default function ResponsiveDrawer({
                 aria-label="Toggle navigation"
               />
             ) : null}
+            {logoSrc ? (
+              <Box
+                component="img"
+                src={logoSrc}
+                alt=""
+                onError={() => setLogoFailed(true)}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  objectFit: 'contain',
+                  flexShrink: 0,
+                }}
+              />
+            ) : null}
             <Text fw={600} size="lg" lineClamp={1} style={{ minWidth: 0 }}>
-              {subtitle || title}
+              {title}
             </Text>
           </Group>
           <Group gap="xs" wrap="nowrap">

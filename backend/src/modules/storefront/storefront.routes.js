@@ -85,14 +85,19 @@ router.get('/products/:slug', controller.product);
 router.get('/categories', controller.categories);
 router.get('/branches', controller.branches);
 router.get('/loyalty-preview', controller.loyaltyPreview);
-router.post('/checkout', validate(checkoutSchema), controller.checkout);
+router.post('/checkout', optionalStorefrontAuth, validate(checkoutSchema), controller.checkout);
 router.get('/theme', controller.theme);
 router.get('/sitemap', controller.sitemap);
 
 // ---- Product reviews ----
-router.get('/products/:slug/reviews', asyncHandler(async (req, res) => {
+router.get('/products/:slug/reviews', optionalStorefrontAuth, asyncHandler(async (req, res) => {
   const productId = await resolveProductId(req.tenant.id, req.params.slug);
-  const result = await reviewsService.listForProduct(req.tenant.id, productId, req.query);
+  const result = await reviewsService.listForProduct(
+    req.tenant.id,
+    productId,
+    req.query,
+    req.storefrontCustomerId || null
+  );
   return success(res, result);
 }));
 
