@@ -14,20 +14,23 @@ import RHFTextField from '../../components/RHFTextField';
 import useBusinessCurrency from '../../hooks/useBusinessCurrency';
 import { formatDisplayText } from '../../utils/displayText';
 
-const defaultValues = {
-  amount: 50,
-  code: '',
-  currency: 'USD',
-  expires_at: '',
-};
-
 export default function GiftCardsPage() {
-  const { formatMoney } = useBusinessCurrency();
+  const { formatMoney, currency: businessCurrency } = useBusinessCurrency();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [disableId, setDisableId] = useState(null);
   const [formError, setFormError] = useState('');
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({ defaultValues });
+
+  const blankForm = () => ({
+    amount: 50,
+    code: '',
+    currency: businessCurrency,
+    expires_at: '',
+  });
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    defaultValues: blankForm(),
+  });
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['gift-cards'],
@@ -38,7 +41,7 @@ export default function GiftCardsPage() {
 
   const openForm = () => {
     setFormError('');
-    reset(defaultValues);
+    reset(blankForm());
     setOpen(true);
   };
 
@@ -47,7 +50,7 @@ export default function GiftCardsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries(['gift-cards']);
       setOpen(false);
-      reset(defaultValues);
+      reset(blankForm());
     },
     onError: (err) => setFormError(err.response?.data?.message || 'Failed to issue gift card'),
   });
@@ -69,7 +72,7 @@ export default function GiftCardsPage() {
     issueMutation.mutate({
       amount,
       code: values.code?.trim() || undefined,
-      currency: values.currency || 'USD',
+      currency: businessCurrency,
       expires_at: values.expires_at || null,
     });
   };
@@ -152,7 +155,13 @@ export default function GiftCardsPage() {
           />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <RHFTextField register={register} name="currency" label="Currency" />
+          <TextField
+            fullWidth
+            label="Currency"
+            value={businessCurrency}
+            disabled
+            helperText="From business profile settings"
+          />
         </Grid>
         <Grid item xs={12}>
           <RHFTextField register={register} name="code" label="Custom code (optional)" helperText="Leave blank to auto-generate" />

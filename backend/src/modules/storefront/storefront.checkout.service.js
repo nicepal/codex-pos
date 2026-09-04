@@ -15,16 +15,27 @@ class StorefrontCheckoutService {
       customerId = row.rows[0]?.id || null;
     }
 
+    const ship = data.shipping_address || {};
+    const addressLines = [
+      ship.line1,
+      ship.line2,
+      [ship.city, ship.postal_code].filter(Boolean).join(' '),
+      ship.country,
+    ].filter(Boolean);
+
     const customerNote = [
       data.customer_name && `Name: ${data.customer_name}`,
       data.customer_email && `Email: ${data.customer_email}`,
       data.customer_phone && `Phone: ${data.customer_phone}`,
+      addressLines.length ? `Ship to: ${addressLines.join(', ')}` : null,
     ].filter(Boolean).join(' | ');
+
+    const notes = [data.notes, customerNote].filter(Boolean).join('\n');
 
     const payload = {
       items: data.items,
       payment_method: data.payment_method,
-      notes: data.notes || customerNote || null,
+      notes: notes || null,
       order_type: 'online',
       status: data.payment_method || data.gift_card_code || data.payments ? 'paid' : 'pending',
       fulfillment_type: data.fulfillment_type,
@@ -55,7 +66,21 @@ class StorefrontCheckoutService {
       } catch (_) { /* optional attribution */ }
     }
 
-    return order;
+    return {
+      ...order,
+      customer_name: data.customer_name || null,
+      customer_email: data.customer_email || null,
+      customer_phone: data.customer_phone || null,
+      shipping_address: addressLines.length ? {
+        line1: ship.line1 || null,
+        line2: ship.line2 || null,
+        city: ship.city || null,
+        postal_code: ship.postal_code || null,
+        country: ship.country || null,
+        formatted: addressLines.join(', '),
+      } : null,
+      fulfillment_type: data.fulfillment_type || null,
+    };
   }
 
   async loyaltyPreview(tenantId, email) {

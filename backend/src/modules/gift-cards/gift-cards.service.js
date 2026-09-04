@@ -70,13 +70,16 @@ class GiftCardsService {
       }
     }
 
+    const tenant = await db.query('SELECT currency FROM tenants WHERE id = $1', [tenantId]);
+    const currency = String(data.currency || tenant.rows[0]?.currency || 'USD').toUpperCase();
+
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
       const card = await client.query(
         `INSERT INTO gift_cards (tenant_id, code, initial_balance, balance, currency, customer_id, status, expires_at, created_by)
          VALUES ($1, $2, $3, $3, $4, $5, 'active', $6, $7) RETURNING *`,
-        [tenantId, code, amount, (data.currency || 'USD').toUpperCase(), data.customer_id || null, data.expires_at || null, userId || null]
+        [tenantId, code, amount, currency, data.customer_id || null, data.expires_at || null, userId || null]
       );
       await client.query(
         `INSERT INTO gift_card_transactions (tenant_id, gift_card_id, type, amount, balance_after, note)

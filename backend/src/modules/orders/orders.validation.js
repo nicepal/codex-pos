@@ -53,8 +53,15 @@ const createOrderSchema = Joi.object({
 const checkoutSchema = Joi.object({
   items: Joi.array().items(orderItemSchema).min(1).required(),
   customer_name: Joi.string().min(1).max(255).required(),
-  customer_email: Joi.string().email().allow('', null).optional(),
+  customer_email: Joi.string().email().required(),
   customer_phone: Joi.string().max(50).allow('', null).optional(),
+  shipping_address: Joi.object({
+    line1: Joi.string().max(255).allow('', null).optional(),
+    line2: Joi.string().max(255).allow('', null).optional(),
+    city: Joi.string().max(100).allow('', null).optional(),
+    postal_code: Joi.string().max(32).allow('', null).optional(),
+    country: Joi.string().max(100).allow('', null).optional(),
+  }).optional(),
   fulfillment_type: Joi.string().valid('delivery', 'pickup').optional(),
   pickup_branch_id: Joi.when('fulfillment_type', {
     is: 'pickup',
