@@ -25,7 +25,7 @@ function useIsMobile(breakpoint = 960) {
 }
 
 /**
- * Official PosHive.store brand lockup.
+ * Official PosHive brand lockup.
  * @param {'light'|'dark'} variant — light = for light backgrounds; dark = for dark backgrounds
  * @param {'sm'|'md'|'lg'} size
  * @param {boolean} link
@@ -67,7 +67,7 @@ export default function PosHiveLogo({
     <span className={`poshive-logo poshive-logo--lockup poshive-logo--${variant} poshive-logo--${size} ${className}`.trim()}>
       <img
         src={logoSrc}
-        alt="PosHive.store"
+        alt="PosHive"
         height={dims.height}
         className="poshive-logo-lockup"
         decoding="async"
@@ -77,7 +77,7 @@ export default function PosHiveLogo({
 
   if (!link) return content;
   return (
-    <Link to="/" className="poshive-logo-link" aria-label="PosHive.store home">
+    <Link to="/" className="poshive-logo-link" aria-label="PosHive home">
       {content}
     </Link>
   );
